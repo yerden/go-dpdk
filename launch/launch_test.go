@@ -2,6 +2,7 @@ package launch
 
 import (
 	"errors"
+	"sync"
 	"testing"
 	"time"
 )
@@ -12,20 +13,19 @@ func TestNewThread(t *testing.T) {
 		t.Error(err)
 		t.FailNow()
 	}
-	defer lt.Stop()
+	defer lt.Exit()
 
+	var wg sync.WaitGroup
 	a := 1
-	ok := lt.Launch(func(ctx *ThreadCtx) error {
+
+	wg.Add(1)
+	lt.Execute(func(ctx *ThreadCtx) error {
+		defer wg.Done()
 		a = 2
 		return nil
 	})
 
-	if !ok {
-		t.Error("unable to launch")
-		t.FailNow()
-	}
-
-	lt.Wait()
+	wg.Wait()
 	if lt.Err() != nil {
 		t.Error("error is not nil")
 		t.FailNow()
@@ -42,9 +42,7 @@ func TestNewThreadFail(t *testing.T) {
 	if err == nil {
 		t.FailNow()
 	}
-	defer lt.Stop() // should be no panic
-	lt.Stop()
-	if lt.State() != ThreadStop {
+	if lt.State() != ThreadExit {
 		t.FailNow()
 	}
 }
@@ -55,23 +53,28 @@ func TestCtxValue(t *testing.T) {
 		t.Error(err)
 		t.FailNow()
 	}
-	defer lt.Stop()
+	defer lt.Exit()
+	var wg sync.WaitGroup
 
-	ok := lt.Launch(func(ctx *ThreadCtx) error {
+	wg.Add(1)
+	lt.Execute(func(ctx *ThreadCtx) error {
+		defer wg.Done()
 		data := []int{1, 2}
 		ctx.Value = data
 		return nil
 	})
-	lt.Wait()
+	wg.Wait()
 
 	var data []int
-	ok = lt.Launch(func(ctx *ThreadCtx) error {
+	wg.Add(1)
+	lt.Execute(func(ctx *ThreadCtx) error {
+		defer wg.Done()
 		data = ctx.Value.([]int)
 		return nil
 	})
 
-	lt.Wait()
-	ok = len(data) == 2 && data[0] == 1 && data[1] == 2
+	wg.Wait()
+	ok := len(data) == 2 && data[0] == 1 && data[1] == 2
 	if !ok {
 		t.FailNow()
 	}
@@ -83,14 +86,17 @@ func TestError(t *testing.T) {
 		t.Error(err)
 		t.FailNow()
 	}
-	defer lt.Stop()
+	defer lt.Exit()
+	var wg sync.WaitGroup
 
 	someErr := errors.New("some error")
-	ok := lt.Launch(func(ctx *ThreadCtx) error {
+	wg.Add(1)
+	lt.Execute(func(ctx *ThreadCtx) error {
+		defer wg.Done()
 		return someErr
 	})
-	lt.Wait()
-	if !ok || lt.Err() != someErr {
+	wg.Wait()
+	if lt.Err() != someErr {
 		t.FailNow()
 	}
 }
@@ -103,29 +109,32 @@ func TestState(t *testing.T) {
 	}
 
 	if lt.State() != ThreadWait {
-		lt.Stop()
+		lt.Exit()
 		t.FailNow()
 	}
 
-	ok := lt.Launch(func(ctx *ThreadCtx) error {
+	var wg sync.WaitGroup
+	wg.Add(1)
+	lt.Execute(func(ctx *ThreadCtx) error {
+		defer wg.Done()
 		time.Sleep(time.Second)
 		return nil
 	})
 
 	time.Sleep(100 * time.Millisecond)
-	if !ok || lt.State() != ThreadExecute {
-		lt.Stop()
+	if lt.State() != ThreadExecute {
+		lt.Exit()
 		t.FailNow()
 	}
 
-	lt.Wait()
+	wg.Wait()
 	if lt.State() != ThreadWait {
-		lt.Stop()
+		lt.Exit()
 		t.FailNow()
 	}
 
-	lt.Stop()
-	if lt.State() != ThreadStop {
+	lt.Exit()
+	if lt.State() != ThreadExit {
 		t.FailNow()
 	}
 }
