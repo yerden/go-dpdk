@@ -15,7 +15,7 @@ var (
 // linux implementation, should return maximum lcore id + 1.
 func loadCPUMap() int {
 	nodeMap := make(map[uint]int)
-	maxLcoreId := 0
+	maxLcoreID := 0
 	for n := 0; ; n++ {
 		path := fmt.Sprintf("/sys/devices/system/node/node%d/cpumap", n)
 		f, err := os.Open(path)
@@ -27,19 +27,19 @@ func loadCPUMap() int {
 		}
 		defer f.Close()
 
-		cores, err := readCpuHexMap(f)
+		cores, err := readCPUHexMap(f)
 		if err != nil {
 			panic(err)
 		}
 
 		for _, c := range cores {
-			if nodeMap[uint(c)] = n; c > maxLcoreId {
-				maxLcoreId = c
+			if nodeMap[uint(c)] = n; c > maxLcoreID {
+				maxLcoreID = c
 			}
 		}
 	}
 
-	lcore2node = make([]int, maxLcoreId+1)
+	lcore2node = make([]int, maxLcoreID+1)
 	for lcore, node := range nodeMap {
 		lcore2node[lcore] = node
 	}

@@ -31,7 +31,7 @@ var (
 
 // read cpu map in hex format as a first line from b and return lcore
 // ids and error if encountered.
-func readCpuHexMap(b io.Reader) ([]int, error) {
+func readCPUHexMap(b io.Reader) ([]int, error) {
 	cores := []int{}
 	scanner := bufio.NewScanner(b)
 	scanner.Split(bufio.ScanWords)

@@ -9,7 +9,7 @@ func TestReadCpuHexMap(t *testing.T) {
 	s := "4f"
 	b := bytes.NewBufferString(s)
 
-	cores, err := readCpuHexMap(b)
+	cores, err := readCPUHexMap(b)
 	a := []int{0, 1, 2, 3, 6}
 
 	if err != nil {
@@ -29,7 +29,7 @@ func TestReadCpuHexMapErr(t *testing.T) {
 	s := "4z"
 	b := bytes.NewBufferString(s)
 
-	_, err := readCpuHexMap(b)
+	_, err := readCPUHexMap(b)
 
 	if err != errInvalidMap {
 		t.FailNow()

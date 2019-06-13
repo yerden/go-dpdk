@@ -1,5 +1,5 @@
 /*
-lcore package allows to control execution of user-supplied functions
+Package lcore allows to control execution of user-supplied functions
 on specified logical CPU core.
 
 This may have some advantages such as: reduce context switches, allows
@@ -52,14 +52,14 @@ type ThreadCtx struct {
 	// multiple lcore functions executed on the same lcore thread.
 	Value interface{}
 
-	lcoreId  uint
+	lcoreID  uint
 	numaNode int
 }
 
 // LcoreID returns id of logical CPU core which lcore thread is tied
 // to.
 func (ctx *ThreadCtx) LcoreID() uint {
-	return ctx.lcoreId
+	return ctx.lcoreID
 }
 
 // SocketID returns id of CPU socket where lcore thread and logical
@@ -104,7 +104,7 @@ func NewThread(id uint) (*Thread, error) {
 		ch <- err
 
 		ctx := &ThreadCtx{
-			lcoreId:  id,
+			lcoreID:  id,
 			numaNode: NumaNode(id),
 		}
 
