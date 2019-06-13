@@ -166,5 +166,6 @@ func ExampleThread_Execute() {
 	}
 
 	fmt.Println("success")
-	// Output: success
+	// Output: core 0 on socket 0
+	// success
 }
