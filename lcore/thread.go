@@ -1,5 +1,5 @@
 /*
-Launch package allows to control execution of user-supplied functions
+lcore package allows to control execution of user-supplied functions
 on specified logical CPU core.
 
 This may have some advantages such as: reduce context switches, allows
@@ -8,7 +8,7 @@ to use non-preemptible algorithms etc.
 Please note that thread function is entirely specified by user. It is
 up to user to define how this function would exit.
 */
-package launch
+package lcore
 
 import (
 	// "fmt"
@@ -105,7 +105,7 @@ func NewThread(id uint) (*Thread, error) {
 
 		ctx := &ThreadCtx{
 			lcoreId:  id,
-			numaNode: -1,
+			numaNode: NumaNode(id),
 		}
 
 		for j := range t.jobsCh {
@@ -121,31 +121,32 @@ func NewThread(id uint) (*Thread, error) {
 	return t, <-ch
 }
 
-// Err returns error returned by lcore function after ending execution. It is
-// safe to call only when thread is in ThreadWait or ThreadExit state, i.e.
-// after Wait() or Exit() call returns.
+// Err returns error returned by lcore function after ending
+// execution. It is safe to call only when thread is in ThreadWait or
+// ThreadExit state, i.e.  after Wait() or Exit() call returns.
 func (t *Thread) Err() error {
 	return t.err
 }
 
-// Exit sends a signal to stop all activity on logical thread. After
+// Exit sends a signal to stop all activity on the thread. After
 // that, it waits for the current lcore function to finish execution.
-// After that, only Err() may be called to check upon the error. Other
-// calls are prohibited.
+// After that, only Err() and State() may be called to check upon the
+// error and the state of the thread. Other calls are prohibited.
 func (t *Thread) Exit() {
 	t.jobsCh <- job{nil}
 	t.wg.Wait()
 }
 
-// State returns current state of logical thread, see Thread*
+// State returns current state of the thread, see Thread*
 // constants.
 func (t *Thread) State() int32 {
 	return atomic.LoadInt32(&t.state)
 }
 
-// Execute sends new lcore function to execute. It returns true if the
-// job was enqueued or false if logical thread is busy executing
-// another lcore function.
+// Execute sends new lcore function to execute. This function will
+// block until previous lcore function finishes.
 func (t *Thread) Execute(fn ThreadFunc) {
-	t.jobsCh <- job{fn}
+	if fn != nil {
+		t.jobsCh <- job{fn}
+	}
 }
