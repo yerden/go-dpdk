@@ -122,8 +122,8 @@ func NewThread(id uint) (*Thread, error) {
 }
 
 // Err returns error returned by lcore function after ending
-// execution. It is safe to call only when thread is in ThreadWait or
-// ThreadExit state, i.e.  after Wait() or Exit() call returns.
+// execution. It is safe to call only when thread has finished
+// executing a function.
 func (t *Thread) Err() error {
 	return t.err
 }
