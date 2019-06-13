@@ -1,14 +1,17 @@
-package lcore
+package lcore_test
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/yerden/go-dpdk/lcore"
 )
 
 func TestNewThread(t *testing.T) {
-	lt, err := NewThread(0)
+	lt, err := lcore.NewThread(0)
 	if err != nil {
 		t.Error(err)
 		t.FailNow()
@@ -19,7 +22,7 @@ func TestNewThread(t *testing.T) {
 	a := 1
 
 	wg.Add(1)
-	lt.Execute(func(ctx *ThreadCtx) error {
+	lt.Execute(func(ctx *lcore.ThreadCtx) error {
 		defer wg.Done()
 		a = 2
 		return nil
@@ -38,17 +41,17 @@ func TestNewThread(t *testing.T) {
 }
 
 func TestNewThreadFail(t *testing.T) {
-	lt, err := NewThread(64)
+	lt, err := lcore.NewThread(64)
 	if err == nil {
 		t.FailNow()
 	}
-	if lt.State() != ThreadExit {
+	if lt.State() != lcore.ThreadExit {
 		t.FailNow()
 	}
 }
 
 func TestCtxValue(t *testing.T) {
-	lt, err := NewThread(0)
+	lt, err := lcore.NewThread(0)
 	if err != nil {
 		t.Error(err)
 		t.FailNow()
@@ -57,7 +60,7 @@ func TestCtxValue(t *testing.T) {
 	var wg sync.WaitGroup
 
 	wg.Add(1)
-	lt.Execute(func(ctx *ThreadCtx) error {
+	lt.Execute(func(ctx *lcore.ThreadCtx) error {
 		defer wg.Done()
 		data := []int{1, 2}
 		ctx.Value = data
@@ -67,7 +70,7 @@ func TestCtxValue(t *testing.T) {
 
 	var data []int
 	wg.Add(1)
-	lt.Execute(func(ctx *ThreadCtx) error {
+	lt.Execute(func(ctx *lcore.ThreadCtx) error {
 		defer wg.Done()
 		data = ctx.Value.([]int)
 		return nil
@@ -81,7 +84,7 @@ func TestCtxValue(t *testing.T) {
 }
 
 func TestError(t *testing.T) {
-	lt, err := NewThread(0)
+	lt, err := lcore.NewThread(0)
 	if err != nil {
 		t.Error(err)
 		t.FailNow()
@@ -91,7 +94,7 @@ func TestError(t *testing.T) {
 
 	someErr := errors.New("some error")
 	wg.Add(1)
-	lt.Execute(func(ctx *ThreadCtx) error {
+	lt.Execute(func(ctx *lcore.ThreadCtx) error {
 		defer wg.Done()
 		return someErr
 	})
@@ -102,39 +105,66 @@ func TestError(t *testing.T) {
 }
 
 func TestState(t *testing.T) {
-	lt, err := NewThread(0)
+	lt, err := lcore.NewThread(0)
 	if err != nil {
 		t.Error(err)
 		t.FailNow()
 	}
 
-	if lt.State() != ThreadWait {
+	if lt.State() != lcore.ThreadWait {
 		lt.Exit()
 		t.FailNow()
 	}
 
 	var wg sync.WaitGroup
 	wg.Add(1)
-	lt.Execute(func(ctx *ThreadCtx) error {
+	lt.Execute(func(ctx *lcore.ThreadCtx) error {
 		defer wg.Done()
 		time.Sleep(time.Second)
 		return nil
 	})
 
 	time.Sleep(100 * time.Millisecond)
-	if lt.State() != ThreadExecute {
+	if lt.State() != lcore.ThreadExecute {
 		lt.Exit()
 		t.FailNow()
 	}
 
 	wg.Wait()
-	if lt.State() != ThreadWait {
+	if lt.State() != lcore.ThreadWait {
 		lt.Exit()
 		t.FailNow()
 	}
 
 	lt.Exit()
-	if lt.State() != ThreadExit {
+	if lt.State() != lcore.ThreadExit {
 		t.FailNow()
 	}
+}
+
+func ExampleThread_Execute() {
+	lt, err := lcore.NewThread(0)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer lt.Exit()
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	errSomeBad := errors.New("some error")
+	lt.Execute(func(ctx *lcore.ThreadCtx) error {
+		defer wg.Done()
+		fmt.Printf("core %d on socket %d\n", ctx.LcoreID(), ctx.SocketID())
+		return errSomeBad
+	})
+	wg.Wait()
+
+	if lt.Err() != errSomeBad {
+		fmt.Println("well, it should be")
+		return
+	}
+
+	fmt.Println("success")
+	// Output: success
 }
