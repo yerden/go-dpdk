@@ -1,17 +1,16 @@
 language: go
-
-# Force-enable Go modules. This will be unnecessary when Go 1.12 lands.
-# env:
-  # - GO111MODULE=on
-
-# You don't need to test on very old version of the Go compiler. It's the user's
-# responsibility to keep their compilers up to date.
 go:
-  - 1.11.x
+ - 1.11.x
+ - 1.12.x
+ - master
 
-# Only clone the most recent commit.
-git:
-  depth: 1
+dist: xenial
+
+addons:
+  apt:
+    packages:
+      libdpdk-dev
+      libnuma-dev
 
 # Skip the install step. Don't `go get` dependencies. Only build with the code
 # in vendor/
@@ -21,30 +20,44 @@ install: true
 notifications:
   email: false
 
-# Anything in before_script that returns a nonzero exit code will flunk the
-# build and immediately stop. It's sorta like having set -e enabled in bash.
-# Make sure golangci-lint is vendored.
-before_script:
-  # - sudo apt-get update
-  # - sudo apt-get install -y libpcap-dev
-  # - curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(go env GOPATH)/bin v1.13.2
-  - go get -d ./...
-  - go get -u github.com/client9/misspell/cmd/misspell
-  - go get -u github.com/fzipp/gocyclo
-  - go get -u golang.org/x/lint/golint
-  - go get -u github.com/gordonklaus/ineffassign
+# Force-enable Go modules. This will be unnecessary when Go 1.12 lands.
+env:
+  global:
+    - GO111MODULE=on
+  matrix:
+    - CGO_CFLAGS="-m64 -pthread -O3 -march=native -I/usr/include/dpdk"
+      CGO_LDFLAGS="-L/usr/lib/x86_64-linux-gnu -ldpdk -lz -lrt -lnuma -ldl -lm"
+
+matrix:
+  fast_finish: true
+  allow_failures:
+    - go: master
+
+# You don't need to test on very old version of the Go compiler. It's the user's
+# responsibility to keep their compilers up to date.
+jobs:
+  include:
+    - go: 1.9.x
+      install: ./.travis.install.sh
+    - go: 1.10.x
+      install: ./.travis.install.sh
+    - stage: style
+      name: "static/vet/lint"
+      go: 1.x
+      script:
+        - ./.travis.static.sh
+        - ./.travis.govet.sh
+        - ./.travis.golint.sh
+
+stages:
+  - style
+  - test
+
+# Only clone the most recent commit.
+git:
+  depth: 1
 
 # script always runs to completion (set +e). If we have linter issues AND a
 # failing test, we want to see both. Configure golangci-lint with a
 # .golangci.yml file at the top level of your repo.
-script:
-  - cd lcore
-  - go build
-  - misspell -error .
-  # - golangci-lint run -E gofmt -E gocyclo --tests=false
-  # - go vet
-  - gofmt -d -e -s .
-  - gocyclo .
-  - ineffassign .
-  - golint . || (exit 0)
-  - go test
+script: ./.travis.script.sh
