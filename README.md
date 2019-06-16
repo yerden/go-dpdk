@@ -3,6 +3,7 @@
 Go bindings for DPDK library.
 
 # Build prereqs
+If you have your own DPDK distribution build then do:
 ```
 # set path to dpdk installation
 export RTE_SDK=~/work/dpdk
@@ -11,4 +12,11 @@ export RTE_SDK=~/work/dpdk
 export RTE_TARGET=x86_64-native-linux-gcc
 export CGO_CFLAGS="-m64 -pthread -O3 -march=native -I$RTE_SDK/$RTE_TARGET/include"
 export CGO_LDFLAGS="-L$RTE_SDK/$RTE_TARGET/lib -ldpdk -lz -lrt -lnuma -ldl -lm"
+```
+
+If you use libdpdk-dev from Ubuntu then do:
+```
+sudo apt install libdpdk-dev libnuma-dev
+export CGO_CFLAGS="-m64 -pthread -O3 -march=native -I/usr/include/dpdk"
+export CGO_LDFLAGS="-L/usr/lib/x86_64-linux-gnu -ldpdk -lz -lrt -lnuma -ldl -lm"
 ```
