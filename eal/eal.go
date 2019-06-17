@@ -108,10 +108,12 @@ func (lc *Lcore) refresh() {
 }
 
 // ExecuteOnLcore sends fn to execute on CPU logical core lcoreID, i.e
-// in EAL-owned thread on that lcore.
+// in EAL-owned thread on that lcore. If lcoreID references unknown
+// lcore (i.e. not registered by EAL) the function does nothing.
 func ExecuteOnLcore(lcoreID uint, fn LcoreFunc) {
-	lc := goEAL.lcores[lcoreID]
-	lc.ch <- fn
+	if lc := goEAL.lcores[lcoreID]; lc != nil {
+		lc.ch <- fn
+	}
 }
 
 // ExecuteOnMaster is a shortcut for ExecuteOnLcore with master lcore
