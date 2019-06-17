@@ -179,8 +179,6 @@ func InitWithArgs(argv []string) error {
 		// so we may 'safely' cast the pointer to C.uintptr_t
 		arg := C.uintptr_t(uintptr(unsafe.Pointer(goEAL)))
 
-		// report that we're ok, otherwise we will panic
-		ch <- nil
 		defer log.Println("master lcore exited")
 		// launch every EAL thread lcore function
 		// it should be success since we've just called rte_eal_init()
@@ -190,6 +188,8 @@ func InitWithArgs(argv []string) error {
 			return
 		}
 
+		// report that we're ok, before we block the thread
+		ch <- nil
 		// run on master lcore
 		lcoreFuncListener(unsafe.Pointer(goEAL))
 	}()
