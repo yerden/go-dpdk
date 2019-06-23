@@ -4,13 +4,17 @@ go:
  - 1.12.x
  - master
 
-dist: xenial
+dist: bionic
 
 addons:
   apt:
     packages:
       libdpdk-dev
       libnuma-dev
+    update: true
+
+before_install:
+  - sudo apt-get install -y libdpdk-dev libnuma-dev
 
 # Skip the install step. Don't `go get` dependencies. Only build with the code
 # in vendor/
