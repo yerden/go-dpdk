@@ -3,7 +3,7 @@
 cd "$(dirname $0)"
 
 set -e
-DIRS="lcore eal"
+DIRS="common eal ethdev lcore mempool ring port"
 # Add subdirectories here as we clean up golint on each.
 for subdir in $DIRS; do
   pushd $subdir

@@ -3,7 +3,7 @@
 cd "$(dirname $0)"
 
 go get golang.org/x/lint/golint
-DIRS="lcore eal"
+DIRS="lcore eal ring port"
 # Add subdirectories here as we clean up golint on each.
 for subdir in $DIRS; do
   pushd $subdir
