@@ -5,6 +5,11 @@ import (
 	"strings"
 )
 
+var (
+	optAppend  = false
+	optReplace = !optAppend
+)
+
 // single EAL command line option
 type cmdOption struct {
 	option string
@@ -12,16 +17,16 @@ type cmdOption struct {
 }
 
 // create either option-value or single option
-func newOption(tokens ...string) cmdOption {
-	switch len(tokens) {
-	case 1:
-		return cmdOption{option: tokens[0]}
-	case 2:
-		fallthrough
-	default:
+func newOption(replace bool, tokens ...string) Option {
+	var x cmdOption
+
+	x.option = tokens[0]
+	if len(tokens) > 1 {
 		b := tokens[1]
-		return cmdOption{option: tokens[0], value: &b}
+		x.value = &b
 	}
+
+	return Option{func(p *ealOptions) { p.add(x, replace) }}
 }
 
 // options array for EAL
@@ -40,17 +45,26 @@ func (p *ealOptions) find(option string) *cmdOption {
 
 // adds new options or replaces the option to EAL if it was already
 // given
-func (p *ealOptions) replace(in cmdOption) {
-	if opt := p.find(in.option); opt != nil {
-		*opt = in
-	} else {
-		p.opts = append(p.opts, in)
+func (p *ealOptions) add(in cmdOption, replace bool) {
+	if replace == optReplace {
+		if opt := p.find(in.option); opt != nil {
+			*opt = in
+			return
+		}
 	}
+	p.opts = append(p.opts, in)
 }
 
-// add the option to EAL
-func (p *ealOptions) add(in cmdOption) {
-	p.opts = append(p.opts, in)
+func optFlag(key string, replace bool) Option {
+	return newOption(replace, key)
+}
+
+func optInteger(key string, value interface{}, replace bool) Option {
+	return newOption(replace, key, fmt.Sprintf("%d", value))
+}
+
+func optString(key string, value string, replace bool) Option {
+	return newOption(replace, key, value)
 }
 
 // convert options array into argv array for rte_eal_init.
@@ -85,103 +99,77 @@ type Option struct {
 // OptLcores sets mask of the cores to run on. Please note that this
 // is a mandatory option.
 func OptLcores(mask Set) Option {
-	opt := newOption("-c", SetToHex(mask, MaxLcore))
-	return Option{func(p *ealOptions) { p.replace(opt) }}
+	return optString("-c", SetToHex(mask, MaxLcore), optReplace)
 }
 
 // OptMasterLcore specifies core ID that is used as master.
 func OptMasterLcore(n int) Option {
-	opt := newOption("--master-lcore", fmt.Sprintf("%d", n))
-	return Option{func(p *ealOptions) { p.replace(opt) }}
+	return optInteger("--master-lcore", n, optReplace)
 }
 
 // OptServiceLcores specifies mask of cores to be used as service
 // cores.
 func OptServiceLcores(mask Set) Option {
-	opt := newOption("-s", SetToHex(mask, MaxLcore))
-	return Option{func(p *ealOptions) { p.replace(opt) }}
+	return optString("-s", SetToHex(mask, MaxLcore), optReplace)
 }
 
 // OptBlacklistDev blacklists a PCI device to prevent EAL from using
 // it. Multiple option instances are allowed. This option negates
 // OptWhitelistDev.
 func OptBlacklistDev(dev string) Option {
-	opt := newOption("--pci-blacklist", dev)
-	return Option{func(p *ealOptions) { p.add(opt) }}
+	return optString("--pci-blacklist", dev, optAppend)
 }
 
 // OptWhitelistDev adds a PCI device in white list. Multiple option
 // instances are allowed. This option negates OptBlacklistDev.
 func OptWhitelistDev(dev string) Option {
-	opt := newOption("--pci-whitelist", dev)
-	return Option{func(p *ealOptions) { p.add(opt) }}
+	return optString("--pci-whitelist", dev, optAppend)
 }
 
 // OptFilePrefix specifies a different shared data file prefix for a
 // DPDK process. This option allows running multiple independent DPDK
 // primary/secondary processes under different prefixes.
 func OptFilePrefix(prefix string) Option {
-	opt := newOption("--file-prefix", prefix)
-	return Option{func(p *ealOptions) { p.replace(opt) }}
+	return optString("--file-prefix", prefix, optReplace)
+}
+
+// OptMemory specifies amount of memory to preallocate at startup.
+func OptMemory(n int) Option {
+	return optInteger("-m", n, optReplace)
 }
 
 // OptBaseVirtAddr attempts to use a different starting address for all
 // memory maps of the primary DPDK process. This can be helpful if
 // secondary processes cannot start due to conflicts in address map.
 func OptBaseVirtAddr(addr uintptr) Option {
-	opt := newOption("--base-virtaddr", fmt.Sprintf("0x%x", addr))
-	return Option{func(p *ealOptions) { p.replace(opt) }}
+	return optInteger("--base-virtaddr", addr, optReplace)
 }
 
 // OptLoadExternalPath loads external drivers. An argument can be a
 // single shared object file, or a directory containing multiple
 // driver shared objects. Multiple option instances are allowed.
 func OptLoadExternalPath(path string) Option {
-	opt := newOption("-d", path)
-	return Option{func(p *ealOptions) { p.add(opt) }}
-}
-
-// OptNoPCI disables PCI bus.
-func OptNoPCI() Option {
-	opt := newOption("--no-pci")
-	return Option{func(p *ealOptions) { p.replace(opt) }}
-}
-
-// OptNoHuge uses anonymous memory instead of hugepages (implies no
-// secondary process support).
-func OptNoHuge() Option {
-	opt := newOption("--no-huge")
-	return Option{func(p *ealOptions) { p.replace(opt) }}
+	return optString("-d", path, optAppend)
 }
 
 // OptProcType sets the type of the current process. It can either be
 // ProcPrimary, ProcSecondary or ProcAuto.
 func OptProcType(typ int) Option {
-	var opt cmdOption
 	switch typ {
 	default:
 		fallthrough
 	case ProcPrimary:
-		opt = newOption("--proc-type", "primary")
+		return optString("--proc-type", "primary", optReplace)
 	case ProcSecondary:
-		opt = newOption("--proc-type", "secondary")
+		return optString("--proc-type", "secondary", optReplace)
 	case ProcAuto:
-		opt = newOption("--proc-type", "auto")
+		return optString("--proc-type", "auto", optReplace)
 	}
-	return Option{func(p *ealOptions) { p.replace(opt) }}
 }
 
 // OptMemoryChannels sets the number of memory channels to use.
 func OptMemoryChannels(n int) Option {
-	opt := newOption("-n", fmt.Sprintf("%d", n))
-	return Option{func(p *ealOptions) { p.replace(opt) }}
-}
-
-// OptInMemory instructs not to create any shared data structures and run
-// entirely in memory.  Implies --no-shconf and (if applicable) --huge-unlink.
-func OptInMemory() Option {
-	opt := newOption("--in-memory")
-	return Option{func(p *ealOptions) { p.replace(opt) }}
+	return optInteger("-n", n, optReplace)
 }
 
 // OptSocketMemory preallocates specified amounts of memory per
@@ -192,6 +180,30 @@ func OptSocketMemory(mem ...int) Option {
 	for _, m := range mem {
 		s = append(s, fmt.Sprintf("%d", m))
 	}
-	opt := newOption("--socket-mem", strings.Join(s, ","))
-	return Option{func(p *ealOptions) { p.replace(opt) }}
+	return optString("--socket-mem", strings.Join(s, ","), optReplace)
+}
+
+var (
+	// OptNoPCI disables PCI bus.
+	OptNoPCI = optFlag("--no-pci", optReplace)
+
+	// OptNoHuge uses anonymous memory instead of hugepages (implies
+	// no secondary process support).
+	OptNoHuge = optFlag("--no-huge", optReplace)
+
+	// OptInMemory instructs not to create any shared data structures
+	// and run entirely in memory.  Implies --no-shconf and (if
+	// applicable) --huge-unlink.
+	OptInMemory = optFlag("--in-memory", optReplace)
+)
+
+// OptArgs parses array of Options and return argv array for
+// rte_eal_init() call.
+func OptArgs(opts []Option) []string {
+	p := ealOptions{}
+	for _, opt := range opts {
+		opt.f(&p)
+	}
+
+	return p.argv()
 }

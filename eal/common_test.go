@@ -1,24 +1,15 @@
 package eal_test
 
 import (
-	"github.com/yerden/go-dpdk/eal"
 	"golang.org/x/sys/unix"
 	"testing"
+
+	"github.com/yerden/go-dpdk/common"
+	"github.com/yerden/go-dpdk/eal"
 )
 
-func newAssert(t *testing.T, fail bool) func(bool) {
-	return func(expected bool) {
-		if t.Helper(); !expected {
-			t.Error("Something's not right")
-			if fail {
-				t.FailNow()
-			}
-		}
-	}
-}
-
 func TestCommonSets(t *testing.T) {
-	assert := newAssert(t, true)
+	assert := common.Assert(t, true)
 
 	var s eal.Set
 	s = eal.MakeSet(1)
@@ -53,7 +44,7 @@ func TestCommonSets(t *testing.T) {
 }
 
 func TestCommonSetToHex(t *testing.T) {
-	assert := newAssert(t, true)
+	assert := common.Assert(t, true)
 	var set unix.CPUSet
 
 	set.Zero()

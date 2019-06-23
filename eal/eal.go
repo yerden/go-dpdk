@@ -85,6 +85,37 @@ var (
 	goEAL = &ealConfig{}
 )
 
+func panicCatcher(fn LcoreFunc, lc *Lcore) {
+	defer func() {
+		r := recover()
+		if r == nil {
+			return
+		}
+		// Report the lcore ID and the panic error
+		log.Printf("panic on lcore %d: %v", lc.ID, r)
+
+		// this function is called from runtime package, so to
+		// unwind the stack we may skip (1) runtime.Callers
+		// function, (2) this caller function and whatever is left
+		// of runtime package.
+		pc := make([]uintptr, 10)
+		n := runtime.Callers(2, pc)
+		frames := runtime.CallersFrames(pc[:n])
+		for {
+			frame, more := frames.Next()
+			if !more {
+				break
+			}
+			if strings.HasPrefix(frame.Function, "runtime.") {
+				continue
+			}
+			log.Printf("... at %s:%d, %s\n", frame.File, frame.Line,
+				frame.Function)
+		}
+	}()
+	fn(lc)
+}
+
 // to run as lcore_function_t
 //export lcoreFuncListener
 func lcoreFuncListener(arg unsafe.Pointer) C.int {
@@ -93,11 +124,11 @@ func lcoreFuncListener(arg unsafe.Pointer) C.int {
 	log.Println("started on lcore", LcoreID())
 
 	for fn := range lc.ch {
+		lc.refresh()
 		if fn == nil {
 			break
 		}
-		lc.refresh()
-		fn(lc)
+		panicCatcher(fn, lc)
 	}
 	return 0
 }
@@ -177,7 +208,7 @@ func InitWithArgs(argv []string) error {
 		// nasty trick, but justified
 		// since EAL struct is allocated globally, it won't be GC-ed,
 		// so we may 'safely' cast the pointer to C.uintptr_t
-		arg := C.uintptr_t(uintptr(unsafe.Pointer(goEAL)))
+		arg := cptr(goEAL)
 
 		defer log.Println("master lcore exited")
 		// launch every EAL thread lcore function
@@ -208,12 +239,7 @@ func Init(argv string) error {
 // specified in array of Option-s. These options are then used to
 // construct argv array and InitWithArgs is then called upon.
 func InitWithOpts(opts ...Option) error {
-	p := ealOptions{}
-	for _, opt := range opts {
-		opt.f(&p)
-	}
-
-	return InitWithArgs(p.argv())
+	return InitWithArgs(OptArgs(opts))
 }
 
 // HasHugePages tells if huge pages are activated.

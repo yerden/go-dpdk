@@ -1,10 +1,14 @@
 package eal
 
+/*
+#include <stdint.h>
+*/
 import "C"
 
 import (
 	"reflect"
-	"syscall"
+
+	"github.com/yerden/go-dpdk/common"
 )
 
 var (
@@ -50,14 +54,12 @@ func SetToHex(mask Set, max int) string {
 	return string(out)
 }
 
-// errno converts return value of C function into meaningful error.
+func cptr(i interface{}) C.uintptr_t {
+	return C.uintptr_t(common.Uintptr(i))
+}
+
 func errno(n C.int) error {
-	if n == 0 {
-		return nil
-	} else if n < 0 {
-		n = -n
-	}
-	return syscall.Errno(n)
+	return common.Errno(int(n))
 }
 
 // FuncSet is a function which mimics Set interface.

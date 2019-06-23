@@ -4,22 +4,12 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/yerden/go-dpdk/common"
 	"golang.org/x/sys/unix"
 )
 
-func newAssert(t *testing.T, fail bool) func(bool) {
-	return func(expected bool) {
-		if t.Helper(); !expected {
-			t.Error("Something's not right")
-			if fail {
-				t.FailNow()
-			}
-		}
-	}
-}
-
 func TestOptions(t *testing.T) {
-	assert := newAssert(t, true)
+	assert := common.Assert(t, true)
 	var opts ealOptions
 
 	// equivalent of "-c f -n 4 --socket-mem=1024,1024 --no-pci -d /path/to/so"
@@ -28,7 +18,7 @@ func TestOptions(t *testing.T) {
 		OptLcores(MakeSet([]int{0, 1, 2, 3})),
 		OptMemoryChannels(4),
 		OptSocketMemory(1024, 1024),
-		OptNoPCI(),
+		OptNoPCI,
 		OptLoadExternalPath("/path/to/so"),
 	}
 
@@ -50,10 +40,10 @@ func TestOptions(t *testing.T) {
 }
 
 func TestEALInit(t *testing.T) {
-	assert := newAssert(t, true)
+	assert := common.Assert(t, true)
 	var set unix.CPUSet
 	assert(unix.SchedGetaffinity(0, &set) == nil)
-	err := InitWithOpts(OptLcores(&set), OptNoHuge(), OptNoPCI(), OptMasterLcore(0))
+	err := InitWithOpts(OptLcores(&set), OptNoHuge, OptNoPCI, OptMasterLcore(0))
 	assert(err == nil)
 
 	ch := make(chan uint, set.Count())
@@ -81,4 +71,22 @@ func TestEALInit(t *testing.T) {
 	}
 
 	assert(myset == set)
+
+	// test panic
+	ForeachLcore(false, func(lcoreID uint) {
+		wg.Add(1)
+		ExecuteOnLcore(lcoreID, func(lc *Lcore) {
+			defer wg.Done()
+			panic("emit panic")
+		})
+	})
+	wg.Wait()
+	ForeachLcore(false, func(lcoreID uint) {
+		wg.Add(1)
+		ExecuteOnLcore(lcoreID, func(lc *Lcore) {
+			// lcore is fine
+			defer wg.Done()
+		})
+	})
+	wg.Wait()
 }
