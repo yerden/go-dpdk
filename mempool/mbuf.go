@@ -23,10 +23,6 @@ import (
 	"github.com/yerden/go-dpdk/common"
 )
 
-func (mp *Mempool) MbufInitCb() MempoolObjCb {
-	return mp.MakeObjCb(C.rte_pktmbuf_init, nil)
-}
-
 func CreateMbufPool(name string, n uint32, dataRoomSize uint16, opts ...Option) (*Mempool, error) {
 	conf := &mpConf{socket: C.SOCKET_ID_ANY}
 	for i := range opts {
@@ -75,6 +71,6 @@ func CreateMbufPool(name string, n uint32, dataRoomSize uint16, opts ...Option) 
 	}
 
 	// initialize objects
-	mp.ObjIter(mp.MakeObjCb(C.rte_pktmbuf_init, nil))
+	mp.ObjIterC(C.rte_pktmbuf_init, nil)
 	return mp, nil
 }
