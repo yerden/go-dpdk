@@ -20,3 +20,10 @@ sudo apt install libdpdk-dev libnuma-dev
 export CGO_CFLAGS="-m64 -pthread -O3 -march=native -I/usr/include/dpdk"
 export CGO_LDFLAGS="-L/usr/lib/x86_64-linux-gnu -ldpdk -lz -lrt -lnuma -ldl -lm"
 ```
+
+If you use dpdk-devel from CentOS then do:
+```
+sudo yum install zlib-devel numactl-devel dpdk-devel
+export CGO_CFLAGS="-m64 -pthread -O3 -march=native -I/usr/include/dpdk"
+export CGO_LDFLAGS="-L/usr/lib64 -ldpdk -lz -lrt -lnuma -ldl -lm"
+```
