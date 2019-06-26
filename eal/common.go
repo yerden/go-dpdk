@@ -54,10 +54,6 @@ func SetToHex(mask Set, max int) string {
 	return string(out)
 }
 
-func cptr(i interface{}) C.uintptr_t {
-	return C.uintptr_t(common.Uintptr(i))
-}
-
 func errno(n C.int) error {
 	return common.Errno(int(n))
 }

@@ -27,13 +27,6 @@ static int eal_init(int argc, char **argv) {
 }
 
 extern int lcoreFuncListener(void *arg);
-
-static int go_eal_mp_remote_launch(
-	lcore_function_t *f,
-	uintptr_t arg,
-	enum rte_rmt_call_master_t call_master) {
-	return rte_eal_mp_remote_launch(f, (void*) arg, call_master);
-}
 */
 import "C"
 
@@ -118,10 +111,10 @@ func panicCatcher(fn LcoreFunc, lc *Lcore) {
 
 // to run as lcore_function_t
 //export lcoreFuncListener
-func lcoreFuncListener(arg unsafe.Pointer) C.int {
-	eal := (*ealConfig)(arg)
-	lc := eal.lcores[LcoreID()]
-	log.Println("started on lcore", LcoreID())
+func lcoreFuncListener(unsafe.Pointer) C.int {
+	lc := goEAL.lcores[LcoreID()]
+	log.Printf("lcore %d started", LcoreID())
+	defer log.Printf("lcore %d exited", LcoreID())
 
 	for fn := range lc.ch {
 		lc.refresh()
@@ -205,15 +198,10 @@ func InitWithArgs(argv []string) error {
 		})
 
 		fn := (*C.lcore_function_t)(C.lcoreFuncListener)
-		// nasty trick, but justified
-		// since EAL struct is allocated globally, it won't be GC-ed,
-		// so we may 'safely' cast the pointer to C.uintptr_t
-		arg := cptr(goEAL)
 
-		defer log.Println("master lcore exited")
 		// launch every EAL thread lcore function
 		// it should be success since we've just called rte_eal_init()
-		err = errno(C.go_eal_mp_remote_launch(fn, arg, C.SKIP_MASTER))
+		err = errno(C.rte_eal_mp_remote_launch(fn, nil, C.SKIP_MASTER))
 		if err != nil {
 			ch <- err
 			return
@@ -222,7 +210,7 @@ func InitWithArgs(argv []string) error {
 		// report that we're ok, before we block the thread
 		ch <- nil
 		// run on master lcore
-		lcoreFuncListener(unsafe.Pointer(goEAL))
+		lcoreFuncListener(nil)
 	}()
 
 	return <-ch
