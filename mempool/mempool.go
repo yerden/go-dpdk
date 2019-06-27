@@ -11,7 +11,7 @@ package mempool
 #include <rte_config.h>
 #include <rte_mempool.h>
 
-extern void goMempoolObjCbFunc(struct rte_mempool *mp, void *opaque, void *obj, unsigned idx);
+extern void goObjectCb(struct rte_mempool *mp, void *opaque, void *obj, unsigned idx);
 */
 import "C"
 
@@ -185,28 +185,28 @@ func (mp *Mempool) Free() {
 	C.rte_mempool_free((*C.struct_rte_mempool)(mp))
 }
 
-// MempoolObjCb is an object action for mempool iteration.
-type MempoolObjCb func(unsafe.Pointer)
+// ObjectFunc is an object action for mempool iteration.
+type ObjectFunc func(unsafe.Pointer)
 
 var (
 	mpCb = common.NewRegistryArray()
 )
 
-//export goMempoolObjCbFunc
-func goMempoolObjCbFunc(mp *C.struct_rte_mempool, opaque, obj unsafe.Pointer, obj_idx C.uint) {
+//export goObjectCb
+func goObjectCb(mp *C.struct_rte_mempool, opaque, obj unsafe.Pointer, obj_idx C.uint) {
 	cb := *(*common.ObjectID)(opaque)
-	fn := mpCb.Read(cb).(MempoolObjCb)
+	fn := mpCb.Read(cb).(ObjectFunc)
 	fn(obj)
 }
 
 // ObjIter calls a function for each mempool element. Iterate across
 // all objects attached to a rte_mempool and call the callback
 // function on it.
-func (mp *Mempool) ObjIter(fn MempoolObjCb) uint32 {
+func (mp *Mempool) ObjIter(fn ObjectFunc) uint32 {
 	cb := mpCb.Create(fn)
 	defer mpCb.Delete(cb)
 
-	objCb := (*C.rte_mempool_obj_cb_t)(C.goMempoolObjCbFunc)
+	objCb := (*C.rte_mempool_obj_cb_t)(C.goObjectCb)
 	cmp := (*C.struct_rte_mempool)(mp)
 	return uint32(C.rte_mempool_obj_iter(cmp, objCb, unsafe.Pointer(&cb)))
 }
