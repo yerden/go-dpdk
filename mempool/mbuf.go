@@ -23,6 +23,19 @@ import (
 	"github.com/yerden/go-dpdk/common"
 )
 
+// CreateMbufPool creates mempool of mbufs. See Create for a list of
+// options. Only differencies are described below.
+//
+// dataRoomSize specifies the maximum size of data buffer in each
+// mbuf, including RTE_PKTMBUF_HEADROOM.
+//
+// OptPrivateDataSize semantics is different here. It specifies the
+// size of private application data between the rte_mbuf structure and
+// the data buffer.  This value must be aligned to
+// RTE_MBUF_PRIV_ALIGN.
+//
+// The created mempool is already populated and its objects are
+// initialized with rte_pktmbuf_init.
 func CreateMbufPool(name string, n uint32, dataRoomSize uint16, opts ...Option) (*Mempool, error) {
 	conf := &mpConf{socket: C.SOCKET_ID_ANY}
 	for i := range opts {
