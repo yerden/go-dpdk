@@ -10,13 +10,8 @@ package ring
 
 #include <rte_config.h>
 #include <rte_ring.h>
-#include <rte_errno.h>
 #include <rte_memory.h>
 #include <rte_malloc.h>
-
-static int go_rte_errno() {
-	return rte_errno;
-}
 */
 import "C"
 
@@ -25,10 +20,6 @@ import (
 
 	"github.com/yerden/go-dpdk/common"
 )
-
-func errno(n C.int) error {
-	return common.Errno(int(n))
-}
 
 // Ring is a fixed-size queue, implemented as a table of pointers.
 // Head and tail pointers are modified atomically, allowing concurrent
@@ -115,7 +106,7 @@ func Create(name string, count uint, opts ...Option) (*Ring, error) {
 
 	r := (*Ring)(C.rte_ring_create(cname, C.uint(count), rc.socket, rc.flags))
 	if r == nil {
-		return nil, errno(C.go_rte_errno())
+		return nil, common.Errno(nil)
 	}
 	return r, nil
 }
@@ -141,7 +132,7 @@ func (r *Ring) Init(name string, count uint, opts ...Option) error {
 	for i := range opts {
 		opts[i].f(rc)
 	}
-	return errno(C.rte_ring_init((*C.struct_rte_ring)(r), cname, C.uint(count), rc.flags))
+	return common.Errno(C.rte_ring_init((*C.struct_rte_ring)(r), cname, C.uint(count), rc.flags))
 }
 
 // New allocates and initializes Ring in Go memory. It allocates a

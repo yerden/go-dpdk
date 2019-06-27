@@ -10,10 +10,6 @@ package ring
 
 #include "ring.h"
 
-static int go_rte_errno() {
-	return rte_errno;
-}
-
 struct someptr {
 	void *p;
 };
