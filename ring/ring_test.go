@@ -2,6 +2,7 @@ package ring_test
 
 import (
 	"sync"
+	"syscall"
 	"testing"
 	"unsafe"
 
@@ -31,22 +32,29 @@ func initEAL(t testing.TB) {
 func TestRingCreate(t *testing.T) {
 	assert := common.Assert(t, true)
 	initEAL(t)
+	var wg sync.WaitGroup
 
+	wg.Add(1)
 	eal.ExecuteOnMaster(func(lc *eal.Lcore) {
+		defer wg.Done()
 		r, err := ring.Create("test_ring", 1024, ring.OptSC,
 			ring.OptSP, ring.OptSocket(lc.SocketID))
 		assert(r != nil && err == nil, err)
 		defer r.Free()
 	})
+	wg.Wait()
 }
 
 func TestRingInit(t *testing.T) {
 	assert := common.Assert(t, true)
 	initEAL(t)
+	var wg sync.WaitGroup
 
+	wg.Add(1)
 	eal.ExecuteOnMaster(func(lc *eal.Lcore) {
+		defer wg.Done()
 		_, err := ring.GetMemSize(1023)
-		assert(err != nil) // invalid count
+		assert(err == syscall.EINVAL) // invalid count
 		n, err := ring.GetMemSize(1024)
 		assert(n > 0 && err == nil, err)
 
@@ -56,6 +64,7 @@ func TestRingInit(t *testing.T) {
 			ring.OptSP, ring.OptSocket(lc.SocketID))
 		assert(err == nil, err)
 	})
+	wg.Wait()
 }
 
 func TestRingNew(t *testing.T) {
@@ -70,6 +79,13 @@ func TestRingNew(t *testing.T) {
 	assert(objIn == objOut && ok)
 	_, ok = r.ScDequeue()
 	assert(!ok)
+}
+
+func TestRingNewErr(t *testing.T) {
+	assert := common.Assert(t, true)
+
+	r, err := ring.New("test_ring", 1023)
+	assert(r == nil && err == syscall.EINVAL)
 }
 
 func min(x, y int) int {
