@@ -9,14 +9,9 @@ package mempool
 #include <stdlib.h>
 
 #include <rte_config.h>
-#include <rte_errno.h>
 #include <rte_mempool.h>
 
 extern void goMempoolObjCbFunc(struct rte_mempool *mp, void *opaque, void *obj, unsigned idx);
-
-static int errget() {
-	return rte_errno;
-}
 */
 import "C"
 
@@ -25,10 +20,6 @@ import (
 
 	"github.com/yerden/go-dpdk/common"
 )
-
-func errno(n C.int) error {
-	return common.Errno(int(n))
-}
 
 // Mempool represents RTE mempool.
 type Mempool C.struct_rte_mempool
@@ -155,7 +146,7 @@ func CreateEmpty(name string, n, eltsize uint32, opts ...Option) (*Mempool, erro
 		conf.cacheSize, conf.privDataSize, conf.socket, conf.flags))
 
 	if mp == nil {
-		return nil, errno(C.errget())
+		return nil, common.Errno(nil)
 	}
 
 	if conf.opsName != nil {
@@ -175,7 +166,8 @@ func CreateEmpty(name string, n, eltsize uint32, opts ...Option) (*Mempool, erro
 func (mp *Mempool) SetOpsByName(name string, poolConfig unsafe.Pointer) error {
 	cName := C.CString(name)
 	defer C.free(unsafe.Pointer(cName))
-	return errno(C.rte_mempool_set_ops_byname((*C.struct_rte_mempool)(mp), cName, poolConfig))
+	cmp := (*C.struct_rte_mempool)(mp)
+	return common.Errno(C.rte_mempool_set_ops_byname(cmp, cName, poolConfig))
 }
 
 // PopulateDefault adds memory for objects in the pool at init. This
@@ -183,7 +175,7 @@ func (mp *Mempool) SetOpsByName(name string, poolConfig unsafe.Pointer) error {
 // the mempool. It adds memory allocated using rte_memzone_reserve().
 func (mp *Mempool) PopulateDefault() (int, error) {
 	rc := C.rte_mempool_populate_default((*C.struct_rte_mempool)(mp))
-	return common.IntOrErr(int(rc))
+	return common.IntOrErr(rc)
 }
 
 // Free the mempool. Unlink the mempool from global list, free the

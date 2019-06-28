@@ -3,13 +3,8 @@ package mempool
 /*
 #include <stdint.h>
 
-#include <rte_errno.h>
 #include <rte_config.h>
 #include <rte_mbuf.h>
-
-static int errget() {
-	return rte_errno;
-}
 
 static int is_priv_size_aligned(uint16_t priv_size) {
 	return RTE_ALIGN(priv_size, RTE_MBUF_PRIV_ALIGN) == priv_size;
@@ -18,6 +13,7 @@ static int is_priv_size_aligned(uint16_t priv_size) {
 import "C"
 
 import (
+	"syscall"
 	"unsafe"
 
 	"github.com/yerden/go-dpdk/common"
@@ -44,7 +40,7 @@ func CreateMbufPool(name string, n uint32, dataRoomSize uint16, opts ...Option) 
 
 	// check alignment
 	if C.is_priv_size_aligned(C.uint16_t(conf.privDataSize)) == 0 {
-		return nil, common.Errno(C.EINVAL)
+		return nil, syscall.EINVAL
 	}
 
 	// calculate element size
@@ -61,7 +57,7 @@ func CreateMbufPool(name string, n uint32, dataRoomSize uint16, opts ...Option) 
 	mp := (*Mempool)(C.rte_mempool_create_empty(cname, C.uint(n), eltSize,
 		conf.cacheSize, C.sizeof_struct_rte_pktmbuf_pool_private, conf.socket, 0))
 	if mp == nil {
-		return nil, errno(C.errget())
+		return nil, common.Errno(nil)
 	}
 
 	if conf.opsName == nil {
