@@ -2,6 +2,7 @@ package mempool_test
 
 import (
 	"sync"
+	"syscall"
 	"testing"
 	"unsafe"
 
@@ -26,6 +27,32 @@ func initEAL(t testing.TB) {
 			eal.OptNoHuge, eal.OptNoPCI)
 		assert(err == nil, err)
 	})
+}
+
+func TestCreateMempoolErr(t *testing.T) {
+	assert := common.Assert(t, true)
+
+	// Initialize EAL on all cores
+	initEAL(t)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	// create and test mempool on master lcore
+	eal.ExecuteOnMaster(func(ctx *eal.Lcore) {
+		defer wg.Done()
+		// create empty mempool
+		n := uint32(10240)
+		mp, err := mempool.CreateEmpty("test_mp",
+			n,    // elements count
+			2048, // size of element
+			mempool.OptSocket(int(ctx.SocketID)),
+			mempool.OptCacheSize(32000000), // too large
+			mempool.OptOpsName("stack"),
+			mempool.OptPrivateDataSize(1024),
+		)
+		assert(mp == nil && err == syscall.EINVAL, err)
+	})
+	wg.Wait()
 }
 
 func TestCreateMempool(t *testing.T) {
