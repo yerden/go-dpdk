@@ -59,6 +59,9 @@ func tryErrno(n interface{}) (x int64) {
 
 // IntOrErr returns error as in Errno in case n is negative.
 // Otherwise, the value itself with nil error will be returned.
+//
+// If n is nil, then n = RteErrno()
+// if n is not nil and not a signed integer, function panics.
 func IntOrErr(n interface{}) (int, error) {
 	x := tryErrno(n)
 	if x >= 0 {
@@ -68,6 +71,9 @@ func IntOrErr(n interface{}) (int, error) {
 }
 
 // Errno converts return value of C function into meaningful error.
+//
+// If n is nil, then n = RteErrno()
+// if n is not nil and not a signed integer, function panics.
 func Errno(n interface{}) error {
 	return errno(tryErrno(n))
 }
