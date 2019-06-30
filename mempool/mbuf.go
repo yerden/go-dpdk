@@ -19,8 +19,8 @@ import (
 	"github.com/yerden/go-dpdk/common"
 )
 
-// CreateMbufPool creates mempool of mbufs. See Create for a list of
-// options. Only differencies are described below.
+// CreateMbufPool creates mempool of mbufs. See CreateEmpty options
+// for a list of options. Only differencies are described below.
 //
 // dataRoomSize specifies the maximum size of data buffer in each
 // mbuf, including RTE_PKTMBUF_HEADROOM.
