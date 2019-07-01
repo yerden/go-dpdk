@@ -68,12 +68,12 @@ type Lcore struct {
 }
 
 type ealConfig struct {
-	lcores [MaxLcore]*Lcore
+	lcores map[uint]*Lcore
 }
 
 var (
 	// goEAL is the storage for all EAL lcore threads configuration.
-	goEAL = &ealConfig{}
+	goEAL = &ealConfig{make(map[uint]*Lcore)}
 )
 
 func panicCatcher(fn LcoreFunc, lc *Lcore) {
@@ -133,7 +133,7 @@ func (lc *Lcore) refresh() {
 // in EAL-owned thread on that lcore. If lcoreID references unknown
 // lcore (i.e. not registered by EAL) the function does nothing.
 func ExecuteOnLcore(lcoreID uint, fn LcoreFunc) {
-	if lc := goEAL.lcores[lcoreID]; lc != nil {
+	if lc, ok := goEAL.lcores[lcoreID]; ok {
 		lc.ch <- fn
 	}
 }
