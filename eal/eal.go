@@ -27,6 +27,8 @@ extern int lcoreFuncListener(void *arg);
 import "C"
 
 import (
+	"bufio"
+	"bytes"
 	"log"
 	"os"
 	"runtime"
@@ -224,8 +226,16 @@ func InitWithArgs(argv []string) error {
 // Init initializes EAL as in rte_eal_init. Options are
 // specified in a unparsed command line string. This string is parsed
 // and InitWithArgs is then called upon.
-func Init(argv string) error {
-	return InitWithArgs(strings.Split(argv, " "))
+func Init(input string) error {
+	b := bytes.NewBufferString(input)
+	s := bufio.NewScanner(b)
+	s.Split(common.SplitWithDoubleQuotes)
+	var argv []string
+
+	for s.Scan() {
+		argv = append(argv, s.Text())
+	}
+	return InitWithArgs(argv)
 }
 
 // InitWithOpts initializes EAL as in rte_eal_init. Options are
