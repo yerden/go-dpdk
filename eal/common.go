@@ -7,8 +7,6 @@ import "C"
 
 import (
 	"reflect"
-
-	"github.com/yerden/go-dpdk/common"
 )
 
 var (
@@ -52,10 +50,6 @@ func SetToHex(mask Set, max int) string {
 	}
 
 	return string(out)
-}
-
-func errno(n C.int) error {
-	return common.Errno(int(n))
 }
 
 // FuncSet is a function which mimics Set interface.

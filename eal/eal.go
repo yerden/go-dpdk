@@ -22,10 +22,6 @@ package eal
 #include <rte_errno.h>
 #include <rte_lcore.h>
 
-static int eal_init(int argc, char **argv) {
-	return rte_eal_init(argc, argv) < 0?rte_errno:0;
-}
-
 extern int lcoreFuncListener(void *arg);
 */
 import "C"
@@ -36,6 +32,8 @@ import (
 	"runtime"
 	"strings"
 	"unsafe"
+
+	"github.com/yerden/go-dpdk/common"
 )
 
 // Maximum number of lcores configured during DPDK compile-time.
@@ -165,50 +163,57 @@ func ForeachLcore(skipMaster bool, f func(lcoreID uint)) {
 	}
 }
 
+// call rte_eal_init and launch lcoreFuncListener on all slave lcores
+// should be run in master lcore thread only
+func ealInitAndLaunch(argv []string) error {
+	argv = append([]string{os.Args[0]}, argv...)
+	argc := C.int(len(argv))
+	cArgv := make([]*C.char, argc+1) // last elem is NULL
+	for i, arg := range argv {
+		cArgv[i] = C.CString(arg)
+	}
+
+	defer func() {
+		for _, arg := range cArgv {
+			C.free(unsafe.Pointer(arg))
+		}
+	}()
+
+	// initialize EAL
+	if C.rte_eal_init(argc, (**C.char)(&cArgv[0])) < 0 {
+		return common.Errno(nil)
+	}
+
+	// init per-lcore contexts
+	ForeachLcore(false, func(lcoreID uint) {
+		goEAL.lcores[lcoreID] = &Lcore{ch: make(chan LcoreFunc, 1)}
+	})
+
+	// lcore function
+	fn := (*C.lcore_function_t)(C.lcoreFuncListener)
+
+	// launch every EAL thread lcore function
+	// it should be success since we've just called rte_eal_init()
+	return common.Errno(C.rte_eal_mp_remote_launch(fn, nil, C.SKIP_MASTER))
+}
+
 // InitWithArgs initializes EAL as in rte_eal_init. Options are
 // specified in a parsed command line string.
 //
 // This function initialized EAL and waits for executable functions on
 // each of EAL-owned threads.
 func InitWithArgs(argv []string) error {
-	argv = append([]string{os.Args[0]}, argv...)
-	argc := C.int(len(argv))
-	cArgv := make([]*C.char, argc+1)
-	for i, arg := range argv {
-		cArgv[i] = C.CString(arg)
-		defer C.free(unsafe.Pointer(cArgv[i]))
-	}
-
 	ch := make(chan error, 1)
 	go func() {
 		// we should initialize EAL and run EAL threads in a separate
 		// goroutine because its thread is going to be acquired by EAL
+		// and become master lcore thread
 		runtime.LockOSThread()
 
-		// initialize EAL
-		err := errno(C.eal_init(argc, (**C.char)(&cArgv[0])))
-		if err != nil {
-			ch <- err
-			return
-		}
+		// initialize EAL and launch lcoreFuncListener on all slave
+		// lcores, then report
+		ch <- ealInitAndLaunch(argv)
 
-		// init per-lcore contexts
-		ForeachLcore(false, func(lcoreID uint) {
-			goEAL.lcores[lcoreID] = &Lcore{ch: make(chan LcoreFunc, 1)}
-		})
-
-		fn := (*C.lcore_function_t)(C.lcoreFuncListener)
-
-		// launch every EAL thread lcore function
-		// it should be success since we've just called rte_eal_init()
-		err = errno(C.rte_eal_mp_remote_launch(fn, nil, C.SKIP_MASTER))
-		if err != nil {
-			ch <- err
-			return
-		}
-
-		// report that we're ok, before we block the thread
-		ch <- nil
 		// run on master lcore
 		lcoreFuncListener(nil)
 	}()
