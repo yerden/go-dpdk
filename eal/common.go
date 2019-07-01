@@ -73,81 +73,32 @@ func MakeSet(i interface{}) Set {
 		return a
 	}
 
-	unary := func(k reflect.Kind, v reflect.Value, x int) bool {
-		if k == reflect.Int || k == reflect.Int8 ||
-			k == reflect.Int16 || k == reflect.Int32 ||
-			k == reflect.Int64 {
-			return x == int(v.Int())
-		}
-
-		if k == reflect.Uint || k == reflect.Uint8 ||
-			k == reflect.Uint16 || k == reflect.Uint32 ||
-			k == reflect.Uint64 {
-			return x == int(v.Uint())
-		}
-
-		if k == reflect.Float32 || k == reflect.Float64 {
-			return x == int(v.Float())
-		}
-
-		panic("non unary type")
-	}
+	intType := reflect.ValueOf(int(0)).Type()
 
 	v := reflect.ValueOf(i)
-	switch k := v.Kind(); k {
+	switch v.Kind() {
 	case reflect.Map:
-		t := v.Type()
+		t := v.Type().Key()
 		return FuncSet(func(x int) bool {
-			key := reflect.ValueOf(x).Convert(t.Key())
+			key := reflect.ValueOf(x).Convert(t)
 			return v.MapIndex(key).IsValid()
 		})
 	case reflect.Array:
-		return FuncSet(func(x int) bool {
-			for n := 0; n < v.Len(); n++ {
-				elt := v.Index(n)
-				if unary(elt.Kind(), elt, x) {
-					return true
-				}
-			}
-			return false
-		})
+		fallthrough
 	case reflect.Slice:
 		return FuncSet(func(x int) bool {
 			for n := 0; n < v.Len(); n++ {
-				elt := v.Index(n)
-				if unary(elt.Kind(), elt, x) {
+				elem := v.Index(n).Convert(intType).Int()
+				if x == int(elem) {
 					return true
 				}
 			}
 			return false
 		})
-	case reflect.Int:
-		fallthrough
-	case reflect.Int8:
-		fallthrough
-	case reflect.Int16:
-		fallthrough
-	case reflect.Int32:
-		fallthrough
-	case reflect.Int64:
-		fallthrough
-	case reflect.Uint:
-		fallthrough
-	case reflect.Uint8:
-		fallthrough
-	case reflect.Uint16:
-		fallthrough
-	case reflect.Uint32:
-		fallthrough
-	case reflect.Uint64:
-		fallthrough
-	case reflect.Float32:
-		fallthrough
-	case reflect.Float64:
+	default:
 		return FuncSet(func(x int) bool {
-			return unary(k, v, x)
+			elem := v.Convert(intType).Int()
+			return x == int(elem)
 		})
 	}
-
-	panic("incompatible type to satisfy Set")
 }
