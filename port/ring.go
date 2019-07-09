@@ -71,16 +71,16 @@ type RingWriter struct {
 
 // WriterOps implements Writer interface.
 func (wr *RingWriter) WriterOps() *WriterOps {
-	if !wr.Multi {
-		if !wr.NoDrop {
-			return (*WriterOps)(&C.rte_port_ring_writer_ops)
-		}
-		return (*WriterOps)(&C.rte_port_ring_writer_nodrop_ops)
-	}
-	if !wr.NoDrop {
+	switch {
+	case wr.Multi && wr.NoDrop:
+		return (*WriterOps)(&C.rte_port_ring_multi_writer_nodrop_ops)
+	case wr.Multi:
 		return (*WriterOps)(&C.rte_port_ring_multi_writer_ops)
+	case wr.NoDrop:
+		return (*WriterOps)(&C.rte_port_ring_writer_nodrop_ops)
+	default:
+		return (*WriterOps)(&C.rte_port_ring_writer_ops)
 	}
-	return (*WriterOps)(&C.rte_port_ring_multi_writer_nodrop_ops)
 }
 
 // NewArg implements Writer interface.
