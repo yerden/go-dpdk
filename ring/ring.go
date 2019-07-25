@@ -16,6 +16,7 @@ package ring
 import "C"
 
 import (
+	"runtime"
 	"unsafe"
 
 	"github.com/yerden/go-dpdk/common"
@@ -44,6 +45,7 @@ import (
 type Ring C.struct_rte_ring
 
 type ringConf struct {
+	cname  *C.char
 	socket C.int
 	flags  C.uint
 }
@@ -53,27 +55,29 @@ type Option struct {
 	f func(*ringConf)
 }
 
-func optFlag(flag C.uint) Option {
-	return Option{func(rc *ringConf) {
-		rc.flags |= flag
-	}}
-}
+const (
+	// SingleConsumer specifies that default dequeue operation will
+	// exhibit 'single-consumer' behaviour.
+	SingleConsumer uint = C.RING_F_SC_DEQ
+	// SingleProducer specifies that default enqueue operation will
+	// exhibit 'single-producer' behaviour.
+	SingleProducer = C.RING_F_SP_ENQ
+	// ExactSize specifies how to handle ring size during Create/Init.
+	// Ring is to hold exactly requested number of entries. Without
+	// this flag set, the ring size requested must be a power of 2,
+	// and the usable space will be that size - 1. With the flag, the
+	// requested size will be rounded up to the next power of two, but
+	// the usable space will be exactly that requested. Worst case, if
+	// a power-of-2 size is requested, half the ring space will be
+	// wasted.
+	ExactSize = C.RING_F_EXACT_SZ
+)
 
+// Shortcuts for ring creation flags.
 var (
-	// OptSC specifies that default dequeue operation will exhibit
-	// 'single-consumer' behaviour.
-	OptSC = optFlag(C.RING_F_SC_DEQ)
-	// OptSP specifies that default enqueue operation will exhibit
-	// 'single-producer' behaviour.
-	OptSP = optFlag(C.RING_F_SP_ENQ)
-	// OptExactSize specifies how to handle ring size during Create/Init.
-	// Ring is to hold exactly requested number of entries. Without this
-	// flag set, the ring size requested must be a power of 2, and the
-	// usable space will be that size - 1. With the flag, the requested
-	// size will be rounded up to the next power of two, but the usable
-	// space will be exactly that requested. Worst case, if a power-of-2
-	// size is requested, half the ring space will be wasted.
-	OptExactSize = optFlag(C.RING_F_EXACT_SZ)
+	OptSC = OptFlag(SingleConsumer)
+	OptSP = OptFlag(SingleProducer)
+	OptES = OptFlag(ExactSize)
 )
 
 // OptSocket specifies the socket id where the memzone would be
@@ -82,6 +86,25 @@ func OptSocket(socket uint) Option {
 	return Option{func(rc *ringConf) {
 		rc.socket = C.int(socket)
 	}}
+}
+
+// OptFlag add one of permitted flags for the ring creation.
+func OptFlag(flag uint) Option {
+	return Option{func(rc *ringConf) {
+		rc.flags |= C.uint(flag)
+	}}
+}
+
+func makeOpts(name string, opts []Option) *ringConf {
+	rc := &ringConf{socket: C.SOCKET_ID_ANY}
+	rc.cname = C.CString(name)
+	for i := range opts {
+		opts[i].f(rc)
+	}
+	runtime.SetFinalizer(rc, func(rc *ringConf) {
+		C.free(unsafe.Pointer(rc.cname))
+	})
+	return rc
 }
 
 // Create creates new ring named name in memory.
@@ -96,15 +119,8 @@ func OptSocket(socket uint) Option {
 //
 // The ring is added in RTE_TAILQ_RING list.
 func Create(name string, count uint, opts ...Option) (*Ring, error) {
-	cname := C.CString(name)
-	defer C.free(unsafe.Pointer(cname))
-	rc := &ringConf{socket: C.SOCKET_ID_ANY}
-
-	for i := range opts {
-		opts[i].f(rc)
-	}
-
-	r := (*Ring)(C.rte_ring_create(cname, C.uint(count), rc.socket, rc.flags))
+	rc := makeOpts(name, opts)
+	r := (*Ring)(C.rte_ring_create(rc.cname, C.uint(count), rc.socket, rc.flags))
 	if r == nil {
 		return nil, common.Errno(nil)
 	}
@@ -125,14 +141,9 @@ func Create(name string, count uint, opts ...Option) (*Ring, error) {
 // memory given by the caller may not be shareable among dpdk
 // processes.
 func (r *Ring) Init(name string, count uint, opts ...Option) error {
-	cname := C.CString(name)
-	defer C.free(unsafe.Pointer(cname))
-	rc := &ringConf{socket: C.SOCKET_ID_ANY}
-
-	for i := range opts {
-		opts[i].f(rc)
-	}
-	return common.Errno(C.rte_ring_init((*C.struct_rte_ring)(r), cname, C.uint(count), rc.flags))
+	rc := makeOpts(name, opts)
+	return common.Errno(C.rte_ring_init((*C.struct_rte_ring)(r), rc.cname,
+		C.uint(count), rc.flags))
 }
 
 // New allocates and initializes Ring in Go memory. It allocates a
@@ -203,8 +214,7 @@ func (r *Ring) IsEmpty() bool {
 // Lookup searches a ring from its name in RTE_TAILQ_RING, i.e. among
 // those created with Create.
 func Lookup(name string) (*Ring, bool) {
-	cname := C.CString(name)
-	defer C.free(unsafe.Pointer(cname))
-	r := (*Ring)(C.rte_ring_lookup(cname))
+	rc := makeOpts(name, nil)
+	r := (*Ring)(C.rte_ring_lookup(rc.cname))
 	return r, r != nil
 }

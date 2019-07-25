@@ -23,7 +23,7 @@ func initEAL(t testing.TB) {
 	err := unix.SchedGetaffinity(0, &set)
 	assert(err == nil, err)
 	dpdk.Do(func() {
-		err = eal.InitWithOpts(eal.OptLcores(&set), eal.OptMemory(1024),
+		err = eal.InitWithOpts(eal.OptLcores(&set), eal.OptMemory(128),
 			eal.OptNoHuge, eal.OptNoPCI)
 		assert(err == nil, err)
 	})
@@ -38,7 +38,7 @@ func TestRingCreate(t *testing.T) {
 	eal.ExecuteOnMaster(func(lc *eal.Lcore) {
 		defer wg.Done()
 		r, err := ring.Create("test_ring", 1024, ring.OptSC,
-			ring.OptSP, ring.OptSocket(lc.SocketID))
+			ring.OptSP, ring.OptSocket(lc.SocketID()))
 		assert(r != nil && err == nil, err)
 		defer r.Free()
 	})
@@ -61,7 +61,7 @@ func TestRingInit(t *testing.T) {
 		ringData := make([]byte, n)
 		r := (*ring.Ring)(unsafe.Pointer(&ringData[0]))
 		err = r.Init("test_ring", 1024, ring.OptSC,
-			ring.OptSP, ring.OptSocket(lc.SocketID))
+			ring.OptSP, ring.OptSocket(lc.SocketID()))
 		assert(err == nil, err)
 	})
 	wg.Wait()
@@ -70,14 +70,32 @@ func TestRingInit(t *testing.T) {
 func TestRingNew(t *testing.T) {
 	assert := common.Assert(t, true)
 
-	r, err := ring.New("test_ring", 1024)
+	n := 1024
+	r, err := ring.New("test_ring", uint(n))
 	assert(r != nil && err == nil, err)
+	defer r.Free() // should have no effect
 
-	objIn := uintptr(0xAABBCCDD)
-	assert(r.SpEnqueue(objIn))
-	objOut, ok := r.ScDequeue()
-	assert(objIn == objOut && ok)
-	_, ok = r.ScDequeue()
+	var objIn uintptr
+
+	assert(r.IsEmpty())
+	assert(!r.IsFull())
+	assert(r.Cap() == uint(n)-1, r.Cap())
+
+	for i := 0; i < int(r.Cap()); i++ {
+		objIn = uintptr(i)
+		assert(r.SpEnqueue(objIn), i)
+	}
+
+	assert(!r.IsEmpty())
+	assert(r.IsFull())
+	for i := 0; i < int(r.Cap()); i++ {
+		objOut, ok := r.ScDequeue()
+		assert(uintptr(i) == objOut && ok)
+	}
+
+	assert(r.IsEmpty())
+	assert(!r.IsFull())
+	_, ok := r.ScDequeue()
 	assert(!ok)
 }
 
