@@ -98,35 +98,45 @@ func OptSocket(socket int) Option {
 	}}
 }
 
-func optFlag(flag C.uint) Option {
+// OptFlag specifies various flags to use when creating mempool.
+func OptFlag(flag uint) Option {
 	return Option{func(conf *mpConf) {
-		conf.flags |= flag
+		conf.flags |= C.uint(flag)
 	}}
 }
 
 // Various non-parameterized options for mempool creation.
-var (
+const (
 	// By default, objects addresses are spread between channels in
 	// RAM: the pool allocator will add padding between objects
 	// depending on the hardware configuration. See Memory alignment
 	// constraints for details. If this flag is set, the allocator
 	// will just align them to a cache line.
-	OptNoSpread = optFlag(C.MEMPOOL_F_NO_SPREAD)
+	NoSpread uint = C.MEMPOOL_F_NO_SPREAD
 	// By default, the returned objects are cache-aligned. This flag
 	// removes this constraint, and no padding will be present between
-	// objects. This flag implies OptNoSpread.
-	OptNoCacheAlign = optFlag(C.MEMPOOL_F_NO_CACHE_ALIGN)
+	// objects. This flag implies NoSpread.
+	NoCacheAlign = C.MEMPOOL_F_NO_CACHE_ALIGN
 	// If this flag is set, the default behavior when using
 	// rte_mempool_put() or rte_mempool_put_bulk() is
 	// "single-producer". Otherwise, it is "multi-producers".
-	OptSPPut = optFlag(C.MEMPOOL_F_SP_PUT)
+	SPPut = C.MEMPOOL_F_SP_PUT
 	// If this flag is set, the default behavior when using
 	// rte_mempool_get() or rte_mempool_get_bulk() is
 	// "single-consumer". Otherwise, it is "multi-consumers".
-	OptSCGet = optFlag(C.MEMPOOL_F_SC_GET)
+	SCGet = C.MEMPOOL_F_SC_GET
 	// If set, allocated objects won't necessarily be contiguous in IO
 	// memory.
-	OptNoPhysContig = optFlag(C.MEMPOOL_F_NO_PHYS_CONTIG)
+	NoPhysContig = C.MEMPOOL_F_NO_PHYS_CONTIG
+)
+
+// Option shortcuts.
+var (
+	OptNoSpread     = OptFlag(NoSpread)
+	OptNoCacheAlign = OptFlag(NoCacheAlign)
+	OptSPPut        = OptFlag(SPPut)
+	OptSCGet        = OptFlag(SCGet)
+	OptNoPhysContig = OptFlag(NoPhysContig)
 )
 
 // CreateEmpty creates new empty mempool. The mempool is allocated and
