@@ -53,8 +53,8 @@ func TestEALInit(t *testing.T) {
 		wg.Add(1)
 		go ExecuteOnLcore(lcoreId, func(lc *Lcore) {
 			defer wg.Done()
-			assert(lc.ID == LcoreID())
-			ch <- lc.ID
+			assert(lcoreId == lc.ID())
+			ch <- lc.ID()
 		})
 	})
 	wg.Wait()

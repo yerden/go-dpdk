@@ -60,13 +60,21 @@ type Lcore struct {
 	// Value is a user-specified context. You may change it as you
 	// will and it will persist across LcoreFunc invocations.
 	Value interface{}
-	// Id is a this thread's CPU logical core id.
-	ID uint
-	// SocketID is a this thread's CPU socket id.
-	SocketID uint
 
 	// channel to receive LcoreFunc to execute.
 	ch chan LcoreFunc
+}
+
+// ID returns CPU logical core id. This function must be called only
+// in EAL thread.
+func (lc *Lcore) ID() uint {
+	return uint(C.rte_lcore_id())
+}
+
+// SocketID returns NUMA socket where the current thread resides. This
+// function must be called only in EAL thread.
+func (lc *Lcore) SocketID() uint {
+	return uint(C.rte_socket_id())
 }
 
 type ealConfig struct {
@@ -85,7 +93,7 @@ func panicCatcher(fn LcoreFunc, lc *Lcore) {
 			return
 		}
 		// Report the lcore ID and the panic error
-		log.Printf("panic on lcore %d: %v", lc.ID, r)
+		log.Printf("panic on lcore %d: %v", lc.ID(), r)
 
 		// this function is called from runtime package, so to
 		// unwind the stack we may skip (1) runtime.Callers
@@ -112,23 +120,18 @@ func panicCatcher(fn LcoreFunc, lc *Lcore) {
 // to run as lcore_function_t
 //export lcoreFuncListener
 func lcoreFuncListener(unsafe.Pointer) C.int {
-	lc := goEAL.lcores[LcoreID()]
-	log.Printf("lcore %d started", LcoreID())
-	defer log.Printf("lcore %d exited", LcoreID())
+	id := uint(C.rte_lcore_id())
+	lc := goEAL.lcores[id]
+	log.Printf("lcore %d started", id)
+	defer log.Printf("lcore %d exited", id)
 
 	for fn := range lc.ch {
-		lc.refresh()
 		if fn == nil {
 			break
 		}
 		panicCatcher(fn, lc)
 	}
 	return 0
-}
-
-func (lc *Lcore) refresh() {
-	lc.ID = LcoreID()
-	lc.SocketID = uint(C.rte_lcore_to_socket_id(C.uint(lc.ID)))
 }
 
 // ExecuteOnLcore sends fn to execute on CPU logical core lcoreID, i.e
@@ -253,18 +256,6 @@ func HasHugePages() bool {
 // ProcessType returns the current process type.
 func ProcessType() int {
 	return int(C.rte_eal_process_type())
-}
-
-// LcoreID returns CPU logical core id. This function must be called
-// only in EAL thread.
-func LcoreID() uint {
-	return uint(C.rte_lcore_id())
-}
-
-// SocketID returns NUMA socket where the current thread resides. This
-// function must be called only in EAL thread.
-func SocketID() uint {
-	return uint(C.rte_socket_id())
 }
 
 // LcoreCount returns number of CPU logical cores configured by EAL.
