@@ -1,6 +1,7 @@
 package eal
 
 import (
+	_ "log"
 	"sync"
 	"testing"
 
@@ -49,14 +50,16 @@ func TestEALInit(t *testing.T) {
 	ch := make(chan uint, set.Count())
 	assert(LcoreCount() == uint(set.Count()))
 	var wg sync.WaitGroup
-	ForeachLcore(false, func(lcoreId uint) {
+	for _, id := range Lcores(false) {
 		wg.Add(1)
-		go ExecuteOnLcore(lcoreId, func(lc *Lcore) {
-			defer wg.Done()
-			assert(lcoreId == lc.ID())
-			ch <- lc.ID()
-		})
-	})
+		ExecuteOnLcore(id, func(id uint) func(*Lcore) {
+			return func(lc *Lcore) {
+				defer wg.Done()
+				assert(id == lc.ID())
+				ch <- lc.ID()
+			}
+		}(id))
+	}
 	wg.Wait()
 
 	var myset unix.CPUSet
@@ -73,20 +76,20 @@ func TestEALInit(t *testing.T) {
 	assert(myset == set)
 
 	// test panic
-	ForeachLcore(false, func(lcoreID uint) {
+	for _, id := range Lcores(false) {
 		wg.Add(1)
-		ExecuteOnLcore(lcoreID, func(lc *Lcore) {
+		ExecuteOnLcore(id, func(lc *Lcore) {
 			defer wg.Done()
 			panic("emit panic")
 		})
-	})
+	}
 	wg.Wait()
-	ForeachLcore(false, func(lcoreID uint) {
+	for _, id := range Lcores(false) {
 		wg.Add(1)
-		ExecuteOnLcore(lcoreID, func(lc *Lcore) {
+		ExecuteOnLcore(id, func(lc *Lcore) {
 			// lcore is fine
 			defer wg.Done()
 		})
-	})
+	}
 	wg.Wait()
 }

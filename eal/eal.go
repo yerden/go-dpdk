@@ -77,6 +77,10 @@ func (lc *Lcore) SocketID() uint {
 	return uint(C.rte_socket_id())
 }
 
+func LcoreToSocket(id uint) uint {
+	return uint(C.rte_lcore_to_socket_id(C.uint(id)))
+}
+
 type ealConfig struct {
 	lcores map[uint]*Lcore
 }
@@ -149,9 +153,8 @@ func ExecuteOnMaster(fn LcoreFunc) {
 	ExecuteOnLcore(GetMasterLcore(), fn)
 }
 
-// ForeachLcore iterates through all CPU logical cores initialized by
-// EAL. If skipMaster is true the iteration will skip master lcore.
-func ForeachLcore(skipMaster bool, f func(lcoreID uint)) {
+// Lcores returns all lcores registered in EAL.
+func Lcores(skipMaster bool) []uint {
 	i := ^C.uint(0)
 	sm := C.int(0)
 
@@ -159,13 +162,15 @@ func ForeachLcore(skipMaster bool, f func(lcoreID uint)) {
 		sm = 1
 	}
 
+	out := make([]uint, 0, LcoreCount())
 	for {
 		i = C.rte_get_next_lcore(i, sm, 0)
 		if i >= C.RTE_MAX_LCORE {
 			break
 		}
-		f(uint(i))
+		out = append(out, uint(i))
 	}
+	return out
 }
 
 // call rte_eal_init and launch lcoreFuncListener on all slave lcores
@@ -190,9 +195,9 @@ func ealInitAndLaunch(argv []string) error {
 	}
 
 	// init per-lcore contexts
-	ForeachLcore(false, func(lcoreID uint) {
-		goEAL.lcores[lcoreID] = &Lcore{ch: make(chan LcoreFunc, 1)}
-	})
+	for _, id := range Lcores(false) {
+		goEAL.lcores[id] = &Lcore{ch: make(chan LcoreFunc, 1)}
+	}
 
 	// lcore function
 	fn := (*C.lcore_function_t)(C.lcoreFuncListener)
@@ -237,6 +242,10 @@ func Init(input string) error {
 
 	for s.Scan() {
 		argv = append(argv, s.Text())
+	}
+
+	if err := s.Err(); err != nil {
+		return err
 	}
 	return InitWithArgs(argv)
 }
