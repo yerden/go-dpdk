@@ -222,10 +222,11 @@ func InitWithArgs(argv []string) error {
 
 		// initialize EAL and launch lcoreFuncListener on all slave
 		// lcores, then report
-		ch <- ealInitAndLaunch(argv)
-
-		// run on master lcore
-		lcoreFuncListener(nil)
+		err := ealInitAndLaunch(argv)
+		if ch <- err; err == nil {
+			// run on master lcore
+			lcoreFuncListener(nil)
+		}
 	}()
 
 	return <-ch
