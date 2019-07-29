@@ -45,7 +45,7 @@ func TestCreateMempoolErr(t *testing.T) {
 		mp, err := mempool.CreateEmpty("test_mp",
 			n,    // elements count
 			2048, // size of element
-			mempool.OptSocket(int(ctx.SocketID)),
+			mempool.OptSocket(int(ctx.SocketID())),
 			mempool.OptCacheSize(32000000), // too large
 			mempool.OptOpsName("stack"),
 			mempool.OptPrivateDataSize(1024),
@@ -71,7 +71,7 @@ func TestCreateMempool(t *testing.T) {
 		mp, err := mempool.CreateEmpty("test_mp",
 			n,    // elements count
 			2048, // size of element
-			mempool.OptSocket(int(ctx.SocketID)),
+			mempool.OptSocket(int(ctx.SocketID())),
 			mempool.OptCacheSize(32),
 			mempool.OptOpsName("stack"),
 			mempool.OptPrivateDataSize(1024),
@@ -109,7 +109,7 @@ func TestCreateMempool(t *testing.T) {
 		mp, err := mempool.CreateMbufPool("test_mbuf_pool",
 			n,    // elements count
 			2048, // size of element
-			mempool.OptSocket(int(ctx.SocketID)),
+			mempool.OptSocket(int(ctx.SocketID())),
 			mempool.OptCacheSize(32),
 			mempool.OptOpsName("stack"),
 			mempool.OptPrivateDataSize(64), // for each mbuf
@@ -121,7 +121,7 @@ func TestCreateMempool(t *testing.T) {
 		mp, err = mempool.CreateMbufPool("test_mbuf_pool_err",
 			n,    // elements count
 			2048, // size of element
-			mempool.OptSocket(int(ctx.SocketID)),
+			mempool.OptSocket(int(ctx.SocketID())),
 			mempool.OptCacheSize(32),
 			mempool.OptOpsName("stack"),
 			mempool.OptPrivateDataSize(63), // for each mbuf
