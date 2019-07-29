@@ -1,171 +1,92 @@
 package lcore_test
 
 import (
-	"errors"
+	// "errors"
 	"fmt"
 	"sync"
 	"testing"
-	"time"
+	// "time"
+
+	"golang.org/x/sys/unix"
 
 	"github.com/yerden/go-dpdk/lcore"
 )
 
 func TestNewThread(t *testing.T) {
-	lt, err := lcore.NewThread(0)
+	thd := lcore.NewLockedThread(make(chan func()))
+	defer thd.Close()
+	err := thd.SetAffinity(0)
 	if err != nil {
 		t.Error(err)
 		t.FailNow()
 	}
-	defer lt.Exit()
 
+	var s unix.CPUSet
 	var wg sync.WaitGroup
-	a := 1
-
 	wg.Add(1)
-	lt.Execute(func(ctx *lcore.ThreadCtx) error {
+	thd.Exec(false, func() {
 		defer wg.Done()
-		a = 2
-		return nil
+		err = unix.SchedGetaffinity(0, &s)
 	})
-
 	wg.Wait()
-	if lt.Err() != nil {
-		t.Error("error is not nil")
+	if err != nil || !s.IsSet(0) || s.Count() != 1 {
+		t.Error("core did not launch")
 		t.FailNow()
 	}
 
-	if a != 2 {
-		t.Error("core did not launch: a=", a)
+	// execute and wait
+	thd.Exec(true, func() {
+		s = unix.CPUSet{}
+	})
+
+	if s.Count() != 0 {
+		t.Error("core did not launch")
 		t.FailNow()
 	}
 }
 
 func TestNewThreadFail(t *testing.T) {
-	lt, err := lcore.NewThread(64)
+	thd := lcore.NewLockedThread(make(chan func()))
+	defer thd.Close()
+	err := thd.SetAffinity(64)
 	if err == nil {
-		t.FailNow()
-	}
-	if lt.State() != lcore.ThreadExit {
-		t.FailNow()
-	}
-}
-
-func TestCtxValue(t *testing.T) {
-	lt, err := lcore.NewThread(0)
-	if err != nil {
 		t.Error(err)
 		t.FailNow()
 	}
-	defer lt.Exit()
-	var wg sync.WaitGroup
-
-	wg.Add(1)
-	lt.Execute(func(ctx *lcore.ThreadCtx) error {
-		defer wg.Done()
-		data := []int{1, 2}
-		ctx.Value = data
-		return nil
-	})
-	wg.Wait()
-
-	var data []int
-	wg.Add(1)
-	lt.Execute(func(ctx *lcore.ThreadCtx) error {
-		defer wg.Done()
-		data = ctx.Value.([]int)
-		return nil
-	})
-
-	wg.Wait()
-	ok := len(data) == 2 && data[0] == 1 && data[1] == 2
-	if !ok {
-		t.FailNow()
-	}
 }
 
-func TestError(t *testing.T) {
-	lt, err := lcore.NewThread(0)
-	if err != nil {
-		t.Error(err)
-		t.FailNow()
-	}
-	defer lt.Exit()
-	var wg sync.WaitGroup
+func ExampleExecWait() {
+	// create a thread with new channel
+	thd := lcore.NewLockedThread(make(chan func()))
+	defer thd.Close()
 
-	someErr := errors.New("some error")
-	wg.Add(1)
-	lt.Execute(func(ctx *lcore.ThreadCtx) error {
-		defer wg.Done()
-		return someErr
-	})
-	wg.Wait()
-	if lt.Err() != someErr {
-		t.FailNow()
-	}
+	var a int
+	thd.Exec(true, func() { a = 1 })
+	fmt.Println(a)
+	// Output: 1
 }
 
-func TestState(t *testing.T) {
-	lt, err := lcore.NewThread(0)
-	if err != nil {
-		t.Error(err)
-		t.FailNow()
-	}
+func ExampleNewLockedThread() {
+	// create a thread with new channel
+	thd := lcore.NewLockedThread(make(chan func()))
+	defer thd.Close()
 
-	if lt.State() != lcore.ThreadWait {
-		lt.Exit()
-		t.FailNow()
-	}
-
-	var wg sync.WaitGroup
-	wg.Add(1)
-	lt.Execute(func(ctx *lcore.ThreadCtx) error {
-		defer wg.Done()
-		time.Sleep(time.Second)
-		return nil
-	})
-
-	time.Sleep(100 * time.Millisecond)
-	if lt.State() != lcore.ThreadExecute {
-		lt.Exit()
-		t.FailNow()
-	}
-
-	wg.Wait()
-	if lt.State() != lcore.ThreadWait {
-		lt.Exit()
-		t.FailNow()
-	}
-
-	lt.Exit()
-	if lt.State() != lcore.ThreadExit {
-		t.FailNow()
-	}
-}
-
-func ExampleThread_Execute() {
-	lt, err := lcore.NewThread(0)
+	// Set affinity to lcore 0
+	err := thd.SetAffinity(0)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	defer lt.Exit()
 
 	var wg sync.WaitGroup
 	wg.Add(1)
-	errSomeBad := errors.New("some error")
-	lt.Execute(func(ctx *lcore.ThreadCtx) error {
+	var a int
+	thd.Exec(false, func() {
 		defer wg.Done()
-		fmt.Printf("core %d on socket %d\n", ctx.LcoreID(), ctx.SocketID())
-		return errSomeBad
+		a = 1
 	})
 	wg.Wait()
 
-	if lt.Err() != errSomeBad {
-		fmt.Println("well, it should be")
-		return
-	}
-
-	fmt.Println("success")
-	// Output: core 0 on socket 0
-	// success
+	fmt.Println(a)
+	// Output: 1
 }
