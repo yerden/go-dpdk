@@ -55,7 +55,7 @@ func TestNewThreadFail(t *testing.T) {
 	}
 }
 
-func ExampleExecWait() {
+func ExampleThread_Exec() {
 	// create a thread with new channel
 	thd := lcore.NewLockedThread(make(chan func()))
 	defer thd.Close()
