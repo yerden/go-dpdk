@@ -16,7 +16,6 @@ package ring
 import "C"
 
 import (
-	"runtime"
 	"unsafe"
 
 	"github.com/yerden/go-dpdk/common"
@@ -95,15 +94,16 @@ func OptFlag(flag uint) Option {
 	}}
 }
 
+func cGoString(s string) *C.char {
+	a := append([]byte(s), 0)
+	return (*C.char)(unsafe.Pointer(&a[0]))
+}
+
 func makeOpts(name string, opts []Option) *ringConf {
-	rc := &ringConf{socket: C.SOCKET_ID_ANY}
-	rc.cname = C.CString(name)
+	rc := &ringConf{socket: C.SOCKET_ID_ANY, cname: cGoString(name)}
 	for i := range opts {
 		opts[i].f(rc)
 	}
-	runtime.SetFinalizer(rc, func(rc *ringConf) {
-		C.free(unsafe.Pointer(rc.cname))
-	})
 	return rc
 }
 
