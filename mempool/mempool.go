@@ -139,6 +139,11 @@ var (
 	OptNoPhysContig = OptFlag(NoPhysContig)
 )
 
+func cGoString(s string) *C.char {
+	a := append([]byte(s), 0)
+	return (*C.char)(unsafe.Pointer(&a[0]))
+}
+
 // CreateEmpty creates new empty mempool. The mempool is allocated and
 // initialized, but it is not populated: no memory is allocated for
 // the mempool elements. The user has to call PopulateDefault() or
@@ -150,8 +155,7 @@ func CreateEmpty(name string, n, eltsize uint32, opts ...Option) (*Mempool, erro
 		opts[i].f(conf)
 	}
 
-	cname := C.CString(name)
-	defer C.free(unsafe.Pointer(cname))
+	cname := cGoString(name)
 	mp := (*Mempool)(C.rte_mempool_create_empty(cname, C.uint(n), C.uint(eltsize),
 		conf.cacheSize, conf.privDataSize, conf.socket, conf.flags))
 
@@ -174,8 +178,7 @@ func CreateEmpty(name string, n, eltsize uint32, opts ...Option) (*Mempool, erro
 // mempool that is not populated, i.e. just after a call to
 // CreateEmpty().
 func (mp *Mempool) SetOpsByName(name string, poolConfig unsafe.Pointer) error {
-	cName := C.CString(name)
-	defer C.free(unsafe.Pointer(cName))
+	cName := cGoString(name)
 	cmp := (*C.struct_rte_mempool)(mp)
 	return common.Errno(C.rte_mempool_set_ops_byname(cmp, cName, poolConfig))
 }
