@@ -211,6 +211,11 @@ func (r *Ring) IsEmpty() bool {
 	return C.rte_ring_empty((*C.struct_rte_ring)(r)) != 0
 }
 
+// Name returns ring's name stored when creating.
+func (r *Ring) Name() string {
+	return C.GoString(&(*C.struct_rte_ring)(r).name[0])
+}
+
 // Lookup searches a ring from its name in RTE_TAILQ_RING, i.e. among
 // those created with Create.
 func Lookup(name string) (*Ring, bool) {
