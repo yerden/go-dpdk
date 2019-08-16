@@ -23,7 +23,7 @@ func initEAL(t testing.TB) {
 	err := unix.SchedGetaffinity(0, &set)
 	assert(err == nil, err)
 	dpdk.Do(func() {
-		err = eal.InitWithOpts(eal.OptLcores(&set), eal.OptMemory(1024),
+		err = eal.InitWithOpts(eal.OptLcores(&set), eal.OptMemory(128),
 			eal.OptNoHuge, eal.OptNoPCI)
 		assert(err == nil, err)
 	})
