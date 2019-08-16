@@ -41,6 +41,10 @@ func TestRingCreate(t *testing.T) {
 			ring.OptSP, ring.OptSocket(lc.SocketID()))
 		assert(r != nil && err == nil, err)
 		defer r.Free()
+		r1, ok := ring.Lookup("test_ring")
+		assert(r == r1 && ok)
+		_, ok = ring.Lookup("test_ring_nonexistent")
+		assert(!ok)
 	})
 	wg.Wait()
 }
