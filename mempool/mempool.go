@@ -6,8 +6,6 @@ Please refer to DPDK Programmer's Guide for reference and caveats.
 package mempool
 
 /*
-#include <stdlib.h>
-
 #include <rte_config.h>
 #include <rte_mempool.h>
 
