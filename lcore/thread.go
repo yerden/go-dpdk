@@ -18,8 +18,10 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+// Thread is a channel which jobs can be sent to.
 type Thread chan<- func()
 
+// NewLockedThread creates new Thread with user specified channel.
 func NewLockedThread(ch chan func()) Thread {
 	go func() {
 		runtime.LockOSThread()
@@ -32,6 +34,8 @@ func NewLockedThread(ch chan func()) Thread {
 	return ch
 }
 
+// Exec sends new job to the Thread. If wait is true this function
+// blocks until job finishes execution.
 func (t Thread) Exec(wait bool, fn func()) {
 	if !wait {
 		t <- fn
@@ -47,6 +51,7 @@ func (t Thread) Exec(wait bool, fn func()) {
 	wg.Wait()
 }
 
+// Gettid returns Thread id.
 func (t Thread) Gettid() (tid int) {
 	t.Exec(true, func() {
 		tid = unix.Gettid()
@@ -54,16 +59,19 @@ func (t Thread) Gettid() (tid int) {
 	return
 }
 
+// SetAffinity pins the thread to specified CPU core id.
 func (t Thread) SetAffinity(id uint) error {
 	var s unix.CPUSet
 	s.Set(int(id))
 	return unix.SchedSetaffinity(t.Gettid(), &s)
 }
 
+// GetAffinity retrieves CPU affinity of the Thread.
 func (t Thread) GetAffinity() (s unix.CPUSet, err error) {
 	return s, unix.SchedGetaffinity(t.Gettid(), &s)
 }
 
+// Close sends a signal to Thread to finish.
 func (t Thread) Close() {
 	close(t)
 }
