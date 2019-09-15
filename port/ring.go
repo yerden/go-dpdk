@@ -15,11 +15,11 @@ import (
 )
 
 // compile time checks
-var _ = []Reader{
+var _ = []ReaderParams{
 	&RingReader{},
 }
 
-var _ = []Writer{
+var _ = []WriterParams{
 	&RingWriter{},
 }
 
@@ -33,7 +33,7 @@ type RingReader struct {
 	Multi bool
 }
 
-// ReaderOps implements Reader interface.
+// ReaderOps implements ReaderParams interface.
 func (rd *RingReader) ReaderOps() *ReaderOps {
 	if !rd.Multi {
 		return (*ReaderOps)(&C.rte_port_ring_reader_ops)
@@ -41,7 +41,7 @@ func (rd *RingReader) ReaderOps() *ReaderOps {
 	return (*ReaderOps)(&C.rte_port_ring_multi_reader_ops)
 }
 
-// NewArg implements Reader interface.
+// NewArg implements ReaderParams interface.
 func (rd *RingReader) NewArg() unsafe.Pointer {
 	rc := &C.struct_rte_port_ring_reader_params{
 		ring: (*C.struct_rte_ring)(unsafe.Pointer(rd.Ring)),
@@ -69,7 +69,7 @@ type RingWriter struct {
 	Retries uint32
 }
 
-// WriterOps implements Writer interface.
+// WriterOps implements WriterParams interface.
 func (wr *RingWriter) WriterOps() *WriterOps {
 	switch {
 	case wr.Multi && wr.NoDrop:
@@ -83,7 +83,7 @@ func (wr *RingWriter) WriterOps() *WriterOps {
 	}
 }
 
-// NewArg implements Writer interface.
+// NewArg implements WriterParams interface.
 func (wr *RingWriter) NewArg() unsafe.Pointer {
 	// NOTE: struct rte_port_ring_writer_params is a subset of struct
 	// rte_port_ring_writer_nodrop_params, so we may simply use the

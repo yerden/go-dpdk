@@ -14,11 +14,11 @@ import (
 )
 
 // compile time checks
-var _ = []Reader{
+var _ = []ReaderParams{
 	&Source{},
 }
 
-var _ = []Writer{
+var _ = []WriterParams{
 	&Sink{},
 }
 
@@ -36,12 +36,12 @@ type Source struct {
 	BytesPerPacket uint32
 }
 
-// ReaderOps implements Reader interface.
+// ReaderOps implements ReaderParams interface.
 func (rd *Source) ReaderOps() *ReaderOps {
 	return (*ReaderOps)(&C.rte_port_source_ops)
 }
 
-// NewArg implements Reader interface.
+// NewArg implements ReaderParams interface.
 func (rd *Source) NewArg() unsafe.Pointer {
 	rc := &C.struct_rte_port_source_params{}
 	rc.mempool = (*C.struct_rte_mempool)(unsafe.Pointer(rd.Mempool))
@@ -68,12 +68,12 @@ type Sink struct {
 	MaxPackets uint32
 }
 
-// WriterOps implements Writer interface.
+// WriterOps implements WriterParams interface.
 func (wr *Sink) WriterOps() *WriterOps {
 	return (*WriterOps)(&C.rte_port_sink_ops)
 }
 
-// NewArg implements Writer interface.
+// NewArg implements WriterParams interface.
 func (wr *Sink) NewArg() unsafe.Pointer {
 	rc := &C.struct_rte_port_sink_params{}
 	rc.max_n_pkts = C.uint32_t(wr.MaxPackets)

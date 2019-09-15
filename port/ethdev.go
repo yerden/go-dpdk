@@ -12,11 +12,11 @@ import (
 )
 
 // compile time checks
-var _ = []Reader{
+var _ = []ReaderParams{
 	&EthdevReader{},
 }
 
-var _ = []Writer{
+var _ = []WriterParams{
 	&EthdevWriter{},
 }
 
@@ -27,12 +27,12 @@ type EthdevReader struct {
 	PortID, QueueID uint16
 }
 
-// ReaderOps implements Reader interface.
+// ReaderOps implements ReaderParams interface.
 func (rd *EthdevReader) ReaderOps() *ReaderOps {
 	return (*ReaderOps)(&C.rte_port_ethdev_reader_ops)
 }
 
-// NewArg implements Reader interface.
+// NewArg implements ReaderParams interface.
 func (rd *EthdevReader) NewArg() unsafe.Pointer {
 	rc := &C.struct_rte_port_ethdev_reader_params{
 		port_id:  C.uint16_t(rd.PortID),
@@ -58,7 +58,7 @@ type EthdevWriter struct {
 	Retries uint32
 }
 
-// WriterOps implements Writer interface.
+// WriterOps implements WriterParams interface.
 func (wr *EthdevWriter) WriterOps() *WriterOps {
 	if !wr.NoDrop {
 		return (*WriterOps)(&C.rte_port_ethdev_writer_ops)
@@ -66,7 +66,7 @@ func (wr *EthdevWriter) WriterOps() *WriterOps {
 	return (*WriterOps)(&C.rte_port_ethdev_writer_nodrop_ops)
 }
 
-// NewArg implements Writer interface.
+// NewArg implements WriterParams interface.
 func (wr *EthdevWriter) NewArg() unsafe.Pointer {
 	// NOTE: struct rte_port_ethdev_writer_params is a subset of struct
 	// rte_port_ethdev_writer_nodrop_params, so we may simply use the latter

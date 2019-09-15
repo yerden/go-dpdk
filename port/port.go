@@ -8,11 +8,37 @@ package port
 /*
 #include <rte_config.h>
 #include <rte_port.h>
+
+void *go_rd_create(void *ops_table, void *params, int socket_id)
+{
+	struct rte_port_in_ops *ops = ops_table;
+	return ops->f_create(params, socket_id);
+}
+
+int go_rd_free(void *ops_table, void *port)
+{
+	struct rte_port_in_ops *ops = ops_table;
+	return ops->f_free(port);
+}
+
+void *go_wr_create(void *ops_table, void *params, int socket_id)
+{
+	struct rte_port_out_ops *ops = ops_table;
+	return ops->f_create(params, socket_id);
+}
+
+int go_wr_free(void *ops_table, void *port)
+{
+	struct rte_port_out_ops *ops = ops_table;
+	return ops->f_free(port);
+}
 */
 import "C"
 
 import (
 	"unsafe"
+
+	"github.com/yerden/go-dpdk/common"
 )
 
 // ReaderOps describes input port interface defining the input port
@@ -23,9 +49,9 @@ type ReaderOps C.struct_rte_port_in_ops
 // operation.
 type WriterOps C.struct_rte_port_out_ops
 
-// Reader implements reader port capability which allows to read
+// ReaderParams implements reader port capability which allows to read
 // packets from it.
-type Reader interface {
+type ReaderParams interface {
 	// ReaderOps returns pointer to statically allocated call table.
 	ReaderOps() *ReaderOps
 	// NewArg allocates an opaque argument which is required by
@@ -33,12 +59,58 @@ type Reader interface {
 	NewArg() unsafe.Pointer
 }
 
-// Writer implements writer port capability which allows to write
-// packets to it.
-type Writer interface {
+// WriterParams implements writer port capability which allows to
+// write packets to it.
+type WriterParams interface {
 	// WriterOps returns pointer to statically allocated call table.
 	WriterOps() *WriterOps
 	// NewArg allocates an opaque argument which is required by
 	// WriterOps.
 	NewArg() unsafe.Pointer
+}
+
+// Reader is the instance of reader port.
+type Reader struct {
+	Ops  *ReaderOps
+	Port unsafe.Pointer
+}
+
+// Writer is the instance of writer port.
+type Writer struct {
+	Ops  *WriterOps
+	Port unsafe.Pointer
+}
+
+// XXX: we need to wrap calls which are not performance bottlenecks.
+
+// NewReader creates new Reader. ReaderParams and destination NUMA
+// socket must be specified. In case of an error, nil is returned.
+func NewReader(p ReaderParams, socket int) *Reader {
+	ops := p.ReaderOps()
+	port := C.go_rd_create(unsafe.Pointer(ops), p.NewArg(), C.int(socket))
+	if port == nil {
+		return nil
+	}
+	return &Reader{ops, port}
+}
+
+// Free destroys once created Reader port.
+func (rd *Reader) Free() error {
+	return common.Errno(C.go_rd_free(unsafe.Pointer(rd.Ops), rd.Port))
+}
+
+// NewWriter creates new Writer. ReaderParams and destination NUMA
+// socket must be specified. In case of an error, nil is returned.
+func NewWriter(p WriterParams, socket int) *Writer {
+	ops := p.WriterOps()
+	port := C.go_wr_create(unsafe.Pointer(ops), p.NewArg(), C.int(socket))
+	if port == nil {
+		return nil
+	}
+	return &Writer{ops, port}
+}
+
+// Free destroys once created Writer port.
+func (wr *Writer) Free() error {
+	return common.Errno(C.go_wr_free(unsafe.Pointer(wr.Ops), wr.Port))
 }
