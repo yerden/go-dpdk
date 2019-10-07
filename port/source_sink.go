@@ -37,12 +37,8 @@ type Source struct {
 }
 
 // ReaderOps implements ReaderParams interface.
-func (rd *Source) ReaderOps() *ReaderOps {
-	return (*ReaderOps)(&C.rte_port_source_ops)
-}
-
-// NewArg implements ReaderParams interface.
-func (rd *Source) NewArg() unsafe.Pointer {
+func (rd *Source) ReaderOps() (*ReaderOps, unsafe.Pointer) {
+	ops := (*ReaderOps)(&C.rte_port_source_ops)
 	rc := &C.struct_rte_port_source_params{}
 	rc.mempool = (*C.struct_rte_mempool)(unsafe.Pointer(rd.Mempool))
 	rc.n_bytes_per_pkt = C.uint32_t(rd.BytesPerPacket)
@@ -55,7 +51,7 @@ func (rd *Source) NewArg() unsafe.Pointer {
 			C.free(unsafe.Pointer(rc.file_name))
 		})
 	}
-	return unsafe.Pointer(rc)
+	return ops, unsafe.Pointer(rc)
 }
 
 // Sink is an output port that drops all packets written to it.
@@ -69,12 +65,8 @@ type Sink struct {
 }
 
 // WriterOps implements WriterParams interface.
-func (wr *Sink) WriterOps() *WriterOps {
-	return (*WriterOps)(&C.rte_port_sink_ops)
-}
-
-// NewArg implements WriterParams interface.
-func (wr *Sink) NewArg() unsafe.Pointer {
+func (wr *Sink) WriterOps() (*WriterOps, unsafe.Pointer) {
+	ops := (*WriterOps)(&C.rte_port_sink_ops)
 	rc := &C.struct_rte_port_sink_params{}
 	rc.max_n_pkts = C.uint32_t(wr.MaxPackets)
 	if wr.Filename != "" {
@@ -86,5 +78,5 @@ func (wr *Sink) NewArg() unsafe.Pointer {
 			C.free(unsafe.Pointer(rc.file_name))
 		})
 	}
-	return unsafe.Pointer(rc)
+	return ops, unsafe.Pointer(rc)
 }

@@ -34,19 +34,16 @@ type RingReader struct {
 }
 
 // ReaderOps implements ReaderParams interface.
-func (rd *RingReader) ReaderOps() *ReaderOps {
+func (rd *RingReader) ReaderOps() (ops *ReaderOps, arg unsafe.Pointer) {
 	if !rd.Multi {
-		return (*ReaderOps)(&C.rte_port_ring_reader_ops)
+		ops = (*ReaderOps)(&C.rte_port_ring_reader_ops)
+	} else {
+		ops = (*ReaderOps)(&C.rte_port_ring_multi_reader_ops)
 	}
-	return (*ReaderOps)(&C.rte_port_ring_multi_reader_ops)
-}
-
-// NewArg implements ReaderParams interface.
-func (rd *RingReader) NewArg() unsafe.Pointer {
 	rc := &C.struct_rte_port_ring_reader_params{
 		ring: (*C.struct_rte_ring)(unsafe.Pointer(rd.Ring)),
 	}
-	return unsafe.Pointer(rc)
+	return ops, unsafe.Pointer(rc)
 }
 
 // RingWriter is an output port built on top of pre-initialized single
@@ -70,27 +67,24 @@ type RingWriter struct {
 }
 
 // WriterOps implements WriterParams interface.
-func (wr *RingWriter) WriterOps() *WriterOps {
+func (wr *RingWriter) WriterOps() (ops *WriterOps, arg unsafe.Pointer) {
 	switch {
 	case wr.Multi && wr.NoDrop:
-		return (*WriterOps)(&C.rte_port_ring_multi_writer_nodrop_ops)
+		ops = (*WriterOps)(&C.rte_port_ring_multi_writer_nodrop_ops)
 	case wr.Multi:
-		return (*WriterOps)(&C.rte_port_ring_multi_writer_ops)
+		ops = (*WriterOps)(&C.rte_port_ring_multi_writer_ops)
 	case wr.NoDrop:
-		return (*WriterOps)(&C.rte_port_ring_writer_nodrop_ops)
+		ops = (*WriterOps)(&C.rte_port_ring_writer_nodrop_ops)
 	default:
-		return (*WriterOps)(&C.rte_port_ring_writer_ops)
+		ops = (*WriterOps)(&C.rte_port_ring_writer_ops)
 	}
-}
-
-// NewArg implements WriterParams interface.
-func (wr *RingWriter) NewArg() unsafe.Pointer {
 	// NOTE: struct rte_port_ring_writer_params is a subset of struct
 	// rte_port_ring_writer_nodrop_params, so we may simply use the
 	// latter for it would fit regardless of NoDrop flag.
-	return unsafe.Pointer(&C.struct_rte_port_ring_writer_nodrop_params{
+	arg = unsafe.Pointer(&C.struct_rte_port_ring_writer_nodrop_params{
 		ring:        (*C.struct_rte_ring)(unsafe.Pointer(wr.Ring)),
 		tx_burst_sz: C.uint32_t(wr.TxBurstSize),
 		n_retries:   C.uint32_t(wr.Retries),
 	})
+	return
 }

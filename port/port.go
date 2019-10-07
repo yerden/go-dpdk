@@ -53,20 +53,16 @@ type WriterOps C.struct_rte_port_out_ops
 // packets from it.
 type ReaderParams interface {
 	// ReaderOps returns pointer to statically allocated call table.
-	ReaderOps() *ReaderOps
-	// NewArg allocates an opaque argument which is required by
-	// ReaderOps.
-	NewArg() unsafe.Pointer
+	// and an opaque argument which is required to create port.
+	ReaderOps() (ops *ReaderOps, arg unsafe.Pointer)
 }
 
 // WriterParams implements writer port capability which allows to
 // write packets to it.
 type WriterParams interface {
 	// WriterOps returns pointer to statically allocated call table.
-	WriterOps() *WriterOps
-	// NewArg allocates an opaque argument which is required by
-	// WriterOps.
-	NewArg() unsafe.Pointer
+	// and an opaque argument which is required to create port.
+	WriterOps() (ops *WriterOps, arg unsafe.Pointer)
 }
 
 // Reader is the instance of reader port.
@@ -86,8 +82,8 @@ type Writer struct {
 // NewReader creates new Reader. ReaderParams and destination NUMA
 // socket must be specified. In case of an error, nil is returned.
 func NewReader(p ReaderParams, socket int) *Reader {
-	ops := p.ReaderOps()
-	port := C.go_rd_create(unsafe.Pointer(ops), p.NewArg(), C.int(socket))
+	ops, arg := p.ReaderOps()
+	port := C.go_rd_create(unsafe.Pointer(ops), arg, C.int(socket))
 	if port == nil {
 		return nil
 	}
@@ -102,8 +98,8 @@ func (rd *Reader) Free() error {
 // NewWriter creates new Writer. ReaderParams and destination NUMA
 // socket must be specified. In case of an error, nil is returned.
 func NewWriter(p WriterParams, socket int) *Writer {
-	ops := p.WriterOps()
-	port := C.go_wr_create(unsafe.Pointer(ops), p.NewArg(), C.int(socket))
+	ops, arg := p.WriterOps()
+	port := C.go_wr_create(unsafe.Pointer(ops), arg, C.int(socket))
 	if port == nil {
 		return nil
 	}
