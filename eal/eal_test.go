@@ -93,3 +93,19 @@ func TestEALInit(t *testing.T) {
 	}
 	wg.Wait()
 }
+
+func TestParseCmd(t *testing.T) {
+	assert := common.Assert(t, true)
+
+	res, err := parseCmd("hello bitter world")
+	assert(err == nil, err)
+	assert(res[0] == "hello")
+	assert(res[1] == "bitter")
+	assert(res[2] == "world")
+
+	res, err = parseCmd("hello --bitter world")
+	assert(err == nil, err)
+	assert(res[0] == "hello")
+	assert(res[1] == "--bitter", res[1])
+	assert(res[2] == "world")
+}

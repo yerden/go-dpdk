@@ -28,7 +28,6 @@ import "C"
 
 import (
 	"bufio"
-	"bytes"
 	"log"
 	"os"
 	"runtime"
@@ -153,44 +152,47 @@ func ExecuteOnMaster(fn LcoreFunc) {
 	ExecuteOnLcore(GetMasterLcore(), fn)
 }
 
-// Lcores returns all lcores registered in EAL.
-func Lcores(skipMaster bool) []uint {
-	i := ^C.uint(0)
-	sm := C.int(0)
+type lcoresIter struct {
+	i  C.uint
+	sm C.int
+}
+
+func (iter *lcoresIter) next() bool {
+	iter.i = C.rte_get_next_lcore(iter.i, iter.sm, 0)
+	return iter.i < C.RTE_MAX_LCORE
+}
+
+// Lcores returns all lcores registered in EAL. If skipMaster is true,
+// master lcore will not be included in the result.
+func Lcores(skipMaster bool) (out []uint) {
+	c := &lcoresIter{i: ^C.uint(0), sm: C.int(0)}
 
 	if skipMaster {
-		sm = 1
+		c.sm = 1
 	}
 
-	out := make([]uint, 0, LcoreCount())
-	for {
-		i = C.rte_get_next_lcore(i, sm, 0)
-		if i >= C.RTE_MAX_LCORE {
-			break
-		}
-		out = append(out, uint(i))
+	for c.next() {
+		out = append(out, uint(c.i))
 	}
 	return out
 }
 
 // call rte_eal_init and launch lcoreFuncListener on all slave lcores
 // should be run in master lcore thread only
-func ealInitAndLaunch(argv []string) error {
-	argv = append([]string{os.Args[0]}, argv...)
-	argc := C.int(len(argv))
-	cArgv := make([]*C.char, argc+1) // last elem is NULL
-	for i, arg := range argv {
-		cArgv[i] = C.CString(arg)
-	}
+func ealInitAndLaunch(args []string) error {
+	args = append([]string{os.Args[0]}, args...)
 
-	defer func() {
-		for _, arg := range cArgv {
-			C.free(unsafe.Pointer(arg))
-		}
-	}()
+	argc, argv := makeArgcArgv(args)
+	defer freeArgv(argv)
+
+	// we need to make a shallow copy of argv because, according to
+	// rte_eal_init() documentation, "the contents of the array, as
+	// well as the strings which are pointed to by the array, may be
+	// modified by this function."
+	argv = copyArgv(argv)
 
 	// initialize EAL
-	if C.rte_eal_init(argc, (**C.char)(&cArgv[0])) < 0 {
+	if C.rte_eal_init(argc, argv) < 0 {
 		return common.Errno(nil)
 	}
 
@@ -212,7 +214,7 @@ func ealInitAndLaunch(argv []string) error {
 //
 // This function initialized EAL and waits for executable functions on
 // each of EAL-owned threads.
-func InitWithArgs(argv []string) error {
+func InitWithArgs(args []string) error {
 	ch := make(chan error, 1)
 	go func() {
 		// we should initialize EAL and run EAL threads in a separate
@@ -222,7 +224,7 @@ func InitWithArgs(argv []string) error {
 
 		// initialize EAL and launch lcoreFuncListener on all slave
 		// lcores, then report
-		err := ealInitAndLaunch(argv)
+		err := ealInitAndLaunch(args)
 		if ch <- err; err == nil {
 			// run on master lcore
 			lcoreFuncListener(nil)
@@ -232,20 +234,23 @@ func InitWithArgs(argv []string) error {
 	return <-ch
 }
 
+func parseCmd(input string) ([]string, error) {
+	s := bufio.NewScanner(strings.NewReader(input))
+	s.Split(common.SplitFunc(common.DefaultSplitter))
+
+	var argv []string
+	for s.Scan() {
+		argv = append(argv, s.Text())
+	}
+	return argv, s.Err()
+}
+
 // Init initializes EAL as in rte_eal_init. Options are
 // specified in a unparsed command line string. This string is parsed
 // and InitWithArgs is then called upon.
 func Init(input string) error {
-	b := bytes.NewBufferString(input)
-	s := bufio.NewScanner(b)
-	s.Split(common.SplitWithDoubleQuotes)
-	var argv []string
-
-	for s.Scan() {
-		argv = append(argv, s.Text())
-	}
-
-	if err := s.Err(); err != nil {
+	argv, err := parseCmd(input)
+	if err != nil {
 		return err
 	}
 	return InitWithArgs(argv)
