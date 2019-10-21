@@ -405,8 +405,6 @@ func TxqOptSocket(socket int) TxqOption {
 // RxqSetup allocates and sets up a receive queue for an Ethernet
 // device.
 //
-// RxqOptMempool is mandatory option.
-//
 // The function allocates a contiguous block of memory for nDesc
 // receive descriptors from a memory zone associated with *socket_id*
 // and initializes each receive descriptor with a network buffer
