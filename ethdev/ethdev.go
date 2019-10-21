@@ -140,7 +140,6 @@ type DevOption struct {
 // configuration options for RX queue
 type rxqConf struct {
 	socket C.int
-	mp     *mempool.Mempool
 	rx     C.struct_rte_eth_rxconf
 }
 
@@ -365,12 +364,6 @@ func RxOptThresh(conf EthThresh) RxOption {
 			hthresh: C.uchar(conf.HThresh),
 			wthresh: C.uchar(conf.WThresh),
 		}
-	}}
-}
-
-func RxOptMempool(mp *mempool.Mempool) RxOption {
-	return RxOption{func(q *rxqConf) {
-		q.mp = mp
 	}}
 }
 
