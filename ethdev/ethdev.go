@@ -149,15 +149,15 @@ type txqConf struct {
 	tx     C.struct_rte_eth_txconf
 }
 
-// RxOption represents an option which is used to setup RX queue on
+// RxqOption represents an option which is used to setup RX queue on
 // Ethernet device.
-type RxOption struct {
+type RxqOption struct {
 	f func(*rxqConf)
 }
 
-// TxOption represents an option which is used to setup TX queue on
+// TxqOption represents an option which is used to setup TX queue on
 // Ethernet device.
-type TxOption struct {
+type TxqOption struct {
 	f func(*txqConf)
 }
 
@@ -346,10 +346,10 @@ func (pid Port) DevConfigure(nrxq, ntxq uint16, opts ...Option) error {
 		C.ushort(nrxq), conf))
 }
 
-// RxOptConf specifies the configuration an RX ring of an Ethernet
+// RxqOptConf specifies the configuration an RX ring of an Ethernet
 // port.
-func RxOptConf(conf RxqConf) RxOption {
-	return RxOption{func(q *rxqConf) {
+func RxqOptConf(conf RxqConf) RxqOption {
+	return RxqOption{func(q *rxqConf) {
 		q.rx = C.struct_rte_eth_rxconf{
 			rx_thresh: C.struct_rte_eth_thresh{
 				pthresh: C.uchar(conf.Thresh.PThresh),
@@ -366,8 +366,8 @@ func RxOptConf(conf RxqConf) RxOption {
 
 // TxqOptConf specifies the configuration an TX ring of an Ethernet
 // port.
-func TxqOptConf(conf TxqConf) TxOption {
-	return TxOption{func(q *txqConf) {
+func TxqOptConf(conf TxqConf) TxqOption {
+	return TxqOption{func(q *txqConf) {
 		q.tx = C.struct_rte_eth_txconf{
 			tx_thresh: C.struct_rte_eth_thresh{
 				pthresh: C.uchar(conf.Thresh.PThresh),
@@ -382,22 +382,22 @@ func TxqOptConf(conf TxqConf) TxOption {
 	}}
 }
 
-// RxOptSocket specifies the NUMA socket id for RX.  The socket
+// RxqOptSocket specifies the NUMA socket id for RX.  The socket
 // argument is the socket identifier in case of NUMA.  The value can
 // be SOCKET_ID_ANY if there is no NUMA constraint for the DMA memory
 // allocated for the receive descriptors of the ring.
-func RxOptSocket(socket int) RxOption {
-	return RxOption{func(q *rxqConf) {
+func RxqOptSocket(socket int) RxqOption {
+	return RxqOption{func(q *rxqConf) {
 		q.socket = C.int(socket)
 	}}
 }
 
-// TxOptSocket specifies the NUMA socket id for TX.  The socket
+// TxqOptSocket specifies the NUMA socket id for TX.  The socket
 // argument is the socket identifier in case of NUMA.  The value can
 // be SOCKET_ID_ANY if there is no NUMA constraint for the DMA memory
 // allocated for the transmit descriptors of the ring.
-func TxOptSocket(socket int) TxOption {
-	return TxOption{func(q *txqConf) {
+func TxqOptSocket(socket int) TxqOption {
+	return TxqOption{func(q *txqConf) {
 		q.socket = C.int(socket)
 	}}
 }
@@ -405,7 +405,7 @@ func TxOptSocket(socket int) TxOption {
 // RxqSetup allocates and sets up a receive queue for an Ethernet
 // device.
 //
-// RxOptMempool is mandatory option.
+// RxqOptMempool is mandatory option.
 //
 // The function allocates a contiguous block of memory for nDesc
 // receive descriptors from a memory zone associated with *socket_id*
@@ -423,11 +423,11 @@ func TxOptSocket(socket int) TxOption {
 // *rte_mbuf* network memory buffers to populate each descriptor of
 // the receive ring.
 
-// RxOptSocket specifies the socket identifier in case of NUMA.  The
+// RxqOptSocket specifies the socket identifier in case of NUMA.  The
 // value can be *SOCKET_ID_ANY* if there is no NUMA constraint for the
 // DMA memory allocated for the receive descriptors of the ring.
 //
-// RxOptConf specifies the configuration data to be used for the
+// RxqOptConf specifies the configuration data to be used for the
 // receive queue.  The *rx_conf* structure contains an *rx_thresh*
 // structure with the values of the Prefetch, Host, and Write-Back
 // threshold registers of the receive ring.  In addition it contains
@@ -453,7 +453,7 @@ func TxOptSocket(socket int) TxOption {
 // - -ENOMEM: Unable to allocate the receive ring descriptors or to
 //    allocate network memory buffers from the memory pool when
 //    initializing receive descriptors.
-func (pid Port) RxqSetup(qid, nDesc uint16, mp *mempool.Mempool, opts ...RxOption) error {
+func (pid Port) RxqSetup(qid, nDesc uint16, mp *mempool.Mempool, opts ...RxqOption) error {
 	conf := &rxqConf{socket: C.SOCKET_ID_ANY}
 	for i := range opts {
 		opts[i].f(conf)
@@ -474,7 +474,7 @@ func (pid Port) RxqSetup(qid, nDesc uint16, mp *mempool.Mempool, opts ...RxOptio
 // nDesc is the number of transmit descriptors to allocate for the
 // transmit ring.
 //
-// TxOptSocket specifies the socket identifier in case of NUMA.
+// TxqOptSocket specifies the socket identifier in case of NUMA.
 // Its value can be *SOCKET_ID_ANY* if there is no NUMA constraint for
 // the DMA memory allocated for the transmit descriptors of the ring.
 //
@@ -516,7 +516,7 @@ func (pid Port) RxqSetup(qid, nDesc uint16, mp *mempool.Mempool, opts ...RxOptio
 // - 0: Success, the transmit queue is correctly set up.
 //
 // - -ENOMEM: Unable to allocate the transmit ring descriptors.
-func (pid Port) TxqSetup(qid, nDesc uint16, opts ...TxOption) error {
+func (pid Port) TxqSetup(qid, nDesc uint16, opts ...TxqOption) error {
 	conf := &txqConf{socket: C.SOCKET_ID_ANY}
 	for i := range opts {
 		opts[i].f(conf)
