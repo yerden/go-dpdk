@@ -37,103 +37,103 @@ import (
 
 // Various RX offloads flags.
 const (
-	DevRxOffloadVlanStrip      uint64 = C.DEV_RX_OFFLOAD_VLAN_STRIP
-	DevRxOffloadIpv4Cksum             = C.DEV_RX_OFFLOAD_IPV4_CKSUM
-	DevRxOffloadUdpCksum              = C.DEV_RX_OFFLOAD_UDP_CKSUM
-	DevRxOffloadTcpCksum              = C.DEV_RX_OFFLOAD_TCP_CKSUM
-	DevRxOffloadTcpLro                = C.DEV_RX_OFFLOAD_TCP_LRO
-	DevRxOffloadQinqStrip             = C.DEV_RX_OFFLOAD_QINQ_STRIP
-	DevRxOffloadOuterIpv4Cksum        = C.DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM
-	DevRxOffloadMacsecStrip           = C.DEV_RX_OFFLOAD_MACSEC_STRIP
-	DevRxOffloadHeaderSplit           = C.DEV_RX_OFFLOAD_HEADER_SPLIT
-	DevRxOffloadVlanFilter            = C.DEV_RX_OFFLOAD_VLAN_FILTER
-	DevRxOffloadVlanExtend            = C.DEV_RX_OFFLOAD_VLAN_EXTEND
-	DevRxOffloadJumboFrame            = C.DEV_RX_OFFLOAD_JUMBO_FRAME
-	DevRxOffloadScatter               = C.DEV_RX_OFFLOAD_SCATTER
-	DevRxOffloadTimestamp             = C.DEV_RX_OFFLOAD_TIMESTAMP
-	DevRxOffloadSecurity              = C.DEV_RX_OFFLOAD_SECURITY
-	// DevRxOffloadKeepCrc        = C.DEV_RX_OFFLOAD_KEEP_CRC
-	// DevRxOffloadSctpCksum      = C.DEV_RX_OFFLOAD_SCTP_CKSUM
-	// DevRxOffloadOuterUdpCksum  = C.DEV_RX_OFFLOAD_OUTER_UDP_CKSUM
+	RxOffloadVlanStrip      uint64 = C.DEV_RX_OFFLOAD_VLAN_STRIP
+	RxOffloadIpv4Cksum             = C.DEV_RX_OFFLOAD_IPV4_CKSUM
+	RxOffloadUdpCksum              = C.DEV_RX_OFFLOAD_UDP_CKSUM
+	RxOffloadTcpCksum              = C.DEV_RX_OFFLOAD_TCP_CKSUM
+	RxOffloadTcpLro                = C.DEV_RX_OFFLOAD_TCP_LRO
+	RxOffloadQinqStrip             = C.DEV_RX_OFFLOAD_QINQ_STRIP
+	RxOffloadOuterIpv4Cksum        = C.DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM
+	RxOffloadMacsecStrip           = C.DEV_RX_OFFLOAD_MACSEC_STRIP
+	RxOffloadHeaderSplit           = C.DEV_RX_OFFLOAD_HEADER_SPLIT
+	RxOffloadVlanFilter            = C.DEV_RX_OFFLOAD_VLAN_FILTER
+	RxOffloadVlanExtend            = C.DEV_RX_OFFLOAD_VLAN_EXTEND
+	RxOffloadJumboFrame            = C.DEV_RX_OFFLOAD_JUMBO_FRAME
+	RxOffloadScatter               = C.DEV_RX_OFFLOAD_SCATTER
+	RxOffloadTimestamp             = C.DEV_RX_OFFLOAD_TIMESTAMP
+	RxOffloadSecurity              = C.DEV_RX_OFFLOAD_SECURITY
+	// RxOffloadKeepCrc        = C.DEV_RX_OFFLOAD_KEEP_CRC
+	// RxOffloadSctpCksum      = C.DEV_RX_OFFLOAD_SCTP_CKSUM
+	// RxOffloadOuterUdpCksum  = C.DEV_RX_OFFLOAD_OUTER_UDP_CKSUM
 
-	DevRxOffloadChecksum = (DevRxOffloadIpv4Cksum |
-		DevRxOffloadUdpCksum |
-		DevRxOffloadTcpCksum)
-	DevRxOffloadVlan = (DevRxOffloadVlanStrip |
-		DevRxOffloadVlanFilter |
-		DevRxOffloadVlanExtend)
+	RxOffloadChecksum = (RxOffloadIpv4Cksum |
+		RxOffloadUdpCksum |
+		RxOffloadTcpCksum)
+	RxOffloadVlan = (RxOffloadVlanStrip |
+		RxOffloadVlanFilter |
+		RxOffloadVlanExtend)
 )
 
 // Various TX offloads flags.
 const (
-	DevTxOffloadVlanInsert     uint64 = C.DEV_TX_OFFLOAD_VLAN_INSERT
-	DevTxOffloadIpv4Cksum             = C.DEV_TX_OFFLOAD_IPV4_CKSUM
-	DevTxOffloadUdpCksum              = C.DEV_TX_OFFLOAD_UDP_CKSUM
-	DevTxOffloadTcpCksum              = C.DEV_TX_OFFLOAD_TCP_CKSUM
-	DevTxOffloadSctpCksum             = C.DEV_TX_OFFLOAD_SCTP_CKSUM
-	DevTxOffloadTcpTso                = C.DEV_TX_OFFLOAD_TCP_TSO
-	DevTxOffloadUdpTso                = C.DEV_TX_OFFLOAD_UDP_TSO
-	DevTxOffloadOuterIpv4Cksum        = C.DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM
-	DevTxOffloadQinqInsert            = C.DEV_TX_OFFLOAD_QINQ_INSERT
-	DevTxOffloadVxlanTnlTso           = C.DEV_TX_OFFLOAD_VXLAN_TNL_TSO
-	DevTxOffloadGreTnlTso             = C.DEV_TX_OFFLOAD_GRE_TNL_TSO
-	DevTxOffloadIpipTnlTso            = C.DEV_TX_OFFLOAD_IPIP_TNL_TSO
-	DevTxOffloadGeneveTnlTso          = C.DEV_TX_OFFLOAD_GENEVE_TNL_TSO
-	DevTxOffloadMacsecInsert          = C.DEV_TX_OFFLOAD_MACSEC_INSERT
-	DevTxOffloadMtLockfree            = C.DEV_TX_OFFLOAD_MT_LOCKFREE
-	DevTxOffloadMultiSegs             = C.DEV_TX_OFFLOAD_MULTI_SEGS
-	DevTxOffloadMbufFastFree          = C.DEV_TX_OFFLOAD_MBUF_FAST_FREE
-	DevTxOffloadSecurity              = C.DEV_TX_OFFLOAD_SECURITY
-	// DevTxOffloadIpTnlTso       = C.DEV_TX_OFFLOAD_IP_TNL_TSO
-	// DevTxOffloadOuterUdpCksum  = C.DEV_TX_OFFLOAD_OUTER_UDP_CKSUM
-	// DevTxOffloadMatchMetadata  = C.DEV_TX_OFFLOAD_MATCH_METADATA
+	TxOffloadVlanInsert     uint64 = C.DEV_TX_OFFLOAD_VLAN_INSERT
+	TxOffloadIpv4Cksum             = C.DEV_TX_OFFLOAD_IPV4_CKSUM
+	TxOffloadUdpCksum              = C.DEV_TX_OFFLOAD_UDP_CKSUM
+	TxOffloadTcpCksum              = C.DEV_TX_OFFLOAD_TCP_CKSUM
+	TxOffloadSctpCksum             = C.DEV_TX_OFFLOAD_SCTP_CKSUM
+	TxOffloadTcpTso                = C.DEV_TX_OFFLOAD_TCP_TSO
+	TxOffloadUdpTso                = C.DEV_TX_OFFLOAD_UDP_TSO
+	TxOffloadOuterIpv4Cksum        = C.DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM
+	TxOffloadQinqInsert            = C.DEV_TX_OFFLOAD_QINQ_INSERT
+	TxOffloadVxlanTnlTso           = C.DEV_TX_OFFLOAD_VXLAN_TNL_TSO
+	TxOffloadGreTnlTso             = C.DEV_TX_OFFLOAD_GRE_TNL_TSO
+	TxOffloadIpipTnlTso            = C.DEV_TX_OFFLOAD_IPIP_TNL_TSO
+	TxOffloadGeneveTnlTso          = C.DEV_TX_OFFLOAD_GENEVE_TNL_TSO
+	TxOffloadMacsecInsert          = C.DEV_TX_OFFLOAD_MACSEC_INSERT
+	TxOffloadMtLockfree            = C.DEV_TX_OFFLOAD_MT_LOCKFREE
+	TxOffloadMultiSegs             = C.DEV_TX_OFFLOAD_MULTI_SEGS
+	TxOffloadMbufFastFree          = C.DEV_TX_OFFLOAD_MBUF_FAST_FREE
+	TxOffloadSecurity              = C.DEV_TX_OFFLOAD_SECURITY
+	// TxOffloadIpTnlTso       = C.DEV_TX_OFFLOAD_IP_TNL_TSO
+	// TxOffloadOuterUdpCksum  = C.DEV_TX_OFFLOAD_OUTER_UDP_CKSUM
+	// TxOffloadMatchMetadata  = C.DEV_TX_OFFLOAD_MATCH_METADATA
 )
 
 // Device supported speeds bitmap flags.
 const (
-	EthLinkSpeedAutoneg uint = C.ETH_LINK_SPEED_AUTONEG /**< Autonegotiate (all speeds) */
-	EthLinkSpeedFixed        = C.ETH_LINK_SPEED_FIXED   /**< Disable autoneg (fixed speed) */
-	EthLinkSpeed10mHd        = C.ETH_LINK_SPEED_10M_HD  /**<  10 Mbps half-duplex */
-	EthLinkSpeed10m          = C.ETH_LINK_SPEED_10M     /**<  10 Mbps full-duplex */
-	EthLinkSpeed100mHd       = C.ETH_LINK_SPEED_100M_HD /**< 100 Mbps half-duplex */
-	EthLinkSpeed100m         = C.ETH_LINK_SPEED_100M    /**< 100 Mbps full-duplex */
-	EthLinkSpeed1g           = C.ETH_LINK_SPEED_1G      /**<   1 Gbps */
-	EthLinkSpeed2_5g         = C.ETH_LINK_SPEED_2_5G    /**< 2.5 Gbps */
-	EthLinkSpeed5g           = C.ETH_LINK_SPEED_5G      /**<   5 Gbps */
-	EthLinkSpeed10g          = C.ETH_LINK_SPEED_10G     /**<  10 Gbps */
-	EthLinkSpeed20g          = C.ETH_LINK_SPEED_20G     /**<  20 Gbps */
-	EthLinkSpeed25g          = C.ETH_LINK_SPEED_25G     /**<  25 Gbps */
-	EthLinkSpeed40g          = C.ETH_LINK_SPEED_40G     /**<  40 Gbps */
-	EthLinkSpeed50g          = C.ETH_LINK_SPEED_50G     /**<  50 Gbps */
-	EthLinkSpeed56g          = C.ETH_LINK_SPEED_56G     /**<  56 Gbps */
-	EthLinkSpeed100g         = C.ETH_LINK_SPEED_100G    /**< 100 Gbps */
+	LinkSpeedAutoneg uint = C.ETH_LINK_SPEED_AUTONEG /**< Autonegotiate (all speeds) */
+	LinkSpeedFixed        = C.ETH_LINK_SPEED_FIXED   /**< Disable autoneg (fixed speed) */
+	LinkSpeed10mHd        = C.ETH_LINK_SPEED_10M_HD  /**<  10 Mbps half-duplex */
+	LinkSpeed10m          = C.ETH_LINK_SPEED_10M     /**<  10 Mbps full-duplex */
+	LinkSpeed100mHd       = C.ETH_LINK_SPEED_100M_HD /**< 100 Mbps half-duplex */
+	LinkSpeed100m         = C.ETH_LINK_SPEED_100M    /**< 100 Mbps full-duplex */
+	LinkSpeed1g           = C.ETH_LINK_SPEED_1G      /**<   1 Gbps */
+	LinkSpeed2_5g         = C.ETH_LINK_SPEED_2_5G    /**< 2.5 Gbps */
+	LinkSpeed5g           = C.ETH_LINK_SPEED_5G      /**<   5 Gbps */
+	LinkSpeed10g          = C.ETH_LINK_SPEED_10G     /**<  10 Gbps */
+	LinkSpeed20g          = C.ETH_LINK_SPEED_20G     /**<  20 Gbps */
+	LinkSpeed25g          = C.ETH_LINK_SPEED_25G     /**<  25 Gbps */
+	LinkSpeed40g          = C.ETH_LINK_SPEED_40G     /**<  40 Gbps */
+	LinkSpeed50g          = C.ETH_LINK_SPEED_50G     /**<  50 Gbps */
+	LinkSpeed56g          = C.ETH_LINK_SPEED_56G     /**<  56 Gbps */
+	LinkSpeed100g         = C.ETH_LINK_SPEED_100G    /**< 100 Gbps */
 )
 
 // A set of values to identify what method is to be used to route
 // packets to multiple queues.
 const (
-	EthMqRxNone       uint = C.ETH_MQ_RX_NONE         /** None of DCB,RSS or VMDQ mode */
-	EthMqRxRss             = C.ETH_MQ_RX_RSS          /** For RX side, only RSS is on */
-	EthMqRxDcb             = C.ETH_MQ_RX_DCB          /** For RX side,only DCB is on. */
-	EthMqRxDcbRss          = C.ETH_MQ_RX_DCB_RSS      /** Both DCB and RSS enable */
-	EthMqRxVmdqOnly        = C.ETH_MQ_RX_VMDQ_ONLY    /** Only VMDQ, no RSS nor DCB */
-	EthMqRxVmdqRss         = C.ETH_MQ_RX_VMDQ_RSS     /** RSS mode with VMDQ */
-	EthMqRxVmdqDcb         = C.ETH_MQ_RX_VMDQ_DCB     /** Use VMDQ+DCB to route traffic to queues */
-	EthMqRxVmdqDcbRss      = C.ETH_MQ_RX_VMDQ_DCB_RSS /** Enable both VMDQ and DCB in VMDq */
+	MqRxNone       uint = C.ETH_MQ_RX_NONE         /** None of DCB,RSS or VMDQ mode */
+	MqRxRss             = C.ETH_MQ_RX_RSS          /** For RX side, only RSS is on */
+	MqRxDcb             = C.ETH_MQ_RX_DCB          /** For RX side,only DCB is on. */
+	MqRxDcbRss          = C.ETH_MQ_RX_DCB_RSS      /** Both DCB and RSS enable */
+	MqRxVmdqOnly        = C.ETH_MQ_RX_VMDQ_ONLY    /** Only VMDQ, no RSS nor DCB */
+	MqRxVmdqRss         = C.ETH_MQ_RX_VMDQ_RSS     /** RSS mode with VMDQ */
+	MqRxVmdqDcb         = C.ETH_MQ_RX_VMDQ_DCB     /** Use VMDQ+DCB to route traffic to queues */
+	MqRxVmdqDcbRss      = C.ETH_MQ_RX_VMDQ_DCB_RSS /** Enable both VMDQ and DCB in VMDq */
 )
 
 // A set of values to identify what method is to be used to transmit
 // packets using multi-TCs.
 const (
-	EthMqTxNone     uint = C.ETH_MQ_TX_NONE      /**< It is in neither DCB nor VT mode. */
-	EthMqTxDcb           = C.ETH_MQ_TX_DCB       /**< For TX side,only DCB is on. */
-	EthMqTxVmdqDcb       = C.ETH_MQ_TX_VMDQ_DCB  /**< For TX side,both DCB and VT is on. */
-	EthMqTxVmdqOnly      = C.ETH_MQ_TX_VMDQ_ONLY /**< Only VT on, no DCB */
+	MqTxNone     uint = C.ETH_MQ_TX_NONE      /**< It is in neither DCB nor VT mode. */
+	MqTxDcb           = C.ETH_MQ_TX_DCB       /**< For TX side,only DCB is on. */
+	MqTxVmdqDcb       = C.ETH_MQ_TX_VMDQ_DCB  /**< For TX side,both DCB and VT is on. */
+	MqTxVmdqOnly      = C.ETH_MQ_TX_VMDQ_ONLY /**< Only VT on, no DCB */
 )
 
-// DevOption represents device option which is then used by
+// Option represents device option which is then used by
 // DevConfigure to setup Ethernet device.
-type DevOption struct {
+type Option struct {
 	f func(*C.struct_rte_eth_conf)
 }
 
@@ -161,25 +161,25 @@ type TxOption struct {
 	f func(*txqConf)
 }
 
-// EthRxMode is used to configure Ethernet device through
-// DevOptEthRxMode option.
-type EthRxMode struct {
+// RxMode is used to configure Ethernet device through
+// OptRxMode option.
+type RxMode struct {
 	// The multi-queue packet distribution mode to be used, e.g. RSS.
-	// See EthMqRx* constants.
+	// See MqRx* constants.
 	MqMode uint
 	// Only used if JUMBO_FRAME enabled.
 	MaxRxPktLen uint32
 	// hdr buf size (header_split enabled).
 	SplitHdrSize uint16
-	// Per-port Rx offloads to be set using DevRxOffload* flags. Only
+	// Per-port Rx offloads to be set using RxOffload* flags. Only
 	// offloads set on rx_offload_capa field on rte_eth_dev_info
 	// structure are allowed to be set.
 	Offloads uint64
 }
 
-// EthRxMode is used to configure Ethernet device through
-// DevOptEthTxMode option.
-type EthTxMode struct {
+// RxMode is used to configure Ethernet device through
+// OptTxMode option.
+type TxMode struct {
 	// TX multi-queues mode.
 	MqMode uint
 	// Per-port Tx offloads to be set using DevTxOffload*
@@ -209,7 +209,7 @@ type EthTxMode struct {
 // The Hf field indicates the different types of IPv4/IPv6 packets to
 // which the RSS hashing must be applied.  Supplying an *rss_hf* equal
 // to zero disables the RSS feature.
-type EthRssConf struct {
+type RssConf struct {
 	/**< If not NULL, 40-byte hash key. */
 	Key []byte
 	/**< Hash functions to apply. */
@@ -218,28 +218,33 @@ type EthRssConf struct {
 
 // A structure used to configure the ring threshold registers of an RX/TX queue
 // for an Ethernet port.
-type EthThresh struct {
-	PThresh uint8 /**< Ring prefetch threshold. */
-	HThresh uint8 /**< Ring host threshold. */
-	WThresh uint8 /**< Ring writeback threshold. */
+type Thresh struct {
+	// Ring prefetch threshold.
+	PThresh uint8
+	// Ring host threshold.
+	HThresh uint8
+	// Ring writeback threshold.
+	WThresh uint8
 }
 
 // A structure used to configure an RX ring of an Ethernet port.
-type EthRxqConf struct {
+type RxqConf struct {
+	Thresh
 	// Drives the freeing of RX descriptors.
 	FreeThresh uint16
 	// Drop packets if no descriptors are available.
 	DropEn uint8
 	// Do not start queue with rte_eth_dev_start().
 	DeferredStart uint8
-	// Per-queue Rx offloads to be set using DevRxOffload* flags.
+	// Per-queue Rx offloads to be set using RxOffload* flags.
 	// Only offloads set on rx_queue_offload_capa or rx_offload_capa
 	// fields on rte_eth_dev_info structure are allowed to be set.
 	Offloads uint64
 }
 
 // A structure used to configure a TX ring of an Ethernet port.
-type EthTxqConf struct {
+type TxqConf struct {
+	Thresh
 	// Drives the setting of RS bit on TXDs.
 	RsThresh uint16
 	// Start freeing TX buffers if there are less free descriptors than this value.
@@ -255,20 +260,20 @@ type EthTxqConf struct {
 // Port is the number of the Ethernet device.
 type Port uint16
 
-// DevOptLinkSpeeds sets allowed speeds for the device.
-// EthLinkSpeedFixed disables link autonegotiation, and a unique speed
+// OptLinkSpeeds sets allowed speeds for the device.
+// LinkSpeedFixed disables link autonegotiation, and a unique speed
 // shall be set. Otherwise, the bitmap defines the set of speeds to be
-// advertised. If the special value EthLinkSpeedAutoneg is used, all
+// advertised. If the special value LinkSpeedAutoneg is used, all
 // speeds supported are advertised.
-func DevOptLinkSpeeds(speeds uint) DevOption {
-	return DevOption{func(ec *C.struct_rte_eth_conf) {
+func OptLinkSpeeds(speeds uint) Option {
+	return Option{func(ec *C.struct_rte_eth_conf) {
 		ec.link_speeds = C.uint(speeds)
 	}}
 }
 
-// DevOptEthRxMode specifies port RX configuration.
-func DevOptEthRxMode(conf EthRxMode) DevOption {
-	return DevOption{func(ec *C.struct_rte_eth_conf) {
+// OptRxMode specifies port RX configuration.
+func OptRxMode(conf RxMode) Option {
+	return Option{func(ec *C.struct_rte_eth_conf) {
 		ec.rxmode = C.struct_rte_eth_rxmode{
 			mq_mode:        uint32(conf.MqMode),
 			max_rx_pkt_len: C.uint(conf.MaxRxPktLen),
@@ -278,9 +283,9 @@ func DevOptEthRxMode(conf EthRxMode) DevOption {
 	}}
 }
 
-// DevOptEthTxMode specifies port TX configuration.
-func DevOptEthTxMode(conf EthTxMode) DevOption {
-	return DevOption{func(ec *C.struct_rte_eth_conf) {
+// OptTxMode specifies port TX configuration.
+func OptTxMode(conf TxMode) Option {
+	return Option{func(ec *C.struct_rte_eth_conf) {
 		ec.txmode = C.struct_rte_eth_txmode{
 			mq_mode:  uint32(conf.MqMode),
 			offloads: C.ulong(conf.Offloads),
@@ -298,28 +303,27 @@ func DevOptEthTxMode(conf EthTxMode) DevOption {
 	}}
 }
 
-// DevOptLoopbackMode specifies loopback operation mode. By default
+// OptLoopbackMode specifies loopback operation mode. By default
 // the value is 0, meaning the loopback mode is disabled.  Read the
 // datasheet of given ethernet controller for details. The possible
 // values of this field are defined in implementation of each driver.
-func DevOptLoopbackMode(mode uint32) DevOption {
-	return DevOption{func(ec *C.struct_rte_eth_conf) {
+func OptLoopbackMode(mode uint32) Option {
+	return Option{func(ec *C.struct_rte_eth_conf) {
 		ec.lpbk_mode = C.uint(mode)
 	}}
 }
 
-// DevOptRss specifies RSS configuration.
-func DevOptRss(conf EthRssConf) DevOption {
-	return DevOption{func(ec *C.struct_rte_eth_conf) {
-		rssKey := (*C.uchar)(nil)
-		if conf.Key != nil && len(conf.Key) > 0 {
-			rssKey = (*C.uchar)(unsafe.Pointer(&conf.Key[0]))
-		}
-		ec.rx_adv_conf.rss_conf = C.struct_rte_eth_rss_conf{
-			rss_key:     rssKey,
+// OptRss specifies RSS configuration.
+func OptRss(conf RssConf) Option {
+	return Option{func(ec *C.struct_rte_eth_conf) {
+		c := C.struct_rte_eth_rss_conf{
 			rss_key_len: C.uchar(len(conf.Key)),
 			rss_hf:      C.ulong(conf.Hf),
 		}
+		if conf.Key != nil && len(conf.Key) > 0 {
+			c.rss_key = (*C.uchar)(unsafe.Pointer(&conf.Key[0]))
+		}
+		ec.rx_adv_conf.rss_conf = c
 	}}
 }
 
@@ -331,8 +335,8 @@ func DevOptRss(conf EthRssConf) DevOption {
 // nrxq and ntxq are the numbers of receive and transmit queues to set
 // up for the Ethernet device, respectively.
 //
-// Several DevOpt* options may be specified as well.
-func (pid Port) DevConfigure(nrxq, ntxq uint16, opts ...DevOption) error {
+// Several Opt* options may be specified as well.
+func (pid Port) DevConfigure(nrxq, ntxq uint16, opts ...Option) error {
 	conf := &C.struct_rte_eth_conf{}
 	for i := range opts {
 		opts[i].f(conf)
@@ -344,9 +348,14 @@ func (pid Port) DevConfigure(nrxq, ntxq uint16, opts ...DevOption) error {
 
 // RxOptConf specifies the configuration an RX ring of an Ethernet
 // port.
-func RxOptConf(conf EthRxqConf) RxOption {
+func RxOptConf(conf RxqConf) RxOption {
 	return RxOption{func(q *rxqConf) {
 		q.rx = C.struct_rte_eth_rxconf{
+			rx_thresh: C.struct_rte_eth_thresh{
+				pthresh: C.uchar(conf.Thresh.PThresh),
+				hthresh: C.uchar(conf.Thresh.HThresh),
+				wthresh: C.uchar(conf.Thresh.WThresh),
+			},
 			rx_free_thresh:    C.ushort(conf.FreeThresh),
 			rx_drop_en:        C.uchar(conf.DropEn),
 			rx_deferred_start: C.uchar(conf.DeferredStart),
@@ -355,39 +364,20 @@ func RxOptConf(conf EthRxqConf) RxOption {
 	}}
 }
 
-// RxOptThresh specifies the configuration of RX ring threshold
-// registers.
-func RxOptThresh(conf EthThresh) RxOption {
-	return RxOption{func(q *rxqConf) {
-		q.rx.rx_thresh = C.struct_rte_eth_thresh{
-			pthresh: C.uchar(conf.PThresh),
-			hthresh: C.uchar(conf.HThresh),
-			wthresh: C.uchar(conf.WThresh),
-		}
-	}}
-}
-
 // TxqOptConf specifies the configuration an TX ring of an Ethernet
 // port.
-func TxqOptConf(conf EthTxqConf) TxOption {
+func TxqOptConf(conf TxqConf) TxOption {
 	return TxOption{func(q *txqConf) {
 		q.tx = C.struct_rte_eth_txconf{
+			tx_thresh: C.struct_rte_eth_thresh{
+				pthresh: C.uchar(conf.Thresh.PThresh),
+				hthresh: C.uchar(conf.Thresh.HThresh),
+				wthresh: C.uchar(conf.Thresh.WThresh),
+			},
 			tx_rs_thresh:      C.ushort(conf.RsThresh),
 			tx_free_thresh:    C.ushort(conf.FreeThresh),
 			tx_deferred_start: C.uchar(conf.DeferredStart),
 			offloads:          C.ulong(conf.Offloads),
-		}
-	}}
-}
-
-// TxqOptThresh specifies the configuration of TX ring threshold
-// registers.
-func TxqOptThresh(conf EthThresh) TxOption {
-	return TxOption{func(q *txqConf) {
-		q.tx.tx_thresh = C.struct_rte_eth_thresh{
-			pthresh: C.uchar(conf.PThresh),
-			hthresh: C.uchar(conf.HThresh),
-			wthresh: C.uchar(conf.WThresh),
 		}
 	}}
 }
