@@ -196,39 +196,44 @@ func (mp *Mempool) Free() {
 	C.rte_mempool_free((*C.struct_rte_mempool)(mp))
 }
 
-// ObjectFunc is an object action for mempool iteration.
-type ObjectFunc func(unsafe.Pointer)
-
 var (
 	mpCb = common.NewRegistryArray()
 )
 
 //export goObjectCb
-func goObjectCb(mp *C.struct_rte_mempool, opaque, obj unsafe.Pointer, obj_idx C.uint) {
+func goObjectCb(mp *C.struct_rte_mempool, opaque, obj unsafe.Pointer, objIdx C.uint) {
 	cb := *(*common.ObjectID)(opaque)
-	fn := mpCb.Read(cb).(ObjectFunc)
-	fn(obj)
+	fn := mpCb.Read(cb).(func([]byte))
+	var b []byte
+	sh := (*reflect.SliceHeader)(unsafe.Pointer(&b))
+	sh.Data = uintptr(obj)
+	sh.Len = int(mp.elt_size)
+	sh.Cap = int(mp.elt_size)
+	fn(b)
+}
+
+// objIterC calls a function for each mempool element. Iterate across
+// all objects attached to a rte_mempool and call the callback
+// function on it.
+//
+// Callback function should conform to rte_mempool_obj_cb_t type.
+func (mp *Mempool) objIterC(fn, opaque unsafe.Pointer) uint32 {
+	objCb := (*C.rte_mempool_obj_cb_t)(fn)
+	cmp := (*C.struct_rte_mempool)(mp)
+	return uint32(C.rte_mempool_obj_iter(cmp, objCb, opaque))
 }
 
 // ObjIter calls a function for each mempool element. Iterate across
 // all objects attached to a rte_mempool and call the callback
 // function on it.
-func (mp *Mempool) ObjIter(fn ObjectFunc) uint32 {
+//
+// Specified callback function receives an argument as a slice with
+// underlying array pointing to the consequent object in the mempool.
+//
+// Returns number of objects iterated.
+func (mp *Mempool) ObjIter(fn func([]byte)) uint32 {
 	cb := mpCb.Create(fn)
 	defer mpCb.Delete(cb)
 
-	objCb := (*C.rte_mempool_obj_cb_t)(C.goObjectCb)
-	cmp := (*C.struct_rte_mempool)(mp)
-	return uint32(C.rte_mempool_obj_iter(cmp, objCb, unsafe.Pointer(&cb)))
-}
-
-// ObjIterC calls a function for each mempool element. Iterate across
-// all objects attached to a rte_mempool and call the callback
-// function on it.
-//
-// Callback function should conform to rte_mempool_obj_cb_t type.
-func (mp *Mempool) ObjIterC(fn, opaque unsafe.Pointer) uint32 {
-	objCb := (*C.rte_mempool_obj_cb_t)(fn)
-	cmp := (*C.struct_rte_mempool)(mp)
-	return uint32(C.rte_mempool_obj_iter(cmp, objCb, opaque))
+	return mp.objIterC(C.goObjectCb, unsafe.Pointer(&cb))
 }

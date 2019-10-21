@@ -48,7 +48,7 @@ func CreateMbufPool(name string, n uint32, dataRoomSize uint16, opts ...Option) 
 	cname := C.CString(name)
 	defer C.free(unsafe.Pointer(cname))
 
-	mbp_priv := &C.struct_rte_pktmbuf_pool_private{
+	mbpPriv := &C.struct_rte_pktmbuf_pool_private{
 		mbuf_data_room_size: C.uint16_t(dataRoomSize),
 		mbuf_priv_size:      C.uint16_t(conf.privDataSize),
 	}
@@ -72,7 +72,7 @@ func CreateMbufPool(name string, n uint32, dataRoomSize uint16, opts ...Option) 
 	}
 
 	// init and populate pool
-	C.rte_pktmbuf_pool_init((*C.struct_rte_mempool)(mp), unsafe.Pointer(mbp_priv))
+	C.rte_pktmbuf_pool_init((*C.struct_rte_mempool)(mp), unsafe.Pointer(mbpPriv))
 
 	if _, err := mp.PopulateDefault(); err != nil {
 		mp.Free()
@@ -80,6 +80,6 @@ func CreateMbufPool(name string, n uint32, dataRoomSize uint16, opts ...Option) 
 	}
 
 	// initialize objects
-	mp.ObjIterC(C.rte_pktmbuf_init, nil)
+	mp.objIterC(C.rte_pktmbuf_init, nil)
 	return mp, nil
 }
