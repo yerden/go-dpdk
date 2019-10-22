@@ -14,6 +14,7 @@ extern void goObjectCb(struct rte_mempool *mp, void *opaque, void *obj, unsigned
 import "C"
 
 import (
+	"reflect"
 	"unsafe"
 
 	"github.com/yerden/go-dpdk/common"
@@ -189,6 +190,14 @@ func (mp *Mempool) PopulateDefault() (int, error) {
 	return common.IntOrErr(rc)
 }
 
+// PopulateAnon adds memory from anonymous mapping for objects in the pool at
+// init. This function mmap an anonymous memory zone that is locked in memory
+// to store the objects of the mempool.
+func (mp *Mempool) PopulateAnon() (int, error) {
+	rc := C.rte_mempool_populate_anon((*C.struct_rte_mempool)(mp))
+	return common.IntOrErr(rc)
+}
+
 // Free the mempool. Unlink the mempool from global list, free the
 // memory chunks, and all memory referenced by the mempool. The
 // objects must not be used by other cores as they will be freed.
@@ -236,4 +245,65 @@ func (mp *Mempool) ObjIter(fn func([]byte)) uint32 {
 	defer mpCb.Delete(cb)
 
 	return mp.objIterC(C.goObjectCb, unsafe.Pointer(&cb))
+}
+
+// IsFull tests if the mempool is full.
+//
+// When cache is enabled, this function has to browse the length of
+// all lcores, so it should not be used in a data path, but only for
+// debug purposes. User-owned mempool caches are not accounted for.
+func (mp *Mempool) IsFull() bool {
+	return C.rte_mempool_full((*C.struct_rte_mempool)(mp)) != 0
+}
+
+// IsEmpty tests if the mempool is empty.
+//
+// When cache is enabled, this function has to browse the length of
+// all lcores, so it should not be used in a data path, but only for
+// debug purposes. User-owned mempool caches are not accounted for.
+func (mp *Mempool) IsEmpty() bool {
+	return C.rte_mempool_empty((*C.struct_rte_mempool)(mp)) != 0
+}
+
+// GetPrivBytes returns private data in an mempool structure in a form
+// of slice of bytes. Feel free to edit the contents of the slice but
+// don't extend it by appending or other tools.
+func (mp *Mempool) GetPrivBytes() []byte {
+	var priv []byte
+	cmp := (*C.struct_rte_mempool)(mp)
+	sh := (*reflect.SliceHeader)(unsafe.Pointer(&priv))
+	sh.Data = uintptr(C.rte_mempool_get_priv(cmp))
+	if sh.Data != 0 {
+		sh.Len = int(cmp.private_data_size)
+		sh.Cap = sh.Len
+	}
+	return priv
+}
+
+// Lookup searches a mempool from its name. Returns mempool or ENOENT
+// error.
+func Lookup(name string) (*Mempool, error) {
+	mp := (*Mempool)(C.rte_mempool_lookup(cGoString(name)))
+	if mp == nil {
+		return nil, common.Errno(nil)
+	}
+	return mp, nil
+}
+
+// GenericPut puts object back into mempool with optional cache.
+func (mp *Mempool) GenericPut(objs []uintptr, cache *Cache) {
+	C.rte_mempool_generic_put(
+		(*C.struct_rte_mempool)(mp),
+		(*unsafe.Pointer)(unsafe.Pointer(&objs[0])),
+		C.uint(len(objs)),
+		(*C.struct_rte_mempool_cache)(cache))
+}
+
+// GenericGet gets object from mempool with optional cache.
+func (mp *Mempool) GenericGet(objs []uintptr, cache *Cache) error {
+	return common.Errno(C.rte_mempool_generic_get(
+		(*C.struct_rte_mempool)(mp),
+		(*unsafe.Pointer)(unsafe.Pointer(&objs[0])),
+		C.uint(len(objs)),
+		(*C.struct_rte_mempool_cache)(cache)))
 }
