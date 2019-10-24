@@ -216,8 +216,10 @@ func (r *Ring) Name() string {
 
 // Lookup searches a ring from its name in RTE_TAILQ_RING, i.e. among
 // those created with Create.
-func Lookup(name string) (*Ring, bool) {
-	rc := makeOpts(name, nil)
-	r := (*Ring)(C.rte_ring_lookup(rc.cname))
-	return r, r != nil
+func Lookup(name string) (*Ring, error) {
+	r := (*Ring)(C.rte_ring_lookup(cGoString(name)))
+	if r == nil {
+		return nil, common.Errno(nil)
+	}
+	return r, nil
 }
