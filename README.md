@@ -2,16 +2,34 @@
 [![Documentation](https://godoc.org/github.com/yerden/go-dpdk?status.svg)](http://godoc.org/github.com/yerden/go-dpdk) [![Go Report Card](https://goreportcard.com/badge/github.com/yerden/go-dpdk)](https://goreportcard.com/report/github.com/yerden/go-dpdk) [![Build Status](https://travis-ci.com/yerden/go-dpdk.svg?branch=master)](https://travis-ci.com/yerden/go-dpdk)
 Go bindings for DPDK library.
 
-# Build prereqs
+# Custom DPDK build
+Currently, build is tested with DPDK 19.08.
+
 If you have your own DPDK distribution build then do:
 ```
 # set path to dpdk installation
-export RTE_SDK=~/work/dpdk
+export RTE_SDK=/path/to/dpdk
 
-# example to Linux@x86_x64
-export RTE_TARGET=x86_64-native-linux-gcc
-export CGO_CFLAGS="-m64 -pthread -O3 -march=native -I$RTE_SDK/$RTE_TARGET/include"
-export CGO_LDFLAGS="-L$RTE_SDK/$RTE_TARGET/lib -ldpdk -lz -lrt -lnuma -ldl -lm"
+# build as shared lib if you need
+# sed -i "s/\(CONFIG_RTE_BUILD_SHARED_LIB\)=\(y\|n\)/\1=y/" $RTE_SDK/config/common_base
+
+# ... build as you want
+export RTE_TARGET=x86_64-native-linuxapp-gcc
+make config T=$RTE_TARGET O=mybuild
+make O=mybuild
+```
+
+You may then use bundled `contrib/env.sh` script to setup DPDK environment.
+You have to either specify path to your build via `DPDK` environment variable.
+Alternatively, you may specify `DPDK_INCLUDE` and `DPDK_LIB` variable which point to
+headers and library binaries. In this case, you should do:
+```
+DPDK=/path/to/dpdk/mybuild . ./contrib/env.sh
+```
+
+You may choose to link static executable, for example for containerized app:
+```
+go test --ldflags '-extldflags "-static"'
 ```
 
 If you use libdpdk-dev from Ubuntu then do:
