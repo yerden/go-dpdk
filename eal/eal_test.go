@@ -9,42 +9,17 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func TestOptions(t *testing.T) {
-	assert := common.Assert(t, true)
-	var opts ealOptions
-
-	// equivalent of "-c f -n 4 --socket-mem=1024,1024 --no-pci -d /path/to/so"
-	options := []Option{
-		OptLcores(MakeSet([]int{4, 5, 7, 9})),
-		OptLcores(MakeSet([]int{0, 1, 2, 3})),
-		OptMemoryChannels(4),
-		OptSocketMemory(1024, 1024),
-		OptNoPCI,
-		OptLoadExternalPath("/path/to/so"),
-	}
-
-	for i := range options {
-		options[i].f(&opts)
-	}
-
-	// first arg is the name of this executable
-	argv := opts.argv()
-	assert(len(argv) == 8)
-	assert(argv[0] == "-c")
-	assert(argv[1] == "f")
-	assert(argv[2] == "-n")
-	assert(argv[3] == "4")
-	assert(argv[4] == "--socket-mem=1024,1024")
-	assert(argv[5] == "--no-pci")
-	assert(argv[6] == "-d")
-	assert(argv[7] == "/path/to/so")
-}
-
 func TestEALInit(t *testing.T) {
 	assert := common.Assert(t, true)
 	var set unix.CPUSet
 	assert(unix.SchedGetaffinity(0, &set) == nil)
-	err := InitWithOpts(OptLcores(&set), OptNoHuge, OptNoPCI, OptMasterLcore(0))
+
+	err := InitWithParams(
+		NewParameter("-c", NewMap(&set)),
+		NewParameter("--no-huge"),
+		NewParameter("--no-pci"),
+		NewParameter("--master-lcore", "0"),
+	)
 	assert(err == nil)
 
 	ch := make(chan uint, set.Count())
