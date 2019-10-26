@@ -216,6 +216,7 @@ func ealInitAndLaunch(args []string) error {
 // each of EAL-owned threads.
 func InitWithArgs(args []string) error {
 	ch := make(chan error, 1)
+	log.Println("EAL parameters:", args)
 	go func() {
 		// we should initialize EAL and run EAL threads in a separate
 		// goroutine because its thread is going to be acquired by EAL
