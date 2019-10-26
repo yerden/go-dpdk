@@ -258,11 +258,11 @@ func Init(input string) error {
 	return InitWithArgs(argv)
 }
 
-// InitWithOpts initializes EAL as in rte_eal_init. Options are
-// specified in array of Option-s. These options are then used to
-// construct argv array and InitWithArgs is then called upon.
-func InitWithOpts(opts ...Option) error {
-	return InitWithArgs(OptArgs(opts))
+// InitWithParams initializes EAL as in rte_eal_init. Options are
+// specified with arrays of parameters which are then joined
+// and InitWithArgs is then called upon.
+func InitWithParams(p ...Parameter) error {
+	return InitWithArgs(Join(p))
 }
 
 // HasHugePages tells if huge pages are activated.
