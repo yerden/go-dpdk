@@ -13,18 +13,23 @@ import (
 )
 
 var (
-	dpdk sync.Once
+	dpdk    sync.Once
+	dpdkErr error
 )
 
-func initEAL(t testing.TB) {
-	assert := common.Assert(t, true)
-	var set unix.CPUSet
-	err := unix.SchedGetaffinity(0, &set)
-	assert(err == nil, err)
+func initEAL() {
 	dpdk.Do(func() {
-		err = eal.InitWithOpts(eal.OptLcores(&set), eal.OptMemory(128),
-			eal.OptNoHuge, eal.OptNoPCI)
-		assert(err == nil, err)
+		var set unix.CPUSet
+		err := unix.SchedGetaffinity(0, &set)
+		if err == nil {
+			err = eal.InitWithParams(
+				eal.NewParameter("-c", eal.NewMap(&set)),
+				eal.NewParameter("-m", "128"),
+				eal.NewParameter("--no-huge"),
+				eal.NewParameter("--no-pci"),
+			)
+		}
+		dpdkErr = err
 	})
 }
 
@@ -32,7 +37,8 @@ func TestMempoolCreateErr(t *testing.T) {
 	assert := common.Assert(t, true)
 
 	// Initialize EAL on all cores
-	initEAL(t)
+	initEAL()
+	assert(dpdkErr == nil, dpdkErr)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -58,7 +64,8 @@ func TestMempoolPriv(t *testing.T) {
 	assert := common.Assert(t, true)
 
 	// Initialize EAL on all cores
-	initEAL(t)
+	initEAL()
+	assert(dpdkErr == nil, dpdkErr)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -88,7 +95,8 @@ func TestMempoolCreate(t *testing.T) {
 	assert := common.Assert(t, true)
 
 	// Initialize EAL on all cores
-	initEAL(t)
+	initEAL()
+	assert(dpdkErr == nil, dpdkErr)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
