@@ -14,24 +14,30 @@ import (
 )
 
 var (
-	dpdk sync.Once
+	dpdk    sync.Once
+	dpdkErr error
 )
 
-func initEAL(t testing.TB) {
-	assert := common.Assert(t, true)
-	var set unix.CPUSet
-	err := unix.SchedGetaffinity(0, &set)
-	assert(err == nil, err)
+func initEAL() {
 	dpdk.Do(func() {
-		err = eal.InitWithOpts(eal.OptLcores(&set), eal.OptMemory(128),
-			eal.OptNoHuge, eal.OptNoPCI)
-		assert(err == nil, err)
+		var set unix.CPUSet
+		err := unix.SchedGetaffinity(0, &set)
+		if err == nil {
+			err = eal.InitWithParams(
+				eal.NewParameter("-c", eal.NewMap(&set)),
+				eal.NewParameter("-m", "128"),
+				eal.NewParameter("--no-huge"),
+				eal.NewParameter("--no-pci"),
+			)
+		}
+		dpdkErr = err
 	})
 }
 
 func TestRingCreate(t *testing.T) {
 	assert := common.Assert(t, true)
-	initEAL(t)
+	initEAL()
+	assert(dpdkErr == nil, dpdkErr)
 	var wg sync.WaitGroup
 
 	wg.Add(1)
@@ -51,7 +57,8 @@ func TestRingCreate(t *testing.T) {
 
 func TestRingInit(t *testing.T) {
 	assert := common.Assert(t, true)
-	initEAL(t)
+	initEAL()
+	assert(dpdkErr == nil, dpdkErr)
 	var wg sync.WaitGroup
 
 	wg.Add(1)
@@ -119,8 +126,9 @@ func min(x, y int) int {
 
 func benchmarkRingUintptr(b *testing.B, burst int) {
 	var wg sync.WaitGroup
-	initEAL(b)
 	assert := common.Assert(b, true)
+	initEAL()
+	assert(dpdkErr == nil, dpdkErr)
 
 	r, err := ring.New("hello", 1024)
 	assert(r != nil && err == nil, err)
