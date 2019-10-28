@@ -76,6 +76,7 @@ func (lc *Lcore) SocketID() uint {
 	return uint(C.rte_socket_id())
 }
 
+// LcoreToSocket return socket id for given lcore ID.
 func LcoreToSocket(id uint) uint {
 	return uint(C.rte_lcore_to_socket_id(C.uint(id)))
 }
