@@ -3,7 +3,7 @@
 cd "$(dirname $0)"
 
 go get golang.org/x/lint/golint
-DIRS="lcore eal ring port"
+DIRS="lcore eal ring port mempool memzone"
 # Add subdirectories here as we clean up golint on each.
 for subdir in $DIRS; do
   pushd $subdir

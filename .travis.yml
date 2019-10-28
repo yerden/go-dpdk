@@ -28,9 +28,11 @@ notifications:
 env:
   global:
     - GO111MODULE=on
-  matrix:
-    - CGO_CFLAGS="-m64 -pthread -O3 -march=native -I/usr/include/dpdk"
-      CGO_LDFLAGS="-L/usr/lib/x86_64-linux-gnu -ldpdk -lz -lrt -lnuma -ldl -lm"
+      DPDK_LIB=/usr/lib/x86_64-linux-gnu
+      DPDK_INCLUDE=/usr/include/dpdk
+  # matrix:
+    # - CGO_CFLAGS="-m64 -pthread -O3 -march=native -I/usr/include/dpdk"
+      # CGO_LDFLAGS="-L/usr/lib/x86_64-linux-gnu -ldpdk -lz -lrt -lnuma -ldl -lm"
 
 matrix:
   fast_finish: true
