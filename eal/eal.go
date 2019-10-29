@@ -236,6 +236,15 @@ func InitWithArgs(args []string) error {
 	return <-ch
 }
 
+// Cleanup releases EAL-allocated resources, ensuring that no hugepage
+// memory is leaked. It is expected that all DPDK applications call
+// rte_eal_cleanup() before exiting. Not calling this function could
+// result in leaking hugepages, leading to failure during
+// initialization of secondary processes.
+func Cleanup() error {
+	return common.Errno(C.rte_eal_cleanup())
+}
+
 func parseCmd(input string) ([]string, error) {
 	s := bufio.NewScanner(strings.NewReader(input))
 	s.Split(common.SplitFunc(common.DefaultSplitter))
