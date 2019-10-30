@@ -29,7 +29,7 @@ func initEAL(t testing.TB) {
 	})
 }
 
-func TestCreateMempoolErr(t *testing.T) {
+func TestMempoolCreateErr(t *testing.T) {
 	assert := common.Assert(t, true)
 
 	// Initialize EAL on all cores
@@ -55,7 +55,37 @@ func TestCreateMempoolErr(t *testing.T) {
 	wg.Wait()
 }
 
-func TestCreateMempool(t *testing.T) {
+func TestMempoolPriv(t *testing.T) {
+	assert := common.Assert(t, true)
+
+	// Initialize EAL on all cores
+	initEAL(t)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	// create and test mempool on master lcore
+	eal.ExecuteOnMaster(func(ctx *eal.Lcore) {
+		defer wg.Done()
+		// create empty mempool
+		n := uint32(10240)
+		mp, err := mempool.CreateEmpty("test_mp",
+			n,    // elements count
+			2048, // size of element
+			mempool.OptSocket(int(ctx.SocketID())),
+			mempool.OptCacheSize(32), // too large
+			mempool.OptOpsName("stack"),
+			mempool.OptPrivateDataSize(1024),
+		)
+		assert(mp != nil && err == nil, err)
+		defer mp.Free()
+
+		priv := mp.GetPrivBytes()
+		assert(len(priv) == 1024, len(priv))
+	})
+	wg.Wait()
+}
+
+func TestMempoolCreate(t *testing.T) {
 	assert := common.Assert(t, true)
 
 	// Initialize EAL on all cores
@@ -97,6 +127,15 @@ func TestCreateMempool(t *testing.T) {
 		})
 		assert(m == int(n), m, n)
 		assert(k == int(n), k, n)
+
+		// lookup
+		mymp, err := mempool.Lookup("test_mp")
+		assert(err == nil, err)
+		assert(mymp == mp, mymp)
+
+		// lookup err
+		_, err = mempool.Lookup("test_mp_nonexistent")
+		assert(err != nil, err)
 	})
 	wg.Wait()
 
