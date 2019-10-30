@@ -4,7 +4,6 @@ import (
 	"sync"
 	"syscall"
 	"testing"
-	"unsafe"
 
 	"golang.org/x/sys/unix"
 
@@ -121,8 +120,9 @@ func TestMempoolCreate(t *testing.T) {
 
 		// iterate all objects
 		k := 0
-		n = mp.ObjIter(func(obj unsafe.Pointer) {
+		n = mp.ObjIter(func(obj []byte) {
 			assert(obj != nil, "obj should be non-nil")
+			assert(len(obj) == 2048, len(obj))
 			k++
 		})
 		assert(m == int(n), m, n)
