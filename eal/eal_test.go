@@ -67,6 +67,13 @@ func TestEALInit(t *testing.T) {
 		})
 	}
 	wg.Wait()
+
+	// kill all lcores, don't do this in app
+	for _, id := range Lcores(false) {
+		ExecuteOnLcore(id, nil)
+	}
+	err = Cleanup()
+	assert(err == nil, err)
 }
 
 func TestParseCmd(t *testing.T) {
