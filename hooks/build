@@ -1,0 +1,10 @@
+#!/bin/bash
+
+docker build \
+	--build-arg BUILD_DATE="$(date --rfc-3339='seconds')" \
+	--build-arg DIST="$DIST" \
+	--build-arg DPDK_VER="$DPDK_VER" \
+	--build-arg GO_VERSION="$GO_VERSION" \
+	-t "$IMAGE_NAME" \
+	-f "$DOCKERFILE_PATH" \
+	.

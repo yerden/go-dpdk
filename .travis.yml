@@ -1,20 +1,9 @@
-language: go
-go:
- - 1.11.x
- - 1.12.x
- - master
+language: minimal
 
 dist: bionic
 
-addons:
-  apt:
-    packages:
-      libdpdk-dev
-      libnuma-dev
-    update: true
-
-before_install:
-  - sudo apt-get install -y libdpdk-dev libnuma-dev
+services:
+ - docker
 
 # Skip the install step. Don't `go get` dependencies. Only build with the code
 # in vendor/
@@ -28,36 +17,16 @@ notifications:
 env:
   global:
     - GO111MODULE=on
-      DPDK_LIB=/usr/lib/x86_64-linux-gnu
-      DPDK_INCLUDE=/usr/include/dpdk
-  # matrix:
-    # - CGO_CFLAGS="-m64 -pthread -O3 -march=native -I/usr/include/dpdk"
-      # CGO_LDFLAGS="-L/usr/lib/x86_64-linux-gnu -ldpdk -lz -lrt -lnuma -ldl -lm"
+  matrix:
+    - GO_VERSION=1.13.4
+      DPDK_VER=v19.08
+    - GO_VERSION=1.13.4
+      DPDK_VER=v18.11
+    - GO_VERSION=1.12.13
+      DPDK_VER=v18.11
 
-matrix:
-  fast_finish: true
-  allow_failures:
-    - go: master
-
-# You don't need to test on very old version of the Go compiler. It's the user's
-# responsibility to keep their compilers up to date.
-jobs:
-  include:
-    - go: 1.9.x
-      install: ./.travis.install.sh
-    - go: 1.10.x
-      install: ./.travis.install.sh
-    - stage: style
-      name: "static/vet/lint"
-      go: 1.x
-      script:
-        - ./.travis.static.sh
-        - ./.travis.govet.sh
-        - ./.travis.golint.sh
-
-stages:
-  - style
-  - test
+before_install:
+  - docker build --build-arg DIST=${TRAVIS_DIST} --build-arg GO_VERSION=${GO_VERSION} --build-arg DPDK_VER=${DPDK_VER} -t test-build .
 
 # Only clone the most recent commit.
 git:
@@ -66,4 +35,8 @@ git:
 # script always runs to completion (set +e). If we have linter issues AND a
 # failing test, we want to see both. Configure golangci-lint with a
 # .golangci.yml file at the top level of your repo.
-script: ./.travis.script.sh
+script:
+  - docker run --rm test-build ./.travis.govet.sh
+  - docker run --rm test-build ./.travis.golint.sh
+  - docker run --rm test-build ./.travis.static.sh
+  - docker run --rm test-build ./.travis.script.sh
