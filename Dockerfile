@@ -10,6 +10,7 @@ RUN apt-get -y update && apt-get -y install \
 		gcc \
 		curl \
 		ibverbs-providers \
+		libibverbs-dev \
 		libmnl-dev \
 		libjansson-dev \
 		libnuma-dev \
