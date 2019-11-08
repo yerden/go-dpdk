@@ -9,19 +9,14 @@ import (
 // Parameter specifies a command line option-argument pair. If
 // keyword Opt doesn't imply argument value, Arg should be "".
 type Parameter struct {
-	Opt, Arg string
+	Opt string
+	Arg []interface{}
 }
 
 // Set mutates Parameter setting new value to option in a form
 // array of values.
 func (p Parameter) Set(a ...interface{}) Parameter {
-	if len(a) > 0 {
-		if arg, ok := a[0].(string); ok {
-			p.Arg = fmt.Sprintf(arg, a[1:]...)
-		} else {
-			p.Arg = fmt.Sprint(a...)
-		}
-	}
+	p.Arg = append(make([]interface{}, 0, len(a)), a...)
 	return p
 }
 
@@ -29,8 +24,12 @@ func (p Parameter) Set(a ...interface{}) Parameter {
 func Join(params []Parameter) []string {
 	argv := make([]string, 0, 2*len(params))
 	for _, p := range params {
-		if argv = append(argv, p.Opt); p.Arg != "" {
-			argv = append(argv, p.Arg)
+		if argv = append(argv, p.Opt); len(p.Arg) == 0 {
+			continue
+		} else if arg, ok := p.Arg[0].(string); ok {
+			argv = append(argv, fmt.Sprintf(arg, p.Arg[1:]...))
+		} else {
+			argv = append(argv, fmt.Sprint(p.Arg...))
 		}
 	}
 	return argv
