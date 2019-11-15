@@ -81,27 +81,31 @@ func TestRingInit(t *testing.T) {
 func TestRingNew(t *testing.T) {
 	assert := common.Assert(t, true)
 
-	n := 1024
+	n := 64
 	r, err := ring.New("test_ring", uint(n))
 	assert(r != nil && err == nil, err)
 	defer r.Free() // should have no effect
 
-	var objIn uintptr
-
 	assert(r.IsEmpty())
 	assert(!r.IsFull())
 	assert(r.Cap() == uint(n)-1, r.Cap())
+	assert(r.FreeCount() == r.Cap(), r.FreeCount(), r.Cap())
 
 	for i := 0; i < int(r.Cap()); i++ {
-		objIn = uintptr(i)
-		assert(r.SpEnqueue(objIn), i)
+		objIn := unsafe.Pointer(uintptr(i))
+		assert(r.Count() == uint(i), r.Count())
+		assert(r.FreeCount() == r.Cap()-uint(i), r.Count())
+		assert(r.FreeCount()+r.Count() == r.Cap())
+		cons, free := r.SpEnqueueBulk([]unsafe.Pointer{objIn})
+		assert(cons == 1, cons, i)
+		assert(free == uint32(r.FreeCount()), free, r.FreeCount())
 	}
 
 	assert(!r.IsEmpty())
 	assert(r.IsFull())
 	for i := 0; i < int(r.Cap()); i++ {
 		objOut, ok := r.ScDequeue()
-		assert(uintptr(i) == objOut && ok)
+		assert(uintptr(i) == uintptr(objOut) && ok, i)
 	}
 
 	assert(r.IsEmpty())
@@ -136,7 +140,7 @@ func benchmarkRingUintptr(b *testing.B, burst int) {
 	sender := func(n int) {
 		defer wg.Done()
 		i := 0
-		buf := make([]uintptr, burst)
+		buf := make([]unsafe.Pointer, burst)
 		for i < n {
 			k, _ := r.SpEnqueueBulk(buf[:burst])
 			i += int(k)
@@ -145,7 +149,7 @@ func benchmarkRingUintptr(b *testing.B, burst int) {
 
 	receiver := func(n int) {
 		defer wg.Done()
-		buf := make([]uintptr, burst)
+		buf := make([]unsafe.Pointer, burst)
 		i := 0
 		for i < n {
 			k, _ := r.ScDequeueBulk(buf)
