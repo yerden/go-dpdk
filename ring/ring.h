@@ -1,12 +1,20 @@
 #ifndef _RING_H_
 #define _RING_H_
 
+struct compound_int {
+	unsigned int n;
+	unsigned int rc;
+};
+
+typedef void * ptr_t;
+
 #define GO_RING_FUNC(func)                                 \
-static int func(struct rte_ring *r,                        \
-    uintptr_t *objs, unsigned int n,                       \
-    unsigned int *ptr) {                                   \
+static struct compound_int func(struct rte_ring *r,        \
+    uintptr_t objs, unsigned int n) {                      \
+  struct compound_int out;                                 \
   void **obj_table = (typeof(obj_table))objs;              \
-  return rte_ring_ ## func(r, obj_table, n, ptr);          \
+  out.rc = rte_ring_ ## func(r, obj_table, n, &out.n);     \
+  return out;                                              \
 }
 
 // wrap dequeue API
