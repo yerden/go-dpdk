@@ -91,8 +91,11 @@ func TestRingNew(t *testing.T) {
 	assert(r.Cap() == uint(n)-1, r.Cap())
 	assert(r.FreeCount() == r.Cap(), r.FreeCount(), r.Cap())
 
+	// test array
+	array := make([]int, r.Cap())
+
 	for i := 0; i < int(r.Cap()); i++ {
-		objIn := unsafe.Pointer(uintptr(i))
+		objIn := unsafe.Pointer(&array[i])
 		assert(r.Count() == uint(i), r.Count())
 		assert(r.FreeCount() == r.Cap()-uint(i), r.Count())
 		assert(r.FreeCount()+r.Count() == r.Cap())
@@ -105,7 +108,7 @@ func TestRingNew(t *testing.T) {
 	assert(r.IsFull())
 	for i := 0; i < int(r.Cap()); i++ {
 		objOut, ok := r.ScDequeue()
-		assert(uintptr(i) == uintptr(objOut) && ok, i)
+		assert(objOut == unsafe.Pointer(&array[i]) && ok, i)
 	}
 
 	assert(r.IsEmpty())
