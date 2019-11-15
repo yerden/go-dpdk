@@ -291,7 +291,7 @@ func Lookup(name string) (*Mempool, error) {
 }
 
 // GenericPut puts object back into mempool with optional cache.
-func (mp *Mempool) GenericPut(objs []uintptr, cache *Cache) {
+func (mp *Mempool) GenericPut(objs []unsafe.Pointer, cache *Cache) {
 	C.rte_mempool_generic_put(
 		(*C.struct_rte_mempool)(mp),
 		(*unsafe.Pointer)(unsafe.Pointer(&objs[0])),
@@ -300,7 +300,7 @@ func (mp *Mempool) GenericPut(objs []uintptr, cache *Cache) {
 }
 
 // GenericGet gets object from mempool with optional cache.
-func (mp *Mempool) GenericGet(objs []uintptr, cache *Cache) error {
+func (mp *Mempool) GenericGet(objs []unsafe.Pointer, cache *Cache) error {
 	return common.Errno(C.rte_mempool_generic_get(
 		(*C.struct_rte_mempool)(mp),
 		(*unsafe.Pointer)(unsafe.Pointer(&objs[0])),
