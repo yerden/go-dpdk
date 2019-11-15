@@ -181,6 +181,11 @@ func (r *Ring) Free() {
 	C.rte_ring_free((*C.struct_rte_ring)(r))
 }
 
+// Count returns the number of entries in a ring.
+func (r *Ring) Count() uint {
+	return uint(C.rte_ring_count((*C.struct_rte_ring)(r)))
+}
+
 // Size returns the size of the ring.
 //
 // NOTE: this is not the same as the usable space in the ring. To
