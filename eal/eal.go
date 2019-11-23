@@ -49,19 +49,16 @@ const (
 	ProcSecondary = C.RTE_PROC_SECONDARY
 )
 
-// LcoreFunc is the function prototype to be executed by EAL-owned
-// threads.
-type LcoreFunc func(*Lcore)
-
-// Lcore is a per-lcore context and is supplied to LcoreFunc as an
-// argument.
+// Lcore is a per-lcore context and is supplied to function running to
+// particular lcore.
 type Lcore struct {
 	// Value is a user-specified context. You may change it as you
-	// will and it will persist across LcoreFunc invocations.
+	// will and it will persist across function invocations on
+	// particular lcore.
 	Value interface{}
 
-	// channel to receive LcoreFunc to execute.
-	ch chan LcoreFunc
+	// channel to receive functions to execute.
+	ch chan func(*Lcore)
 }
 
 // ID returns CPU logical core id. This function must be called only
@@ -90,7 +87,7 @@ var (
 	goEAL = &ealConfig{make(map[uint]*Lcore)}
 )
 
-func panicCatcher(fn LcoreFunc, lc *Lcore) {
+func panicCatcher(fn func(*Lcore), lc *Lcore) {
 	defer func() {
 		r := recover()
 		if r == nil {
@@ -141,7 +138,7 @@ func lcoreFuncListener(unsafe.Pointer) C.int {
 // ExecuteOnLcore sends fn to execute on CPU logical core lcoreID, i.e
 // in EAL-owned thread on that lcore. If lcoreID references unknown
 // lcore (i.e. not registered by EAL) the function does nothing.
-func ExecuteOnLcore(lcoreID uint, fn LcoreFunc) {
+func ExecuteOnLcore(lcoreID uint, fn func(*Lcore)) {
 	if lc, ok := goEAL.lcores[lcoreID]; ok {
 		lc.ch <- fn
 	}
@@ -149,7 +146,7 @@ func ExecuteOnLcore(lcoreID uint, fn LcoreFunc) {
 
 // ExecuteOnMaster is a shortcut for ExecuteOnLcore with master lcore
 // as a destination.
-func ExecuteOnMaster(fn LcoreFunc) {
+func ExecuteOnMaster(fn func(*Lcore)) {
 	ExecuteOnLcore(GetMasterLcore(), fn)
 }
 
@@ -199,7 +196,7 @@ func ealInitAndLaunch(args []string) error {
 
 	// init per-lcore contexts
 	for _, id := range Lcores(false) {
-		goEAL.lcores[id] = &Lcore{ch: make(chan LcoreFunc, 1)}
+		goEAL.lcores[id] = &Lcore{ch: make(chan func(*Lcore), 1)}
 	}
 
 	// lcore function
