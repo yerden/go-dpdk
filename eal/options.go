@@ -7,7 +7,7 @@ import (
 )
 
 // Parameter specifies a command line option-argument pair. If
-// keyword Opt doesn't imply argument value, Arg should be "".
+// keyword Opt doesn't imply argument value, Arg should be nil.
 type Parameter struct {
 	Opt string
 	Arg []interface{}

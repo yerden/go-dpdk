@@ -101,7 +101,7 @@ func copySet(dst, src Set) int {
 
 // NewMap creates instance of a Map.
 //
-// i may represent a Set, an array of a slice of integers, a map with
+// i may represent a Set, an array or a slice of integers, a map with
 // integer keys. Otherwise, the function would panic.
 func NewMap(i interface{}) *Map {
 	m := &Map{}
