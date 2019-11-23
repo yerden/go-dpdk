@@ -1,3 +1,7 @@
+/*
+Package common contains basic routines needed by other modules in
+go-dpdk package.
+*/
 package common
 
 /*
