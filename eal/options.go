@@ -35,12 +35,16 @@ func Join(params []Parameter) []string {
 	return argv
 }
 
+func isBadChar(r rune) bool {
+	return unicode.IsSpace(r) || !unicode.IsGraphic(r)
+}
+
 // NewParameter creates new Parameter with opt as a keyword and an
 // optional array of values which constitute opt's value.
 //
 // Panic will be emitted if opt contains whitespace.
 func NewParameter(opt string, a ...interface{}) Parameter {
-	if strings.IndexFunc(opt, unicode.IsSpace) < 0 {
+	if strings.IndexFunc(opt, isBadChar) < 0 {
 		return Parameter{Opt: opt}.Set(a...)
 	}
 	panic("invalid option '" + opt + "'")
