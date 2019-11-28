@@ -39,9 +39,9 @@ import (
 const (
 	RxOffloadVlanStrip      uint64 = C.DEV_RX_OFFLOAD_VLAN_STRIP
 	RxOffloadIpv4Cksum             = C.DEV_RX_OFFLOAD_IPV4_CKSUM
-	RxOffloadUdpCksum              = C.DEV_RX_OFFLOAD_UDP_CKSUM
-	RxOffloadTcpCksum              = C.DEV_RX_OFFLOAD_TCP_CKSUM
-	RxOffloadTcpLro                = C.DEV_RX_OFFLOAD_TCP_LRO
+	RxOffloadUDPCksum              = C.DEV_RX_OFFLOAD_UDP_CKSUM
+	RxOffloadTCPCksum              = C.DEV_RX_OFFLOAD_TCP_CKSUM
+	RxOffloadTCPLro                = C.DEV_RX_OFFLOAD_TCP_LRO
 	RxOffloadQinqStrip             = C.DEV_RX_OFFLOAD_QINQ_STRIP
 	RxOffloadOuterIpv4Cksum        = C.DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM
 	RxOffloadMacsecStrip           = C.DEV_RX_OFFLOAD_MACSEC_STRIP
@@ -53,12 +53,12 @@ const (
 	RxOffloadTimestamp             = C.DEV_RX_OFFLOAD_TIMESTAMP
 	RxOffloadSecurity              = C.DEV_RX_OFFLOAD_SECURITY
 	// RxOffloadKeepCrc        = C.DEV_RX_OFFLOAD_KEEP_CRC
-	// RxOffloadSctpCksum      = C.DEV_RX_OFFLOAD_SCTP_CKSUM
-	// RxOffloadOuterUdpCksum  = C.DEV_RX_OFFLOAD_OUTER_UDP_CKSUM
+	// RxOffloadSCTPCksum      = C.DEV_RX_OFFLOAD_SCTP_CKSUM
+	// RxOffloadOuterUDPCksum  = C.DEV_RX_OFFLOAD_OUTER_UDP_CKSUM
 
 	RxOffloadChecksum = (RxOffloadIpv4Cksum |
-		RxOffloadUdpCksum |
-		RxOffloadTcpCksum)
+		RxOffloadUDPCksum |
+		RxOffloadTCPCksum)
 	RxOffloadVlan = (RxOffloadVlanStrip |
 		RxOffloadVlanFilter |
 		RxOffloadVlanExtend)
@@ -68,11 +68,11 @@ const (
 const (
 	TxOffloadVlanInsert     uint64 = C.DEV_TX_OFFLOAD_VLAN_INSERT
 	TxOffloadIpv4Cksum             = C.DEV_TX_OFFLOAD_IPV4_CKSUM
-	TxOffloadUdpCksum              = C.DEV_TX_OFFLOAD_UDP_CKSUM
-	TxOffloadTcpCksum              = C.DEV_TX_OFFLOAD_TCP_CKSUM
-	TxOffloadSctpCksum             = C.DEV_TX_OFFLOAD_SCTP_CKSUM
-	TxOffloadTcpTso                = C.DEV_TX_OFFLOAD_TCP_TSO
-	TxOffloadUdpTso                = C.DEV_TX_OFFLOAD_UDP_TSO
+	TxOffloadUDPCksum              = C.DEV_TX_OFFLOAD_UDP_CKSUM
+	TxOffloadTCPCksum              = C.DEV_TX_OFFLOAD_TCP_CKSUM
+	TxOffloadSCTPCksum             = C.DEV_TX_OFFLOAD_SCTP_CKSUM
+	TxOffloadTCPTso                = C.DEV_TX_OFFLOAD_TCP_TSO
+	TxOffloadUDPTso                = C.DEV_TX_OFFLOAD_UDP_TSO
 	TxOffloadOuterIpv4Cksum        = C.DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM
 	TxOffloadQinqInsert            = C.DEV_TX_OFFLOAD_QINQ_INSERT
 	TxOffloadVxlanTnlTso           = C.DEV_TX_OFFLOAD_VXLAN_TNL_TSO
@@ -85,7 +85,7 @@ const (
 	TxOffloadMbufFastFree          = C.DEV_TX_OFFLOAD_MBUF_FAST_FREE
 	TxOffloadSecurity              = C.DEV_TX_OFFLOAD_SECURITY
 	// TxOffloadIpTnlTso       = C.DEV_TX_OFFLOAD_IP_TNL_TSO
-	// TxOffloadOuterUdpCksum  = C.DEV_TX_OFFLOAD_OUTER_UDP_CKSUM
+	// TxOffloadOuterUDPCksum  = C.DEV_TX_OFFLOAD_OUTER_UDP_CKSUM
 	// TxOffloadMatchMetadata  = C.DEV_TX_OFFLOAD_MATCH_METADATA
 )
 
@@ -144,7 +144,7 @@ type qConf struct {
 	tx     C.struct_rte_eth_txconf
 }
 
-// Option represents an option which is used to setup RX/TX queue on
+// QueueOption represents an option which is used to setup RX/TX queue on
 // Ethernet device.
 type QueueOption struct {
 	f func(*qConf)
@@ -166,7 +166,7 @@ type RxMode struct {
 	Offloads uint64
 }
 
-// RxMode is used to configure Ethernet device through
+// TxMode is used to configure Ethernet device through
 // OptTxMode option.
 type TxMode struct {
 	// TX multi-queues mode.
@@ -185,11 +185,11 @@ type TxMode struct {
 	HwVlanInsertPvid bool
 }
 
-// A structure used to configure the Receive Side Scaling (RSS)
-// feature of an Ethernet port.  If not nil, the Key points to an
-// array holding the RSS key to use for hashing specific header fields
-// of received packets.  Otherwise, a default random hash key is used
-// by the device driver.
+// RssConf is a structure used to configure the Receive Side Scaling
+// (RSS) feature of an Ethernet port.  If not nil, the Key points to
+// an array holding the RSS key to use for hashing specific header
+// fields of received packets.  Otherwise, a default random hash key
+// is used by the device driver.
 //
 // To maintain compatibility the Key should be 40 bytes long.  To be
 // compatible, this length will be checked in i40e only. Others assume
@@ -205,8 +205,8 @@ type RssConf struct {
 	Hf uint64
 }
 
-// A structure used to configure the ring threshold registers of an RX/TX queue
-// for an Ethernet port.
+// Thresh is a structure used to configure the ring threshold
+// registers of an RX/TX queue for an Ethernet port.
 type Thresh struct {
 	// Ring prefetch threshold.
 	PThresh uint8
@@ -216,7 +216,8 @@ type Thresh struct {
 	WThresh uint8
 }
 
-// A structure used to configure an RX ring of an Ethernet port.
+// RxqConf is a s tructure used to configure an RX ring of an Ethernet
+// port.
 type RxqConf struct {
 	Thresh
 	// Drives the freeing of RX descriptors.
@@ -231,12 +232,14 @@ type RxqConf struct {
 	Offloads uint64
 }
 
-// A structure used to configure a TX ring of an Ethernet port.
+// TxqConf is a structure used to configure a TX ring of an Ethernet
+// port.
 type TxqConf struct {
 	Thresh
 	// Drives the setting of RS bit on TXDs.
 	RsThresh uint16
-	// Start freeing TX buffers if there are less free descriptors than this value.
+	// Start freeing TX buffers if there are less free descriptors
+	// than this value.
 	FreeThresh uint16
 	// Do not start queue with rte_eth_dev_start().
 	DeferredStart uint8
@@ -407,18 +410,14 @@ func OptSocket(socket int) QueueOption {
 // mp is the pointer to the memory pool from which to allocate
 // *rte_mbuf* network memory buffers to populate each descriptor of
 // the receive ring.
-
-// OptSocket specifies the socket identifier in case of NUMA.  The
-// value can be *SOCKET_ID_ANY* if there is no NUMA constraint for the
-// DMA memory allocated for the receive descriptors of the ring.
 //
-// OptRxqConf specifies the configuration data to be used for the
-// receive queue.  The *rx_conf* structure contains an *rx_thresh*
-// structure with the values of the Prefetch, Host, and Write-Back
-// threshold registers of the receive ring.  In addition it contains
-// the hardware offloads features to activate using the
-// DEV_RX_OFFLOAD_* flags.  If an offloading set in rx_conf->offloads
-// hasn't been set in the input argument eth_conf->rxmode.offloads to
+// opts specifies the configuration data to be used for the receive
+// queue.  The *rx_conf* structure contains an *rx_thresh* structure
+// with the values of the Prefetch, Host, and Write-Back threshold
+// registers of the receive ring.  In addition it contains the
+// hardware offloads features to activate using the DEV_RX_OFFLOAD_*
+// flags.  If an offloading set in rx_conf->offloads hasn't been set
+// in the input argument eth_conf->rxmode.offloads to
 // rte_eth_dev_configure(), it is a new added offloading, it must be
 // per-queue type and it is enabled for the queue.  No need to repeat
 // any bit in rx_conf->offloads which has already been enabled in
@@ -600,7 +599,7 @@ func (pid Port) PromiscDisable() {
 	C.rte_eth_promiscuous_disable(C.ushort(pid))
 }
 
-// SetLinkUp links up an Ethernet device.
+// SetLinkUp set link status to 'up' an Ethernet device.
 //
 // Set device link up will re-enable the device rx/tx
 // functionality after it is previously set device linked down.
@@ -614,7 +613,7 @@ func (pid Port) SetLinkUp() error {
 	return err(C.rte_eth_dev_set_link_up(C.ushort(pid)))
 }
 
-// Link down an Ethernet device.
+// SetLinkDown set link status to 'down' an Ethernet device.
 // The device rx/tx functionality will be disabled if success,
 // and it can be re-enabled with a call to
 // rte_eth_dev_set_link_up().
