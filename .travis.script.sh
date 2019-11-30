@@ -2,13 +2,14 @@
 
 set -ev
 
-export CGO_CFLAGS="-mssse3 -msse4.1 -msse4.2 `pkg-config --cflags libdpdk`"
-export CGO_LDFLAGS=`pkg-config --libs libdpdk`
+TAGS=$1
 
-go test github.com/yerden/go-dpdk/common
-go test github.com/yerden/go-dpdk/lcore
-go test github.com/yerden/go-dpdk/eal
-go test github.com/yerden/go-dpdk/ring
-go test github.com/yerden/go-dpdk/mempool
-go test github.com/yerden/go-dpdk/memzone
-go test github.com/yerden/go-dpdk/port
+export CGO_CFLAGS_ALLOW=".*"
+export CGO_LDFLAGS_ALLOW=".*"
+export CGO_LDFLAGS="-Wl,--dynamic-linker=/lib64/ld-linux-x86-64.so.2"
+
+DIRS="common lcore eal ring mempool memzone"
+echo "Testing $TAGS"
+for subdir in $DIRS; do
+  go test -tags $TAGS github.com/yerden/go-dpdk/$subdir
+done
