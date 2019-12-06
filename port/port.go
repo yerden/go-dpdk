@@ -77,6 +77,14 @@ type Writer struct {
 	Port unsafe.Pointer
 }
 
+func err(n ...interface{}) error {
+	if len(n) == 0 {
+		return common.RteErrno()
+	}
+
+	return common.IntToErr(n[0])
+}
+
 // XXX: we need to wrap calls which are not performance bottlenecks.
 
 // NewReader creates new Reader. ReaderParams and destination NUMA
@@ -92,7 +100,7 @@ func NewReader(p ReaderParams, socket int) *Reader {
 
 // Free destroys once created Reader port.
 func (rd *Reader) Free() error {
-	return common.Errno(C.go_rd_free(unsafe.Pointer(rd.Ops), rd.Port))
+	return err(C.go_rd_free(unsafe.Pointer(rd.Ops), rd.Port))
 }
 
 // NewWriter creates new Writer. ReaderParams and destination NUMA
@@ -108,5 +116,5 @@ func NewWriter(p WriterParams, socket int) *Writer {
 
 // Free destroys once created Writer port.
 func (wr *Writer) Free() error {
-	return common.Errno(C.go_wr_free(unsafe.Pointer(wr.Ops), wr.Port))
+	return err(C.go_wr_free(unsafe.Pointer(wr.Ops), wr.Port))
 }
