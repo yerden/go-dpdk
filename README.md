@@ -45,3 +45,23 @@ sudo yum install zlib-devel numactl-devel dpdk-devel
 export CGO_CFLAGS="-m64 -pthread -O3 -march=native -I/usr/include/dpdk"
 export CGO_LDFLAGS="-L/usr/lib64 -ldpdk -lz -lrt -lnuma -ldl -lm"
 ```
+
+# Meson build
+
+go-dpdk supports compiling with the new DPDK building system based on
+meson. This approach implies that DPDK libraries and drivers are
+installed globally onto the system and the use of pkg-config is
+encouraged to do static or dynamic linking.
+
+To support this type of DPDK build, you should specify 'static' or
+'shared' tag to Go compiler, for example `go build -tags static` for
+static linking.
+
+Due to Cgo usage considerations you should also allow any flag
+returned by pkg-config. Also, on some systems you'd have to specify a
+path to dynamic linker:
+```
+export CGO_CFLAGS_ALLOW=".*"
+export CGO_LDFLAGS_ALLOW=".*"
+export CGO_LDFLAGS="-Wl,--dynamic-linker=/lib64/ld-linux-x86-64.so.2"
+```
