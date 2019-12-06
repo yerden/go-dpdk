@@ -48,17 +48,8 @@ func errno(n int64) error {
 }
 
 // RteErrno returns rte_errno variable.
-func RteErrno() int {
-	return int(C.rteErrno())
-}
-
-func tryErrno(n interface{}) (x int64) {
-	if n == nil {
-		x = int64(C.rteErrno())
-	} else {
-		x = reflect.ValueOf(n).Int()
-	}
-	return x
+func RteErrno() error {
+	return errno(int64(C.rteErrno()))
 }
 
 // IntOrErr returns error as in Errno in case n is negative.
@@ -67,17 +58,16 @@ func tryErrno(n interface{}) (x int64) {
 // If n is nil, then n = RteErrno()
 // if n is not nil and not a signed integer, function panics.
 func IntOrErr(n interface{}) (int, error) {
-	x := tryErrno(n)
+	x := reflect.ValueOf(n).Int()
 	if x >= 0 {
 		return int(x), nil
 	}
 	return 0, errno(x)
 }
 
-// Errno converts return value of C function into meaningful error.
-//
-// If n is nil, then n = RteErrno()
-// if n is not nil and not a signed integer, function panics.
-func Errno(n interface{}) error {
-	return errno(tryErrno(n))
+// IntToErr converts n into an 'errno' error. If n is not a signed
+// integer it will panic.
+func IntToErr(n interface{}) error {
+	x := reflect.ValueOf(n).Int()
+	return errno(x)
 }
