@@ -15,8 +15,6 @@ import "C"
 import (
 	"syscall"
 	"unsafe"
-
-	"github.com/yerden/go-dpdk/common"
 )
 
 // CreateMbufPool creates mempool of mbufs. See CreateEmpty options
@@ -57,7 +55,7 @@ func CreateMbufPool(name string, n uint32, dataRoomSize uint16, opts ...Option) 
 	mp := (*Mempool)(C.rte_mempool_create_empty(cname, C.uint(n), eltSize,
 		conf.cacheSize, C.sizeof_struct_rte_pktmbuf_pool_private, conf.socket, 0))
 	if mp == nil {
-		return nil, common.Errno(nil)
+		return nil, err()
 	}
 
 	if conf.opsName == nil {

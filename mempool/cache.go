@@ -7,10 +7,8 @@ package mempool
 import "C"
 
 import (
-	// "reflect"
-	// "unsafe"
-
-	"github.com/yerden/go-dpdk/common"
+// "reflect"
+// "unsafe"
 )
 
 // Cache is a structure that stores a per-core object cache. This can
@@ -29,7 +27,7 @@ func CreateCache(opts ...Option) (*Cache, error) {
 
 	mpc := C.rte_mempool_cache_create(conf.cacheSize, conf.socket)
 	if mpc == nil {
-		return nil, common.Errno(nil)
+		return nil, err()
 	}
 	return (*Cache)(mpc), nil
 }
