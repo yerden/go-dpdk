@@ -77,6 +77,14 @@ var (
 	OptES = OptFlag(ExactSize)
 )
 
+func err(n ...interface{}) error {
+	if len(n) == 0 {
+		return common.RteErrno()
+	}
+
+	return common.IntToErr(n[0])
+}
+
 // OptSocket specifies the socket id where the memzone would be
 // created in Create.
 func OptSocket(socket uint) Option {
@@ -120,7 +128,7 @@ func Create(name string, count uint, opts ...Option) (*Ring, error) {
 	rc := makeOpts(name, opts)
 	r := (*Ring)(C.rte_ring_create(rc.cname, C.uint(count), rc.socket, rc.flags))
 	if r == nil {
-		return nil, common.Errno(nil)
+		return nil, err()
 	}
 	return r, nil
 }
@@ -140,7 +148,7 @@ func Create(name string, count uint, opts ...Option) (*Ring, error) {
 // processes.
 func (r *Ring) Init(name string, count uint, opts ...Option) error {
 	rc := makeOpts(name, opts)
-	return common.Errno(C.rte_ring_init((*C.struct_rte_ring)(r), rc.cname,
+	return err(C.rte_ring_init((*C.struct_rte_ring)(r), rc.cname,
 		C.uint(count), rc.flags))
 }
 
@@ -224,7 +232,7 @@ func (r *Ring) Name() string {
 func Lookup(name string) (*Ring, error) {
 	r := (*Ring)(C.rte_ring_lookup(cGoString(name)))
 	if r == nil {
-		return nil, common.Errno(nil)
+		return nil, err()
 	}
 	return r, nil
 }
