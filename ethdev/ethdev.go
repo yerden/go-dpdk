@@ -249,6 +249,14 @@ type TxqConf struct {
 // Port is the number of the Ethernet device.
 type Port uint16
 
+func err(n ...interface{}) error {
+	if len(n) == 0 {
+		return common.RteErrno()
+	}
+
+	return common.IntToErr(n[0])
+}
+
 // OptLinkSpeeds sets allowed speeds for the device.
 // LinkSpeedFixed disables link autonegotiation, and a unique speed
 // shall be set. Otherwise, the bitmap defines the set of speeds to be
@@ -331,7 +339,7 @@ func (pid Port) DevConfigure(nrxq, ntxq uint16, opts ...Option) error {
 		opts[i].f(conf)
 	}
 
-	return common.Errno(C.rte_eth_dev_configure(C.ushort(pid), C.ushort(nrxq),
+	return err(C.rte_eth_dev_configure(C.ushort(pid), C.ushort(nrxq),
 		C.ushort(nrxq), conf))
 }
 
@@ -436,7 +444,7 @@ func (pid Port) RxqSetup(qid, nDesc uint16, mp *mempool.Mempool, opts ...QueueOp
 		opts[i].f(conf)
 	}
 
-	return common.Errno(C.rte_eth_rx_queue_setup(C.ushort(pid), C.ushort(qid),
+	return err(C.rte_eth_rx_queue_setup(C.ushort(pid), C.ushort(qid),
 		C.ushort(nDesc), C.uint(conf.socket), &conf.rx,
 		(*C.struct_rte_mempool)(unsafe.Pointer(mp))))
 }
@@ -499,7 +507,7 @@ func (pid Port) TxqSetup(qid, nDesc uint16, opts ...QueueOption) error {
 		opts[i].f(conf)
 	}
 
-	return common.Errno(C.rte_eth_tx_queue_setup(C.ushort(pid), C.ushort(qid),
+	return err(C.rte_eth_tx_queue_setup(C.ushort(pid), C.ushort(qid),
 		C.ushort(nDesc), C.uint(conf.socket), &conf.tx))
 }
 
@@ -543,7 +551,7 @@ func (pid Port) TxqSetup(qid, nDesc uint16, opts ...QueueOption) error {
 //
 //   - (-EAGAIN) if the reset temporarily failed and should be retried later.
 func (pid Port) Reset() error {
-	return common.Errno(C.rte_eth_dev_reset(C.ushort(pid)))
+	return err(C.rte_eth_dev_reset(C.ushort(pid)))
 }
 
 // Start an Ethernet device.
@@ -564,7 +572,7 @@ func (pid Port) Reset() error {
 //
 // - <0: Error code of the driver device start function.
 func (pid Port) Start() error {
-	return common.Errno(C.rte_eth_dev_start(C.ushort(pid)))
+	return err(C.rte_eth_dev_start(C.ushort(pid)))
 }
 
 // Stop an Ethernet device. The device can be restarted with a call to
@@ -603,7 +611,7 @@ func (pid Port) PromiscDisable() {
 //
 //   - <0: Error code of the driver device link up function.
 func (pid Port) SetLinkUp() error {
-	return common.Errno(C.rte_eth_dev_set_link_up(C.ushort(pid)))
+	return err(C.rte_eth_dev_set_link_up(C.ushort(pid)))
 }
 
 // Link down an Ethernet device.
@@ -617,5 +625,5 @@ func (pid Port) SetLinkUp() error {
 //
 //   - <0: Error code of the driver device link down function.
 func (pid Port) SetLinkDown() error {
-	return common.Errno(C.rte_eth_dev_set_link_down(C.ushort(pid)))
+	return err(C.rte_eth_dev_set_link_down(C.ushort(pid)))
 }
