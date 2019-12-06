@@ -75,6 +75,14 @@ type Option struct {
 	f func(*conf)
 }
 
+func err(n ...interface{}) error {
+	if len(n) == 0 {
+		return common.RteErrno()
+	}
+
+	return common.IntToErr(n[0])
+}
+
 // OptSocket specifies the socket id where the memzone would be
 // created.
 func OptSocket(socket uint) Option {
@@ -157,7 +165,7 @@ func Reserve(name string, size uintptr, opts ...Option) (*Memzone, error) {
 	rc := makeOpts(name, size, opts)
 	mz := (*Memzone)(doReserve(rc))
 	if mz == nil {
-		return nil, common.Errno(nil)
+		return nil, err()
 	}
 	return mz, nil
 }
@@ -166,14 +174,14 @@ func Reserve(name string, size uintptr, opts ...Option) (*Memzone, error) {
 func Lookup(name string) (*Memzone, error) {
 	mz := (*Memzone)(C.rte_memzone_lookup(cGoString(name)))
 	if mz == nil {
-		return nil, common.Errno(nil)
+		return nil, err()
 	}
 	return mz, nil
 }
 
 // Free a memzone. EINVAL (invalid parameter) may be returned.
 func (mz *Memzone) Free() error {
-	return common.Errno(C.rte_memzone_free((*C.struct_rte_memzone)(mz)))
+	return err(C.rte_memzone_free((*C.struct_rte_memzone)(mz)))
 }
 
 var (
