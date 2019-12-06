@@ -61,6 +61,14 @@ type Lcore struct {
 	ch chan func(*Lcore)
 }
 
+func err(n ...interface{}) error {
+	if len(n) == 0 {
+		return common.RteErrno()
+	}
+
+	return common.IntToErr(n[0])
+}
+
 // ID returns CPU logical core id. This function must be called only
 // in EAL thread.
 func (lc *Lcore) ID() uint {
@@ -191,7 +199,7 @@ func ealInitAndLaunch(args []string) error {
 
 	// initialize EAL
 	if C.rte_eal_init(argc, argv) < 0 {
-		return common.Errno(nil)
+		return err()
 	}
 
 	// init per-lcore contexts
@@ -204,7 +212,7 @@ func ealInitAndLaunch(args []string) error {
 
 	// launch every EAL thread lcore function
 	// it should be success since we've just called rte_eal_init()
-	return common.Errno(C.rte_eal_mp_remote_launch(fn, nil, C.SKIP_MASTER))
+	return err(C.rte_eal_mp_remote_launch(fn, nil, C.SKIP_MASTER))
 }
 
 // InitWithArgs initializes EAL as in rte_eal_init. Options are
@@ -239,7 +247,7 @@ func InitWithArgs(args []string) error {
 // result in leaking hugepages, leading to failure during
 // initialization of secondary processes.
 func Cleanup() error {
-	return common.Errno(C.rte_eal_cleanup())
+	return err(C.rte_eal_cleanup())
 }
 
 func parseCmd(input string) ([]string, error) {
