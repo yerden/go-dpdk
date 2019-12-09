@@ -145,6 +145,14 @@ func TestMemzoneAligned(t *testing.T) {
 		assert(len(b) == n)
 		assert(n == copy(b, make([]byte, n)))
 		assert("test_mz" == mz.Name())
+
+		var mz1 *memzone.Memzone
+		memzone.Walk(func(mz *memzone.Memzone) {
+			if mz.Name() == "test_mz" {
+				mz1 = mz
+			}
+		})
+		assert(mz == mz1, mz1)
 	})
 	wg.Wait()
 }

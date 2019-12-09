@@ -14,17 +14,15 @@ Please refer to DPDK Programmer's Guide for reference and caveats.
 package memzone
 
 /*
+#include <stddef.h>
 #include <rte_config.h>
 #include <rte_memzone.h>
 
-typedef void memzone_cb_t(const struct rte_memzone *, void *);
+enum {
+	OFF_MZ_ADDR = offsetof(struct rte_memzone, addr)
+};
+
 extern void mzCb(struct rte_memzone *, void *);
-static void memzone_walk(void *f, void *arg) {
-	rte_memzone_walk((memzone_cb_t *)f, arg);
-}
-static void *memzone_addr(const struct rte_memzone *mz) {
-	return mz->addr;
-}
 */
 import "C"
 
@@ -198,7 +196,7 @@ func mzCb(mz *C.struct_rte_memzone, arg unsafe.Pointer) {
 // Walk list of all memzones.
 func Walk(fn func(*Memzone)) {
 	cb := callbacks.Create(fn)
-	C.memzone_walk(C.mzCb, unsafe.Pointer(&cb))
+	C.rte_memzone_walk((*[0]byte)(C.mzCb), unsafe.Pointer(&cb))
 	callbacks.Delete(cb)
 }
 
@@ -210,8 +208,8 @@ func (mz *Memzone) Name() string {
 
 // Addr returns start virtual address of the memzone.
 func (mz *Memzone) Addr() unsafe.Pointer {
-	cmz := (*C.struct_rte_memzone)(mz)
-	return C.memzone_addr(cmz)
+	addr := unsafe.Pointer(uintptr(unsafe.Pointer(mz)) + uintptr(C.OFF_MZ_ADDR))
+	return *(*unsafe.Pointer)(addr)
 }
 
 // Len returns length of the memzone.
@@ -225,7 +223,7 @@ func (mz *Memzone) Bytes() []byte {
 	var b []byte
 	cmz := (*C.struct_rte_memzone)(mz)
 	sh := (*reflect.SliceHeader)(unsafe.Pointer(&b))
-	sh.Data = uintptr(C.memzone_addr(cmz))
+	sh.Data = uintptr(mz.Addr())
 	sh.Len = int(cmz.len)
 	sh.Cap = sh.Len
 	return b
