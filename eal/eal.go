@@ -29,9 +29,9 @@ import "C"
 import (
 	"bufio"
 	"log"
-	"os"
 	"runtime"
 	"strings"
+	"sync"
 	"unsafe"
 
 	"github.com/yerden/go-dpdk/common"
@@ -59,6 +59,9 @@ type Lcore struct {
 
 	// channel to receive functions to execute.
 	ch chan func(*Lcore)
+
+	// signal to kill current thread
+	done bool
 }
 
 func err(n ...interface{}) error {
@@ -135,12 +138,31 @@ func lcoreFuncListener(unsafe.Pointer) C.int {
 	defer log.Printf("lcore %d exited", id)
 
 	for fn := range lc.ch {
-		if fn == nil {
+		panicCatcher(fn, lc)
+		if lc.done {
 			break
 		}
-		panicCatcher(fn, lc)
 	}
 	return 0
+}
+
+// stop all lcores and call rte_eal_cleanup on master.
+// warning: it will block infinitely if lcore functions are being
+// executed on some lcores.
+func ealDeInit() error {
+	var e error
+	var wg sync.WaitGroup
+	for _, id := range Lcores(false) {
+		wg.Add(1)
+		ExecuteOnLcore(id, func(lc *Lcore) {
+			defer wg.Done()
+			if lc.done = true; lc.ID() == GetMasterLcore() {
+				e = err(C.rte_eal_cleanup())
+			}
+		})
+	}
+	wg.Wait()
+	return e
 }
 
 // ExecuteOnLcore sends fn to execute on CPU logical core lcoreID, i.e
@@ -186,8 +208,6 @@ func Lcores(skipMaster bool) (out []uint) {
 // call rte_eal_init and launch lcoreFuncListener on all slave lcores
 // should be run in master lcore thread only
 func ealInitAndLaunch(args []string) error {
-	args = append([]string{os.Args[0]}, args...)
-
 	argc, argv := makeArgcArgv(args)
 	defer freeArgv(argv)
 
@@ -246,8 +266,14 @@ func InitWithArgs(args []string) error {
 // rte_eal_cleanup() before exiting. Not calling this function could
 // result in leaking hugepages, leading to failure during
 // initialization of secondary processes.
+//
+// All lcores are signalled to stop. Please make sure that lcore
+// functions returned otherwise this function will block until that
+// happens.
+//
+// This function should be called from outside of EAL threads.
 func Cleanup() error {
-	return err(C.rte_eal_cleanup())
+	return ealDeInit()
 }
 
 func parseCmd(input string) ([]string, error) {
@@ -275,8 +301,8 @@ func Init(input string) error {
 // InitWithParams initializes EAL as in rte_eal_init. Options are
 // specified with arrays of parameters which are then joined
 // and InitWithArgs is then called upon.
-func InitWithParams(p ...Parameter) error {
-	return InitWithArgs(Join(p))
+func InitWithParams(program string, p ...Parameter) error {
+	return InitWithArgs(append([]string{program}, Join(p)...))
 }
 
 // HasHugePages tells if huge pages are activated.
