@@ -301,6 +301,8 @@ func Init(input string) error {
 // InitWithParams initializes EAL as in rte_eal_init. Options are
 // specified with arrays of parameters which are then joined
 // and InitWithArgs is then called upon.
+//
+// program may be arbitrary name, you may want to set it to os.Args[0].
 func InitWithParams(program string, p ...Parameter) error {
 	return InitWithArgs(append([]string{program}, Join(p)...))
 }

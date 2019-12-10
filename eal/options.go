@@ -13,7 +13,7 @@ type Parameter struct {
 	Arg []interface{}
 }
 
-// Set mutates Parameter setting new value to option in a form
+// Set mutates Parameter setting new value to option in a form of
 // array of values.
 func (p Parameter) Set(a ...interface{}) Parameter {
 	p.Arg = append(make([]interface{}, 0, len(a)), a...)
