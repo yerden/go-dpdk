@@ -114,22 +114,6 @@ func OptBounded(bound uint) Option {
 	}}
 }
 
-func cGoString(s string) *C.char {
-	a := append([]byte(s), 0)
-	return (*C.char)(unsafe.Pointer(&a[0]))
-}
-
-func makeOpts(name string, size uintptr, opts []Option) *conf {
-	rc := &conf{
-		socket: C.SOCKET_ID_ANY,
-		size:   C.size_t(size),
-		cname:  cGoString(name)}
-	for i := range opts {
-		opts[i].f(rc)
-	}
-	return rc
-}
-
 func doReserve(rc *conf) *C.struct_rte_memzone {
 	switch {
 	case rc.bound == nil && rc.aligned == nil:
@@ -160,7 +144,14 @@ func doReserve(rc *conf) *C.struct_rte_memzone {
 // biggest memzone available on socket id corresponding to an lcore
 // from which reservation was called.
 func Reserve(name string, size uintptr, opts ...Option) (*Memzone, error) {
-	rc := makeOpts(name, size, opts)
+	rc := &conf{
+		socket: C.SOCKET_ID_ANY,
+		size:   C.size_t(size),
+		cname:  C.CString(name)}
+	defer C.free(unsafe.Pointer(rc.cname))
+	for i := range opts {
+		opts[i].f(rc)
+	}
 	mz := (*Memzone)(doReserve(rc))
 	if mz == nil {
 		return nil, err()
@@ -170,7 +161,9 @@ func Reserve(name string, size uintptr, opts ...Option) (*Memzone, error) {
 
 // Lookup searches a memzone from its name.
 func Lookup(name string) (*Memzone, error) {
-	mz := (*Memzone)(C.rte_memzone_lookup(cGoString(name)))
+	cname := C.CString(name)
+	defer C.free(unsafe.Pointer(cname))
+	mz := (*Memzone)(C.rte_memzone_lookup(cname))
 	if mz == nil {
 		return nil, err()
 	}
