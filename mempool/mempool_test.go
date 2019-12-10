@@ -1,6 +1,7 @@
 package mempool_test
 
 import (
+	"os"
 	"sync"
 	"syscall"
 	"testing"
@@ -22,7 +23,7 @@ func initEAL() {
 		var set unix.CPUSet
 		err := unix.SchedGetaffinity(0, &set)
 		if err == nil {
-			err = eal.InitWithParams(
+			err = eal.InitWithParams(os.Args[0],
 				eal.NewParameter("-c", eal.NewMap(&set)),
 				eal.NewParameter("-m", "128"),
 				eal.NewParameter("--no-huge"),
