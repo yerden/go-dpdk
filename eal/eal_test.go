@@ -14,7 +14,7 @@ func TestEALInit(t *testing.T) {
 	var set unix.CPUSet
 	assert(unix.SchedGetaffinity(0, &set) == nil)
 
-	err := InitWithParams(
+	err := InitWithParams("some_test",
 		NewParameter("-c", NewMap(&set)),
 		NewParameter("--no-huge"),
 		NewParameter("--no-pci"),
@@ -68,10 +68,6 @@ func TestEALInit(t *testing.T) {
 	}
 	wg.Wait()
 
-	// kill all lcores, don't do this in app
-	for _, id := range Lcores(false) {
-		ExecuteOnLcore(id, nil)
-	}
 	err = Cleanup()
 	assert(err == nil, err)
 }
