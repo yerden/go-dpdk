@@ -207,29 +207,25 @@ func (mz *Memzone) Addr() unsafe.Pointer {
 
 // Len returns length of the memzone.
 func (mz *Memzone) Len() uintptr {
-	cmz := (*C.struct_rte_memzone)(mz)
-	return uintptr(cmz.len)
+	return uintptr((*C.struct_rte_memzone)(mz).len)
 }
 
 // Bytes returns memzone in a form of slice of bytes.
 func (mz *Memzone) Bytes() []byte {
 	var b []byte
-	cmz := (*C.struct_rte_memzone)(mz)
 	sh := (*reflect.SliceHeader)(unsafe.Pointer(&b))
 	sh.Data = uintptr(mz.Addr())
-	sh.Len = int(cmz.len)
+	sh.Len = int(mz.Len())
 	sh.Cap = sh.Len
 	return b
 }
 
 // SocketID returns NUMA socket ID of the memzone.
 func (mz *Memzone) SocketID() int {
-	cmz := (*C.struct_rte_memzone)(mz)
-	return int(cmz.socket_id)
+	return int((*C.struct_rte_memzone)(mz).socket_id)
 }
 
 // HugePageSz returns the page size of underlying memory.
 func (mz *Memzone) HugePageSz() uint64 {
-	cmz := (*C.struct_rte_memzone)(mz)
-	return uint64(cmz.hugepage_sz)
+	return uint64((*C.struct_rte_memzone)(mz).hugepage_sz)
 }
