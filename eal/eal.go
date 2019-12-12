@@ -208,23 +208,23 @@ func Lcores(skipMaster bool) (out []uint) {
 // call rte_eal_init and launch lcoreFuncListener on all slave lcores
 // should be run in master lcore thread only
 func ealInitAndLaunch(args []string) error {
-	argc, argv := makeArgcArgv(args)
-	defer freeArgv(argv)
+	mem := common.NewAllocatorSession(&common.StdAlloc{})
+	defer mem.Flush()
 
-	// we need to make a shallow copy of argv because, according to
-	// rte_eal_init() documentation, "the contents of the array, as
-	// well as the strings which are pointed to by the array, may be
-	// modified by this function."
-	argv = copyArgv(argv)
+	argc := C.int(len(args))
+	argv := make([]*C.char, argc+1)
+	for i := range args {
+		argv[i] = (*C.char)(common.CString(mem, args[i]))
+	}
 
 	// initialize EAL
-	if C.rte_eal_init(argc, argv) < 0 {
+	if C.rte_eal_init(argc, &argv[0]) < 0 {
 		return err()
 	}
 
 	// init per-lcore contexts
 	for _, id := range Lcores(false) {
-		goEAL.lcores[id] = &Lcore{ch: make(chan func(*Lcore), 1)}
+		goEAL.lcores[id] = &Lcore{ch: make(chan func(*Lcore))}
 	}
 
 	// lcore function
