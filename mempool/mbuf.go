@@ -18,7 +18,7 @@ import (
 )
 
 // CreateMbufPool creates mempool of mbufs. See CreateEmpty options
-// for a list of options. Only differencies are described below.
+// for a list of options. Only differences are described below.
 //
 // dataRoomSize specifies the maximum size of data buffer in each
 // mbuf, including RTE_PKTMBUF_HEADROOM.
