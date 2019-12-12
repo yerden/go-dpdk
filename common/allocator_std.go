@@ -8,6 +8,7 @@ import "C"
 
 import "unsafe"
 
+// StdAlloc wraps system malloc/free memory allocation.
 type StdAlloc struct{}
 
 var _ Allocator = (*StdAlloc)(nil)
