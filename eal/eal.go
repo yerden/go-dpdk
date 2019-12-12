@@ -28,10 +28,12 @@ import "C"
 
 import (
 	"bufio"
+	"fmt"
+	"io"
 	"log"
 	"runtime"
 	"strings"
-	"sync"
+	//"sync"
 	"unsafe"
 
 	"github.com/yerden/go-dpdk/common"
@@ -58,7 +60,7 @@ type Lcore struct {
 	Value interface{}
 
 	// channel to receive functions to execute.
-	ch chan func(*Lcore)
+	ch chan *lcoreJob
 
 	// signal to kill current thread
 	done bool
@@ -84,6 +86,11 @@ func (lc *Lcore) SocketID() uint {
 	return uint(C.rte_socket_id())
 }
 
+// String implements fmt.Stringer.
+func (lc *Lcore) String() string {
+	return fmt.Sprintf("lcore=%d socket=%d", lc.ID(), lc.SocketID())
+}
+
 // LcoreToSocket return socket id for given lcore ID.
 func LcoreToSocket(id uint) uint {
 	return uint(C.rte_lcore_to_socket_id(C.uint(id)))
@@ -98,35 +105,24 @@ var (
 	goEAL = &ealConfig{make(map[uint]*Lcore)}
 )
 
-func panicCatcher(fn func(*Lcore), lc *Lcore) {
+// panicCatcher launches lcore function and returns possible panic as
+// an error.
+func panicCatcher(fn func(*Lcore), lc *Lcore) (err error) {
 	defer func() {
 		r := recover()
 		if r == nil {
 			return
 		}
-		// Report the lcore ID and the panic error
 		log.Printf("panic on lcore %d: %v", lc.ID(), r)
-
+		pc := make([]uintptr, 64)
 		// this function is called from runtime package, so to
 		// unwind the stack we may skip (1) runtime.Callers
-		// function, (2) this caller function and whatever is left
-		// of runtime package.
-		pc := make([]uintptr, 10)
+		// function, (2) this caller function
 		n := runtime.Callers(2, pc)
-		frames := runtime.CallersFrames(pc[:n])
-		for {
-			frame, more := frames.Next()
-			if !more {
-				break
-			}
-			if strings.HasPrefix(frame.Function, "runtime.") {
-				continue
-			}
-			log.Printf("... at %s:%d, %s\n", frame.File, frame.Line,
-				frame.Function)
-		}
+		err = &ErrLcorePanic{pc[:n], lc.ID(), fmt.Sprintf("%v", r)}
 	}()
 	fn(lc)
+	return err
 }
 
 // to run as lcore_function_t
@@ -137,8 +133,11 @@ func lcoreFuncListener(unsafe.Pointer) C.int {
 	log.Printf("lcore %d started", id)
 	defer log.Printf("lcore %d exited", id)
 
-	for fn := range lc.ch {
-		panicCatcher(fn, lc)
+	for job := range lc.ch {
+		err := panicCatcher(job.fn, lc)
+		if job.ret != nil {
+			job.ret <- err
+		}
 		if lc.done {
 			break
 		}
@@ -150,34 +149,104 @@ func lcoreFuncListener(unsafe.Pointer) C.int {
 // warning: it will block infinitely if lcore functions are being
 // executed on some lcores.
 func ealDeInit() error {
-	var e error
-	var wg sync.WaitGroup
-	for _, id := range Lcores(false) {
-		wg.Add(1)
-		ExecuteOnLcore(id, func(lc *Lcore) {
-			defer wg.Done()
-			if lc.done = true; lc.ID() == GetMasterLcore() {
-				e = err(C.rte_eal_cleanup())
-			}
+	// Shutdown slaves
+	for _, id := range Lcores(true) {
+		ExecOnLcore(id, func(lc *Lcore) {
+			lc.done = true
 		})
 	}
-	wg.Wait()
+
+	// Shutdown master
+	var e error
+	err := ExecOnMaster(func(lc *Lcore) {
+		lc.done = true
+		e = err(C.rte_eal_cleanup())
+	})
+	if err != nil {
+		return err
+	}
 	return e
 }
 
-// ExecuteOnLcore sends fn to execute on CPU logical core lcoreID, i.e
-// in EAL-owned thread on that lcore. If lcoreID references unknown
-// lcore (i.e. not registered by EAL) the function does nothing.
-func ExecuteOnLcore(lcoreID uint, fn func(*Lcore)) {
-	if lc, ok := goEAL.lcores[lcoreID]; ok {
-		lc.ch <- fn
+// ErrLcorePanic is an error returned by ExecOnLcore in case lcore
+// function panics.
+type ErrLcorePanic struct {
+	Pc      []uintptr
+	LcoreID uint
+	errStr  string
+}
+
+// Error implements error interface.
+func (e *ErrLcorePanic) Error() string {
+	return e.errStr
+}
+
+// PrintStack prints calling stack of the error into specified writer.
+func (e *ErrLcorePanic) PrintStack(w io.Writer) {
+	frames := runtime.CallersFrames(e.Pc)
+	for {
+		frame, more := frames.Next()
+		if !more {
+			break
+		}
+		// skipping everything from runtime package.
+		if strings.HasPrefix(frame.Function, "runtime.") {
+			continue
+		}
+		fmt.Fprintf(w, "... at %s:%d, %s\n", frame.File, frame.Line,
+			frame.Function)
 	}
 }
 
-// ExecuteOnMaster is a shortcut for ExecuteOnLcore with master lcore
-// as a destination.
-func ExecuteOnMaster(fn func(*Lcore)) {
-	ExecuteOnLcore(GetMasterLcore(), fn)
+// ErrLcoreInvalid is returned by ExecOnLcore in case the desired
+// lcore ID is invalid.
+var ErrLcoreInvalid = fmt.Errorf("Invalid logical core")
+
+type lcoreJob struct {
+	fn  func(*Lcore)
+	ret chan<- error
+}
+
+// ExecOnLcoreAsync sends fn to execute on CPU logical core lcoreID,
+// i.e. in EAL-owned thread on that lcore.
+//
+// Possible panic in lcore function will be intercepted and returned
+// as an error of type ErrLcorePanic through ret channel specified by
+// caller. If lcoreID is invalid, ErrLcoreInvalid error will be
+// returned the same way.
+//
+// ret may be nil, in which case no error will be reported.
+func ExecOnLcoreAsync(lcoreID uint, ret chan<- error, fn func(*Lcore)) {
+	if lc, ok := goEAL.lcores[lcoreID]; ok {
+		lc.ch <- &lcoreJob{fn, ret}
+	} else if ret != nil {
+		ret <- ErrLcoreInvalid
+	}
+}
+
+// ExecOnLcore sends fn to execute on CPU logical core lcoreID, i.e.
+// in EAL-owned thread on that lcore. Then it waits for the execution
+// to finish and returns the execution result.
+//
+// Possible panic in lcore function will be intercepted and returned
+// as an error of type ErrLcorePanic. If lcoreID is invalid,
+// ErrLcoreInvalid error will be returned.
+func ExecOnLcore(lcoreID uint, fn func(*Lcore)) error {
+	ch := make(chan error, 1)
+	ExecOnLcoreAsync(lcoreID, ch, fn)
+	return <-ch
+}
+
+// ExecOnMasterAsync is a shortcut for ExecOnLcoreAsync with master
+// lcore as a destination.
+func ExecOnMasterAsync(ret chan<- error, fn func(*Lcore)) {
+	ExecOnLcoreAsync(GetMasterLcore(), ret, fn)
+}
+
+// ExecOnMaster is a shortcut for ExecOnLcore with master lcore as a
+// destination.
+func ExecOnMaster(fn func(*Lcore)) error {
+	return ExecOnLcore(GetMasterLcore(), fn)
 }
 
 type lcoresIter struct {
@@ -224,7 +293,7 @@ func ealInitAndLaunch(args []string) error {
 
 	// init per-lcore contexts
 	for _, id := range Lcores(false) {
-		goEAL.lcores[id] = &Lcore{ch: make(chan func(*Lcore))}
+		goEAL.lcores[id] = &Lcore{ch: make(chan *lcoreJob)}
 	}
 
 	// lcore function
