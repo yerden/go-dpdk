@@ -1,11 +1,8 @@
 package memzone_test
 
 import (
-	"os"
-	"sync"
 	"syscall"
 	"testing"
-	// "unsafe"
 
 	"golang.org/x/sys/unix"
 
@@ -14,39 +11,28 @@ import (
 	"github.com/yerden/go-dpdk/memzone"
 )
 
-var (
-	dpdk    sync.Once
-	dpdkErr error
-)
-
-func initEAL() {
-	dpdk.Do(func() {
-		var set unix.CPUSet
-		err := unix.SchedGetaffinity(0, &set)
-		if err == nil {
-			err = eal.InitWithParams(os.Args[0],
-				eal.NewParameter("-c", eal.NewMap(&set)),
-				eal.NewParameter("-m", "128"),
-				eal.NewParameter("--no-huge"),
-				eal.NewParameter("--no-pci"),
-			)
-		}
-		dpdkErr = err
-	})
-}
+var initEAL = common.DoOnce(func() error {
+	var set unix.CPUSet
+	err := unix.SchedGetaffinity(0, &set)
+	if err == nil {
+		_, err = eal.Init([]string{"test",
+			"-c", common.NewMap(&set).String(),
+			"-m", "128",
+			"--no-huge",
+			"--no-pci",
+			"--master-lcore", "0"})
+	}
+	return err
+})
 
 func TestMemzoneCreateErr(t *testing.T) {
 	assert := common.Assert(t, true)
 
 	// Initialize EAL on all cores
-	initEAL()
-	assert(dpdkErr == nil, dpdkErr)
+	assert(initEAL() == nil)
 
-	var wg sync.WaitGroup
-	wg.Add(1)
 	// create and test mempool on master lcore
-	eal.ExecuteOnMaster(func(ctx *eal.Lcore) {
-		defer wg.Done()
+	err := eal.ExecOnMaster(func(ctx *eal.LcoreCtx) {
 		// create empty mempool
 		n := 100000000
 		mz, err := memzone.Reserve("test_mz",
@@ -55,21 +41,17 @@ func TestMemzoneCreateErr(t *testing.T) {
 			memzone.OptFlag(memzone.PageSizeHintOnly))
 		assert(mz == nil && err == syscall.ENOMEM, mz, err)
 	})
-	wg.Wait()
+	assert(err == nil, err)
 }
 
 func TestMemzoneCreate(t *testing.T) {
 	assert := common.Assert(t, true)
 
 	// Initialize EAL on all cores
-	initEAL()
-	assert(dpdkErr == nil, dpdkErr)
+	assert(initEAL() == nil)
 
-	var wg sync.WaitGroup
-	wg.Add(1)
 	// create and test mempool on master lcore
-	eal.ExecuteOnMaster(func(ctx *eal.Lcore) {
-		defer wg.Done()
+	err := eal.ExecOnMaster(func(ctx *eal.LcoreCtx) {
 		// create empty mempool
 		n := 100000000
 		mz, err := memzone.Reserve("test_mz",
@@ -88,21 +70,17 @@ func TestMemzoneCreate(t *testing.T) {
 		assert(err != nil)
 
 	})
-	wg.Wait()
+	assert(err == nil, err)
 }
 
 func TestMemzoneWriteTo(t *testing.T) {
 	assert := common.Assert(t, true)
 
 	// Initialize EAL on all cores
-	initEAL()
-	assert(dpdkErr == nil, dpdkErr)
+	assert(initEAL() == nil)
 
-	var wg sync.WaitGroup
-	wg.Add(1)
 	// create and test mempool on master lcore
-	eal.ExecuteOnMaster(func(ctx *eal.Lcore) {
-		defer wg.Done()
+	err := eal.ExecOnMaster(func(ctx *eal.LcoreCtx) {
 		// create empty mempool
 		n := 100000000
 		mz, err := memzone.Reserve("test_mz",
@@ -117,21 +95,17 @@ func TestMemzoneWriteTo(t *testing.T) {
 		assert(n == copy(b, make([]byte, n)))
 		assert("test_mz" == mz.Name())
 	})
-	wg.Wait()
+	assert(err == nil, err)
 }
 
 func TestMemzoneAligned(t *testing.T) {
 	assert := common.Assert(t, true)
 
 	// Initialize EAL on all cores
-	initEAL()
-	assert(dpdkErr == nil, dpdkErr)
+	assert(initEAL() == nil)
 
-	var wg sync.WaitGroup
-	wg.Add(1)
 	// create and test mempool on master lcore
-	eal.ExecuteOnMaster(func(ctx *eal.Lcore) {
-		defer wg.Done()
+	err := eal.ExecOnMaster(func(ctx *eal.LcoreCtx) {
 		// create empty mempool
 		n := 100000000
 		mz, err := memzone.Reserve("test_mz",
@@ -155,5 +129,5 @@ func TestMemzoneAligned(t *testing.T) {
 		})
 		assert(mz == mz1, mz1)
 	})
-	wg.Wait()
+	assert(err == nil, err)
 }
