@@ -1,7 +1,6 @@
 package ring_test
 
 import (
-	"os"
 	"sync"
 	"syscall"
 	"testing"
@@ -14,38 +13,27 @@ import (
 	"github.com/yerden/go-dpdk/ring"
 )
 
-var (
-	dpdk    sync.Once
-	dpdkErr error
-)
-
-func initEAL() {
-	dpdk.Do(func() {
-		var set unix.CPUSet
-		err := unix.SchedGetaffinity(0, &set)
-		if err == nil {
-			err = eal.InitWithParams(os.Args[0],
-				eal.NewParameter("-c", eal.NewMap(&set)),
-				eal.NewParameter("-m", "128"),
-				eal.NewParameter("--no-huge"),
-				eal.NewParameter("--no-pci"),
-			)
-		}
-		dpdkErr = err
-	})
-}
+var initEAL = common.DoOnce(func() error {
+	var set unix.CPUSet
+	err := unix.SchedGetaffinity(0, &set)
+	if err == nil {
+		_, err = eal.Init([]string{"test",
+			"-c", common.NewMap(&set).String(),
+			"-m", "128",
+			"--no-huge",
+			"--no-pci",
+			"--master-lcore", "0"})
+	}
+	return err
+})
 
 func TestRingCreate(t *testing.T) {
 	assert := common.Assert(t, true)
-	initEAL()
-	assert(dpdkErr == nil, dpdkErr)
-	var wg sync.WaitGroup
 
-	wg.Add(1)
-	eal.ExecuteOnMaster(func(lc *eal.Lcore) {
-		defer wg.Done()
+	assert(initEAL() == nil)
+	err := eal.ExecOnMaster(func(ctx *eal.LcoreCtx) {
 		r, err := ring.Create("test_ring", 1024, ring.OptSC,
-			ring.OptSP, ring.OptSocket(lc.SocketID()))
+			ring.OptSP, ring.OptSocket(ctx.SocketID()))
 		assert(r != nil && err == nil, err)
 		defer r.Free()
 		r1, err := ring.Lookup("test_ring")
@@ -53,18 +41,14 @@ func TestRingCreate(t *testing.T) {
 		_, err = ring.Lookup("test_ring_nonexistent")
 		assert(err != nil)
 	})
-	wg.Wait()
+	assert(err == nil, err)
 }
 
 func TestRingInit(t *testing.T) {
 	assert := common.Assert(t, true)
-	initEAL()
-	assert(dpdkErr == nil, dpdkErr)
-	var wg sync.WaitGroup
 
-	wg.Add(1)
-	eal.ExecuteOnMaster(func(lc *eal.Lcore) {
-		defer wg.Done()
+	assert(initEAL() == nil)
+	err := eal.ExecOnMaster(func(ctx *eal.LcoreCtx) {
 		_, err := ring.GetMemSize(1023)
 		assert(err == syscall.EINVAL) // invalid count
 		n, err := ring.GetMemSize(1024)
@@ -73,10 +57,10 @@ func TestRingInit(t *testing.T) {
 		ringData := make([]byte, n)
 		r := (*ring.Ring)(unsafe.Pointer(&ringData[0]))
 		err = r.Init("test_ring", 1024, ring.OptSC,
-			ring.OptSP, ring.OptSocket(lc.SocketID()))
+			ring.OptSP, ring.OptSocket(ctx.SocketID()))
 		assert(err == nil, err)
 	})
-	wg.Wait()
+	assert(err == nil, err)
 }
 
 func TestRingNew(t *testing.T) {
@@ -135,8 +119,8 @@ func min(x, y int) int {
 func benchmarkRingUintptr(b *testing.B, burst int) {
 	var wg sync.WaitGroup
 	assert := common.Assert(b, true)
-	initEAL()
-	assert(dpdkErr == nil, dpdkErr)
+
+	assert(initEAL() == nil)
 
 	r, err := ring.New("hello", 1024)
 	assert(r != nil && err == nil, err)
