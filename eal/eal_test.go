@@ -2,7 +2,6 @@ package eal
 
 import (
 	_ "log"
-	"sync"
 	"testing"
 
 	"github.com/yerden/go-dpdk/common"
@@ -14,28 +13,25 @@ func TestEALInit(t *testing.T) {
 	var set unix.CPUSet
 	assert(unix.SchedGetaffinity(0, &set) == nil)
 
-	err := InitWithParams("some_test",
-		NewParameter("-c", NewMap(&set)),
-		NewParameter("--no-huge"),
-		NewParameter("--no-pci"),
-		NewParameter("--master-lcore", "0"),
-	)
+	n, err := Init([]string{"test",
+		"-c", common.NewMap(&set).String(),
+		"-m", "128",
+		"--no-huge",
+		"--no-pci",
+		"--master-lcore", "0"})
+	assert(n == 8, n)
 	assert(err == nil)
 
 	ch := make(chan uint, set.Count())
 	assert(LcoreCount() == uint(set.Count()))
-	var wg sync.WaitGroup
-	for _, id := range Lcores(false) {
-		wg.Add(1)
-		ExecuteOnLcore(id, func(id uint) func(*Lcore) {
-			return func(lc *Lcore) {
-				defer wg.Done()
-				assert(id == lc.ID())
-				ch <- lc.ID()
+	for _, id := range Lcores() {
+		ExecOnLcore(id, func(id uint) func(*LcoreCtx) {
+			return func(ctx *LcoreCtx) {
+				assert(id == ctx.LcoreID())
+				ch <- ctx.LcoreID()
 			}
 		}(id))
 	}
-	wg.Wait()
 
 	var myset unix.CPUSet
 	for i := 0; i < set.Count(); i++ {
@@ -51,22 +47,29 @@ func TestEALInit(t *testing.T) {
 	assert(myset == set)
 
 	// test panic
-	for _, id := range Lcores(false) {
-		wg.Add(1)
-		ExecuteOnLcore(id, func(lc *Lcore) {
-			defer wg.Done()
+	for _, id := range Lcores() {
+		err := ExecOnLcore(id, func(ctx *LcoreCtx) {
 			panic("emit panic")
 		})
+		e, ok := err.(*ErrLcorePanic)
+		assert(ok)
+		assert(e.LcoreID == id)
+		assert(len(e.Pc) > 0)
 	}
-	wg.Wait()
-	for _, id := range Lcores(false) {
-		wg.Add(1)
-		ExecuteOnLcore(id, func(lc *Lcore) {
+	for _, id := range Lcores() {
+		ok := false
+		err := ExecOnLcore(id, func(ctx *LcoreCtx) {
 			// lcore is fine
-			defer wg.Done()
+			ok = true
 		})
+		assert(ok && err == nil, err)
 	}
-	wg.Wait()
+
+	// invalid lcore
+	assert(ExecOnLcore(uint(1024), func(ctx *LcoreCtx) {}) == ErrLcoreInvalid)
+
+	// stop all lcores
+	StopLcores()
 
 	err = Cleanup()
 	assert(err == nil, err)
