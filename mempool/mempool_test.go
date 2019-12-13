@@ -1,8 +1,6 @@
 package mempool_test
 
 import (
-	"os"
-	"sync"
 	"syscall"
 	"testing"
 
@@ -13,39 +11,28 @@ import (
 	"github.com/yerden/go-dpdk/mempool"
 )
 
-var (
-	dpdk    sync.Once
-	dpdkErr error
-)
-
-func initEAL() {
-	dpdk.Do(func() {
-		var set unix.CPUSet
-		err := unix.SchedGetaffinity(0, &set)
-		if err == nil {
-			err = eal.InitWithParams(os.Args[0],
-				eal.NewParameter("-c", eal.NewMap(&set)),
-				eal.NewParameter("-m", "128"),
-				eal.NewParameter("--no-huge"),
-				eal.NewParameter("--no-pci"),
-			)
-		}
-		dpdkErr = err
-	})
-}
+var initEAL = common.DoOnce(func() error {
+	var set unix.CPUSet
+	err := unix.SchedGetaffinity(0, &set)
+	if err == nil {
+		_, err = eal.Init([]string{"test",
+			"-c", common.NewMap(&set).String(),
+			"-m", "128",
+			"--no-huge",
+			"--no-pci",
+			"--master-lcore", "0"})
+	}
+	return err
+})
 
 func TestMempoolCreateErr(t *testing.T) {
 	assert := common.Assert(t, true)
 
 	// Initialize EAL on all cores
-	initEAL()
-	assert(dpdkErr == nil, dpdkErr)
+	assert(initEAL() == nil)
 
-	var wg sync.WaitGroup
-	wg.Add(1)
 	// create and test mempool on master lcore
-	eal.ExecuteOnMaster(func(ctx *eal.Lcore) {
-		defer wg.Done()
+	err := eal.ExecOnMaster(func(ctx *eal.LcoreCtx) {
 		// create empty mempool
 		n := uint32(10240)
 		mp, err := mempool.CreateEmpty("test_mp",
@@ -58,21 +45,17 @@ func TestMempoolCreateErr(t *testing.T) {
 		)
 		assert(mp == nil && err == syscall.EINVAL, err)
 	})
-	wg.Wait()
+	assert(err == nil, err)
 }
 
 func TestMempoolPriv(t *testing.T) {
 	assert := common.Assert(t, true)
 
 	// Initialize EAL on all cores
-	initEAL()
-	assert(dpdkErr == nil, dpdkErr)
+	assert(initEAL() == nil)
 
-	var wg sync.WaitGroup
-	wg.Add(1)
 	// create and test mempool on master lcore
-	eal.ExecuteOnMaster(func(ctx *eal.Lcore) {
-		defer wg.Done()
+	err := eal.ExecOnMaster(func(ctx *eal.LcoreCtx) {
 		// create empty mempool
 		n := uint32(10240)
 		mp, err := mempool.CreateEmpty("test_mp",
@@ -89,21 +72,17 @@ func TestMempoolPriv(t *testing.T) {
 		priv := mp.GetPrivBytes()
 		assert(len(priv) == 1024, len(priv))
 	})
-	wg.Wait()
+	assert(err == nil, err)
 }
 
 func TestMempoolCreate(t *testing.T) {
 	assert := common.Assert(t, true)
 
 	// Initialize EAL on all cores
-	initEAL()
-	assert(dpdkErr == nil, dpdkErr)
+	assert(initEAL() == nil)
 
-	var wg sync.WaitGroup
-	wg.Add(1)
 	// create and test mempool on master lcore
-	eal.ExecuteOnMaster(func(ctx *eal.Lcore) {
-		defer wg.Done()
+	err := eal.ExecOnMaster(func(ctx *eal.LcoreCtx) {
 		// create empty mempool
 		n := uint32(10240)
 		mp, err := mempool.CreateEmpty("test_mp",
@@ -146,12 +125,10 @@ func TestMempoolCreate(t *testing.T) {
 		_, err = mempool.Lookup("test_mp_nonexistent")
 		assert(err != nil, err)
 	})
-	wg.Wait()
+	assert(err == nil, err)
 
-	wg.Add(1)
 	// create and test mempool on master lcore
-	eal.ExecuteOnMaster(func(ctx *eal.Lcore) {
-		defer wg.Done()
+	err = eal.ExecOnMaster(func(ctx *eal.LcoreCtx) {
 		// create empty mempool
 		n := uint32(10240)
 		mp, err := mempool.CreateMbufPool("test_mbuf_pool",
@@ -176,5 +153,5 @@ func TestMempoolCreate(t *testing.T) {
 		)
 		assert(err != nil, err)
 	})
-	wg.Wait()
+	assert(err == nil, err)
 }
