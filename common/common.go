@@ -16,6 +16,7 @@ import "C"
 import (
 	"errors"
 	"reflect"
+	"sync"
 	"syscall"
 )
 
@@ -70,4 +71,17 @@ func IntOrErr(n interface{}) (int, error) {
 func IntToErr(n interface{}) error {
 	x := reflect.ValueOf(n).Int()
 	return errno(x)
+}
+
+// DoOnce decorates fn in a way that it will effectively run only once
+// returning the resulting error value in this and all subsequent
+// calls. Useful in unit testing when initialization must be performed
+// only once.
+func DoOnce(fn func() error) func() error {
+	var once sync.Once
+	var err error
+	return func() error {
+		once.Do(func() { err = fn() })
+		return err
+	}
 }
