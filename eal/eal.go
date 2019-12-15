@@ -384,7 +384,7 @@ func Init(input string) (int, error) {
 //
 // program may be arbitrary name, you may want to set it to os.Args[0].
 func InitWithParams(program string, p ...Parameter) (int, error) {
-	return InitWithArgs(append([]string{program}, Join(p)...))
+	return InitWithArgs(JoinParameters(program, p))
 }
 
 // HasHugePages tells if huge pages are activated.

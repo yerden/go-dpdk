@@ -20,9 +20,11 @@ func (p Parameter) Set(a ...interface{}) Parameter {
 	return p
 }
 
-// Join creates command line out of parameters.
-func Join(params []Parameter) []string {
-	argv := make([]string, 0, 2*len(params))
+// JoinParameters creates command line out of parameters.
+// prg is a program name, params is a list of Parameter.
+func JoinParameters(prg string, params []Parameter) []string {
+	argv := make([]string, 0, 2*len(params)+1)
+	argv = append(argv, prg)
 	for _, p := range params {
 		if argv = append(argv, p.Opt); len(p.Arg) == 0 {
 			continue
