@@ -381,6 +381,12 @@ func HasHugePages() bool {
 	return int(C.rte_eal_has_hugepages()) != 0
 }
 
+// HasPCI tells whether EAL is using PCI bus. Disabled by –no-pci
+// option.
+func HasPCI() bool {
+	return int(C.rte_eal_has_pci()) != 0
+}
+
 // ProcessType returns the current process type.
 func ProcessType() int {
 	return int(C.rte_eal_process_type())
