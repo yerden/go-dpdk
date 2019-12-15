@@ -276,7 +276,12 @@ func Lcores(skipMaster bool) (out []uint) {
 
 // call rte_eal_init and launch lcoreFuncListener on all slave lcores
 // should be run in master lcore thread only
-func ealInitAndLaunch(args []string) error {
+//
+// please note, rte_eal_init() and rte_eal_mp_remote_launch() have
+// mutually non-intersecting set of errors. This allows us to return a
+// single error. More specifically, rte_eal_mp_remote_launch() may
+// return EBUSY only which cannot be returned by rte_eal_init().
+func ealInitAndLaunch(args []string) (int, error) {
 	mem := common.NewAllocatorSession(&common.StdAlloc{})
 	defer mem.Flush()
 
@@ -287,8 +292,9 @@ func ealInitAndLaunch(args []string) error {
 	}
 
 	// initialize EAL
-	if C.rte_eal_init(argc, &argv[0]) < 0 {
-		return err()
+	n := int(C.rte_eal_init(argc, &argv[0]))
+	if n < 0 {
+		return n, err()
 	}
 
 	// init per-lcore contexts
@@ -301,33 +307,7 @@ func ealInitAndLaunch(args []string) error {
 
 	// launch every EAL thread lcore function
 	// it should be success since we've just called rte_eal_init()
-	return err(C.rte_eal_mp_remote_launch(fn, nil, C.SKIP_MASTER))
-}
-
-// InitWithArgs initializes EAL as in rte_eal_init. Options are
-// specified in a parsed command line string.
-//
-// This function initializes EAL and waits for executable functions on
-// each of EAL-owned threads.
-func InitWithArgs(args []string) error {
-	ch := make(chan error, 1)
-	log.Println("EAL parameters:", args)
-	go func() {
-		// we should initialize EAL and run EAL threads in a separate
-		// goroutine because its thread is going to be acquired by EAL
-		// and become master lcore thread
-		runtime.LockOSThread()
-
-		// initialize EAL and launch lcoreFuncListener on all slave
-		// lcores, then report
-		err := ealInitAndLaunch(args)
-		if ch <- err; err == nil {
-			// run on master lcore
-			lcoreFuncListener(nil)
-		}
-	}()
-
-	return <-ch
+	return n, err(C.rte_eal_mp_remote_launch(fn, nil, C.SKIP_MASTER))
 }
 
 // Cleanup releases EAL-allocated resources, ensuring that no hugepage
@@ -356,13 +336,44 @@ func parseCmd(input string) ([]string, error) {
 	return argv, s.Err()
 }
 
+// InitWithArgs initializes EAL as in rte_eal_init. Options are
+// specified in a parsed command line string.
+//
+// This function initialized EAL and waits for executable functions on
+// each of EAL-owned threads.
+//
+// Returns number of parsed args and an error.
+func InitWithArgs(args []string) (n int, err error) {
+	ch := make(chan error, 1)
+	log.Println("EAL parameters:", args)
+	var ret int
+	go func() {
+		// we should initialize EAL and run EAL threads in a separate
+		// goroutine because its thread is going to be acquired by EAL
+		// and become master lcore thread
+		runtime.LockOSThread()
+
+		// initialize EAL and launch lcoreFuncListener on all slave
+		// lcores, then report
+		n, err := ealInitAndLaunch(args)
+		ret = n
+		if ch <- err; err == nil {
+			// run on master lcore
+			lcoreFuncListener(nil)
+		}
+	}()
+
+	err = <-ch
+	return ret, err
+}
+
 // Init initializes EAL as in rte_eal_init. Options are
 // specified in a unparsed command line string. This string is parsed
 // and InitWithArgs is then called upon.
-func Init(input string) error {
+func Init(input string) (int, error) {
 	argv, err := parseCmd(input)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	return InitWithArgs(argv)
 }
@@ -372,7 +383,7 @@ func Init(input string) error {
 // and InitWithArgs is then called upon.
 //
 // program may be arbitrary name, you may want to set it to os.Args[0].
-func InitWithParams(program string, p ...Parameter) error {
+func InitWithParams(program string, p ...Parameter) (int, error) {
 	return InitWithArgs(append([]string{program}, Join(p)...))
 }
 
