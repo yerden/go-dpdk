@@ -1,4 +1,4 @@
-package eal
+package common
 
 import (
 	"reflect"
@@ -42,8 +42,11 @@ func hex(a []int) string {
 
 // Set represents a set of integer numbers.
 type Set interface {
+	// IsSet tests if given int is inside the Set.
 	IsSet(int) bool
+	// Count returns the number of integers in the Set.
 	Count() int
+	// Set stores integer in the Set
 	Set(int)
 }
 

@@ -1,11 +1,10 @@
-package eal_test
+package common_test
 
 import (
 	"fmt"
 	"testing"
 
 	"github.com/yerden/go-dpdk/common"
-	"github.com/yerden/go-dpdk/eal"
 
 	"golang.org/x/sys/unix"
 )
@@ -13,7 +12,7 @@ import (
 func TestCommonMapCreate(t *testing.T) {
 	assert := common.Assert(t, true)
 
-	a := eal.NewMap([]int{0, 1, 2, 3})
+	a := common.NewMap([]int{0, 1, 2, 3})
 	assert(a.IsSet(0))
 	assert(a.IsSet(1))
 	assert(a.IsSet(2))
@@ -21,7 +20,7 @@ func TestCommonMapCreate(t *testing.T) {
 	assert(a.Count() == 4)
 	assert(a.String() == "f")
 
-	a = eal.NewMap([]int{4, 5, 7, 9})
+	a = common.NewMap([]int{4, 5, 7, 9})
 	assert(a.IsSet(4))
 	assert(a.IsSet(5))
 	assert(!a.IsSet(6))
@@ -31,23 +30,23 @@ func TestCommonMapCreate(t *testing.T) {
 	assert(a.Count() == 4)
 	assert(a.String() == "2b0")
 
-	a = eal.NewMap([]int{6, 8})
+	a = common.NewMap([]int{6, 8})
 	assert(a.String() == "140")
 }
 
 func TestCommonMapCreate2(t *testing.T) {
 	assert := common.Assert(t, true)
 
-	s := eal.NewMap(1)
+	s := common.NewMap(1)
 	assert(s.String() == "2", s.String())
 
-	s = eal.NewMap([]int{1, 2, 3})
+	s = common.NewMap([]int{1, 2, 3})
 	assert(s.String() == "e", s.String())
 
-	s = eal.NewMap([]int{4, 5, 6})
+	s = common.NewMap([]int{4, 5, 6})
 	assert(s.String() == "70", s.String())
 
-	s = eal.NewMap(map[uint16]bool{
+	s = common.NewMap(map[uint16]bool{
 		11: true,
 		22: true,
 		32: true,
@@ -61,7 +60,7 @@ func TestCommonMapCreate2(t *testing.T) {
 func TestCommonMapSet(t *testing.T) {
 	assert := common.Assert(t, true)
 
-	a := eal.NewMap([]int{0, 1, 2, 3})
+	a := common.NewMap([]int{0, 1, 2, 3})
 	assert(a.IsSet(0))
 	assert(a.IsSet(1))
 	assert(a.IsSet(2))
@@ -84,19 +83,19 @@ func TestCommonMapSet(t *testing.T) {
 func TestCommonMapFromSet(t *testing.T) {
 	assert := common.Assert(t, true)
 
-	a := eal.NewMap(nil)
+	a := common.NewMap(nil)
 	assert(a.Count() == 0)
 
 	var set unix.CPUSet
 	err := unix.SchedGetaffinity(0, &set)
 	assert(err == nil, err)
 
-	a = eal.NewMap(&set)
+	a = common.NewMap(&set)
 	assert(a.Count() == set.Count())
 }
 
 func ExampleNewMap() {
-	x := eal.NewMap([]int{0, 1, 2, 3})
+	x := common.NewMap([]int{0, 1, 2, 3})
 	fmt.Println(x)
 	// Output: f
 }
