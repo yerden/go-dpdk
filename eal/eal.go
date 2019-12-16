@@ -117,13 +117,13 @@ func panicCatcher(fn func(*LcoreCtx), ctx *LcoreCtx) (err error) {
 		if r == nil {
 			return
 		}
-		log.Printf("panic on lcore %d: %v", ctx.LcoreID(), r)
+		errStr := fmt.Sprintf("panic on lcore %d: %v", ctx.LcoreID(), r)
 		pc := make([]uintptr, 64)
 		// this function is called from runtime package, so to
 		// unwind the stack we may skip (1) runtime.Callers
 		// function, (2) this caller function
 		n := runtime.Callers(2, pc)
-		err = &ErrLcorePanic{pc[:n], ctx.LcoreID(), fmt.Sprintf("%v", r)}
+		err = &ErrLcorePanic{pc[:n], ctx.LcoreID(), errStr}
 	}()
 	fn(ctx)
 	return err
