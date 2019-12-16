@@ -145,27 +145,23 @@ func lcoreFuncListener(unsafe.Pointer) C.int {
 	return 0
 }
 
-// stop all lcores and call rte_eal_cleanup on master.
-// warning: it will block infinitely if lcore functions are being
-// executed on some lcores.
-func ealDeInit() error {
-	// Shutdown slaves
-	for _, id := range Lcores(true) {
-		ExecOnLcore(id, func(ctx *LcoreCtx) {
+// StopLcores sends signal to EAL threads to finish execution of
+// go-dpdk lcore function executor.
+//
+// Warning: it will block until all lcore threads finish execution.
+func StopLcores() {
+	lcores := Lcores()
+	ch := make(chan error, len(lcores))
+
+	for _, id := range lcores {
+		ExecOnLcoreAsync(id, ch, func(ctx *LcoreCtx) {
 			ctx.done = true
 		})
 	}
 
-	// Shutdown master
-	var e error
-	err := ExecOnMaster(func(ctx *LcoreCtx) {
-		ctx.done = true
-		e = err(C.rte_eal_cleanup())
-	})
-	if err != nil {
-		return err
+	for range lcores {
+		<-ch
 	}
-	return e
 }
 
 // ErrLcorePanic is an error returned by ExecOnLcore in case lcore
@@ -315,14 +311,8 @@ func ealInitAndLaunch(args []string) (int, error) {
 // rte_eal_cleanup() before exiting. Not calling this function could
 // result in leaking hugepages, leading to failure during
 // initialization of secondary processes.
-//
-// All lcores are signalled to stop. Please make sure that lcore
-// functions returned otherwise this function will block until that
-// happens.
-//
-// This function should be called from outside of EAL threads.
 func Cleanup() error {
-	return ealDeInit()
+	return err(C.rte_eal_cleanup())
 }
 
 func parseCmd(input string) ([]string, error) {
