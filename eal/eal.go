@@ -44,6 +44,10 @@ const (
 	MaxLcore = C.RTE_MAX_LCORE
 )
 
+const (
+	lcoreJobsBuffer = 32
+)
+
 // The type of process in a linux, multi-process setup.
 const (
 	ProcAuto      int = C.RTE_PROC_AUTO
@@ -300,8 +304,8 @@ func ealInitAndLaunch(args []string) (int, error) {
 	}
 
 	// init per-lcore contexts
-	for _, id := range Lcores(false) {
-		goEAL.lcores[id] = &LcoreCtx{ch: make(chan *lcoreJob)}
+	for _, id := range Lcores() {
+		goEAL.lcores[id] = &LcoreCtx{ch: make(chan *lcoreJob, lcoreJobsBuffer)}
 	}
 
 	// lcore function
