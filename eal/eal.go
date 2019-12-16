@@ -33,7 +33,7 @@ import (
 	"log"
 	"runtime"
 	"strings"
-	//"sync"
+	"sync"
 	"unsafe"
 
 	"github.com/yerden/go-dpdk/common"
@@ -336,17 +336,17 @@ func parseCmd(input string) ([]string, error) {
 	return argv, s.Err()
 }
 
-// InitWithArgs initializes EAL as in rte_eal_init. Options are
-// specified in a parsed command line string.
+// Init initializes EAL as in rte_eal_init. Options are specified in a
+// parsed command line string.
 //
 // This function initialized EAL and waits for executable functions on
 // each of EAL-owned threads.
 //
 // Returns number of parsed args and an error.
-func InitWithArgs(args []string) (n int, err error) {
-	ch := make(chan error, 1)
+func Init(args []string) (n int, err error) {
 	log.Println("EAL parameters:", args)
-	var ret int
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
 		// we should initialize EAL and run EAL threads in a separate
 		// goroutine because its thread is going to be acquired by EAL
@@ -355,36 +355,25 @@ func InitWithArgs(args []string) (n int, err error) {
 
 		// initialize EAL and launch lcoreFuncListener on all slave
 		// lcores, then report
-		n, err := ealInitAndLaunch(args)
-		ret = n
-		if ch <- err; err == nil {
+		n, err = ealInitAndLaunch(args)
+		if wg.Done(); err == nil {
 			// run on master lcore
 			lcoreFuncListener(nil)
 		}
 	}()
-
-	err = <-ch
-	return ret, err
+	wg.Wait()
+	return
 }
 
-// Init initializes EAL as in rte_eal_init. Options are
-// specified in a unparsed command line string. This string is parsed
-// and InitWithArgs is then called upon.
-func Init(input string) (int, error) {
+// InitCmd initializes EAL as in rte_eal_init. Options are specified
+// in a unparsed command line string. This string is parsed and
+// Init is then called upon.
+func InitCmd(input string) (int, error) {
 	argv, err := parseCmd(input)
 	if err != nil {
 		return 0, err
 	}
-	return InitWithArgs(argv)
-}
-
-// InitWithParams initializes EAL as in rte_eal_init. Options are
-// specified with arrays of parameters which are then joined
-// and InitWithArgs is then called upon.
-//
-// program may be arbitrary name, you may want to set it to os.Args[0].
-func InitWithParams(program string, p ...Parameter) (int, error) {
-	return InitWithArgs(JoinParameters(program, p))
+	return Init(argv)
 }
 
 // HasHugePages tells if huge pages are activated.
