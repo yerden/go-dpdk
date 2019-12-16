@@ -255,19 +255,25 @@ func (iter *lcoresIter) next() bool {
 	return iter.i < C.RTE_MAX_LCORE
 }
 
-// Lcores returns all lcores registered in EAL. If skipMaster is true,
-// master lcore will not be included in the result.
-func Lcores(skipMaster bool) (out []uint) {
-	c := &lcoresIter{i: ^C.uint(0), sm: C.int(0)}
-
-	if skipMaster {
-		c.sm = 1
-	}
-
+// If skipMaster is 0, master lcore will be included in the result.
+// Otherwise, it will miss the output.
+func getLcores(skipMaster int) (out []uint) {
+	c := &lcoresIter{i: ^C.uint(0), sm: C.int(skipMaster)}
 	for c.next() {
 		out = append(out, uint(c.i))
 	}
 	return out
+}
+
+// Lcores returns all lcores registered in EAL.
+func Lcores() []uint {
+	return getLcores(0)
+}
+
+// LcoresSlave returns all slave lcores registered in EAL.
+// Lcore is slave if it is not master.
+func LcoresSlave() []uint {
+	return getLcores(1)
 }
 
 // call rte_eal_init and launch lcoreFuncListener on all slave lcores
