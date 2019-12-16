@@ -307,7 +307,7 @@ func ealInitAndLaunch(args []string) error {
 // InitWithArgs initializes EAL as in rte_eal_init. Options are
 // specified in a parsed command line string.
 //
-// This function initialized EAL and waits for executable functions on
+// This function initializes EAL and waits for executable functions on
 // each of EAL-owned threads.
 func InitWithArgs(args []string) error {
 	ch := make(chan error, 1)
