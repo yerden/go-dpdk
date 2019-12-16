@@ -46,9 +46,9 @@ const (
 
 // The type of process in a linux, multi-process setup.
 const (
-	ProcAuto      = C.RTE_PROC_AUTO
-	ProcPrimary   = C.RTE_PROC_PRIMARY
-	ProcSecondary = C.RTE_PROC_SECONDARY
+	ProcAuto      int = C.RTE_PROC_AUTO
+	ProcPrimary       = C.RTE_PROC_PRIMARY
+	ProcSecondary     = C.RTE_PROC_SECONDARY
 )
 
 // Lcore is a per-lcore context and is supplied to function running to
