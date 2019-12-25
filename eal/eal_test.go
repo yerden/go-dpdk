@@ -1,7 +1,10 @@
 package eal
 
 import (
-	_ "log"
+	"flag"
+	"fmt"
+	"log"
+	"os"
 	"testing"
 
 	"github.com/yerden/go-dpdk/common"
@@ -89,4 +92,60 @@ func TestParseCmd(t *testing.T) {
 	assert(res[0] == "hello")
 	assert(res[1] == "--bitter", res[1])
 	assert(res[2] == "world")
+}
+
+func ExampleInit_flags() {
+	// If your executable is to be launched like a DPDK example:
+	//   /path/to/exec -c 3f -m 1024 <other-eal-options> -- <go-flags>
+	// then you may do the following:
+	n, err := Init(os.Args)
+	if err != nil {
+		panic(err)
+	}
+
+	// to be able to do further flag processing, i.e. pretend the cmd was:
+	//   /path/to/exec <go-flags>
+	os.Args[n], os.Args = os.Args[0], os.Args[n:]
+	flag.Parse()
+}
+
+func ExampleExecOnLcore() {
+	// Lcore ID 1
+	lid := uint(1)
+
+	err := ExecOnLcore(lid, func(ctx *LcoreCtx) {
+		log.Printf("this is lcore #%d\n", ctx.LcoreID())
+	})
+
+	if err == ErrLcoreInvalid {
+		// lid doesn't exist
+		log.Fatalf("invalid lcore %d\n", lid)
+	}
+
+	if e, ok := err.(*ErrLcorePanic); ok {
+		// lcore panicked
+		log.Fatalln(e)
+	}
+}
+
+func ExampleExecOnLcore_error() {
+	// Lcore ID 1
+	lid := uint(1)
+
+	someErr := fmt.Errorf("lcore error")
+	err := ExecOnLcore(lid, func(ctx *LcoreCtx) {
+		if 2+2 != 4 {
+			panic(someErr)
+		}
+	})
+
+	if e, ok := err.(*ErrLcorePanic); ok {
+		// lcore panicked
+		if err := e.Unwrap(); err == someErr {
+			log.Fatalln("check the math")
+		}
+	}
+
+	// or, as of Go 1.13
+	//   if errors.Is(err, someErr) { ...
 }
