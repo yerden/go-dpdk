@@ -216,12 +216,13 @@ type lcoreJob struct {
 // returned the same way.
 //
 // ret may be nil, in which case no error will be reported.
-func ExecOnLcoreAsync(lcoreID uint, ret chan<- error, fn func(*LcoreCtx)) {
+func ExecOnLcoreAsync(lcoreID uint, ret chan error, fn func(*LcoreCtx)) <-chan error {
 	if ctx, ok := goEAL.lcores[lcoreID]; ok {
 		ctx.ch <- &lcoreJob{fn, ret}
 	} else if ret != nil {
 		ret <- ErrLcoreInvalid
 	}
+	return ret
 }
 
 // ExecOnLcore sends fn to execute on CPU logical core lcoreID, i.e.
@@ -232,15 +233,13 @@ func ExecOnLcoreAsync(lcoreID uint, ret chan<- error, fn func(*LcoreCtx)) {
 // as an error of type ErrLcorePanic. If lcoreID is invalid,
 // ErrLcoreInvalid error will be returned.
 func ExecOnLcore(lcoreID uint, fn func(*LcoreCtx)) error {
-	ch := make(chan error, 1)
-	ExecOnLcoreAsync(lcoreID, ch, fn)
-	return <-ch
+	return <-ExecOnLcoreAsync(lcoreID, make(chan error, 1), fn)
 }
 
 // ExecOnMasterAsync is a shortcut for ExecOnLcoreAsync with master
 // lcore as a destination.
-func ExecOnMasterAsync(ret chan<- error, fn func(*LcoreCtx)) {
-	ExecOnLcoreAsync(GetMasterLcore(), ret, fn)
+func ExecOnMasterAsync(ret chan error, fn func(*LcoreCtx)) <-chan error {
+	return ExecOnLcoreAsync(GetMasterLcore(), ret, fn)
 }
 
 // ExecOnMaster is a shortcut for ExecOnLcore with master lcore as a
