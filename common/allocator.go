@@ -72,19 +72,35 @@ var _ Allocator = (*AllocatorSession)(nil)
 // derived from ptr which is a pointer to pointer of required type
 // where new object will be stored. For example:
 //   var x *int
-//   a := NewAlloc()
+//   a := NewAllocatorSession(&StdAlloc{})
 //   defer a.Flush()
 //   MallocT(a, &x)
 //   /* x is now an allocated pointer */
 func MallocT(a Allocator, ptr interface{}) unsafe.Pointer {
+	return allocArray(a, ptr, 1)
+}
+
+func allocArray(a Allocator, ptr interface{}, nmemb int64) unsafe.Pointer {
 	// get the type of value to allocate;
 	// v should be the pointer to pointer,
 	// hence twice Elem
 	v := reflect.ValueOf(ptr)
 	t := v.Type().Elem().Elem()
-	p := a.Malloc(t.Size())
+	p := a.Malloc(t.Size() * uintptr(nmemb))
 	reflect.Indirect(v).Set(reflect.NewAt(t, p))
 	return p
+}
+
+// Calloc allocates an array of objects by its type. The type and its
+// size is derived from ptr which is a pointer to pointer of required
+// type where new object will be stored. For example:
+//   var x *int
+//   a := NewAllocatorSession(&StdAlloc{})
+//   defer a.Flush()
+//   CallocT(a, &x, 2)
+//   /* x is now an allocated pointer */
+func CallocT(a Allocator, ptr interface{}, nmemb interface{}) unsafe.Pointer {
+	return allocArray(a, ptr, reflect.ValueOf(nmemb).Int())
 }
 
 // CBytes creates a copy of byte slice with given Allocator. It's
