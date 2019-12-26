@@ -131,12 +131,18 @@ func panicCatcher(fn func(*LcoreCtx), ctx *LcoreCtx) (err error) {
 
 // to run as lcore_function_t
 //export lcoreFuncListener
-func lcoreFuncListener(unsafe.Pointer) C.int {
+func lcoreFuncListener(arg unsafe.Pointer) C.int {
 	id := uint(C.rte_lcore_id())
 	ctx := goEAL.lcores[id]
 	log.Printf("lcore %d started", id)
 	defer log.Printf("lcore %d exited", id)
 
+	// wait group to signal successful launch
+	// lcore is running
+	wg := (*sync.WaitGroup)(arg)
+	wg.Done()
+
+	// run loop
 	for job := range ctx.ch {
 		err := panicCatcher(job.fn, ctx)
 		if job.ret != nil {
@@ -215,7 +221,8 @@ type lcoreJob struct {
 // caller. If lcoreID is invalid, ErrLcoreInvalid error will be
 // returned the same way.
 //
-// ret may be nil, in which case no error will be reported.
+// The function returns ret. You may specify ret to be nil, in which
+// case no error will be reported.
 func ExecOnLcoreAsync(lcoreID uint, ret chan error, fn func(*LcoreCtx)) <-chan error {
 	if ctx, ok := goEAL.lcores[lcoreID]; ok {
 		ctx.ch <- &lcoreJob{fn, ret}
@@ -279,14 +286,9 @@ func LcoresSlave() []uint {
 	return getLcores(1)
 }
 
-// call rte_eal_init and launch lcoreFuncListener on all slave lcores
-// should be run in master lcore thread only
-//
-// please note, rte_eal_init() and rte_eal_mp_remote_launch() have
-// mutually non-intersecting set of errors. This allows us to return a
-// single error. More specifically, rte_eal_mp_remote_launch() may
-// return EBUSY only which cannot be returned by rte_eal_init().
-func ealInitAndLaunch(args []string) (int, error) {
+// call rte_eal_init and report its return value and rte_errno as an
+// error. Should be run in master lcore thread only
+func ealInit(args []string) (int, error) {
 	mem := common.NewAllocatorSession(&common.StdAlloc{})
 	defer mem.Flush()
 
@@ -301,7 +303,12 @@ func ealInitAndLaunch(args []string) (int, error) {
 	if n < 0 {
 		return n, err()
 	}
+	return n, nil
+}
 
+// launch lcoreFuncListener on all slave lcores
+// should be run in master lcore thread only
+func ealLaunch(wg *sync.WaitGroup) {
 	// init per-lcore contexts
 	for _, id := range Lcores() {
 		goEAL.lcores[id] = &LcoreCtx{ch: make(chan *lcoreJob, lcoreJobsBuffer)}
@@ -310,9 +317,10 @@ func ealInitAndLaunch(args []string) (int, error) {
 	// lcore function
 	fn := (*C.lcore_function_t)(C.lcoreFuncListener)
 
+	wg.Add(len(LcoresSlave()))
 	// launch every EAL thread lcore function
 	// it should be success since we've just called rte_eal_init()
-	return n, err(C.rte_eal_mp_remote_launch(fn, nil, C.SKIP_MASTER))
+	C.rte_eal_mp_remote_launch(fn, unsafe.Pointer(wg), C.CALL_MASTER)
 }
 
 // Cleanup releases EAL-allocated resources, ensuring that no hugepage
@@ -354,10 +362,10 @@ func Init(args []string) (n int, err error) {
 
 		// initialize EAL and launch lcoreFuncListener on all slave
 		// lcores, then report
-		n, err = ealInitAndLaunch(args)
-		if wg.Done(); err == nil {
-			// run on master lcore
-			lcoreFuncListener(nil)
+		if n, err = ealInit(args); err != nil {
+			wg.Done()
+		} else {
+			ealLaunch(&wg)
 		}
 	}()
 	wg.Wait()
