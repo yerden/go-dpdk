@@ -202,8 +202,7 @@ func ealInit(args []string) (int, error) {
 // launch lcoreFuncListener on all slave lcores
 // should be run in master lcore thread only
 //
-// wg is incremented by number of slave lcores
-// each lcore (i.e. slaves + master) will decrement it upon start.
+// each lcore must do wg.Done() upon successful launch.
 func ealLaunch(wg *sync.WaitGroup) {
 	// init per-lcore contexts
 	for _, id := range Lcores() {
@@ -213,7 +212,6 @@ func ealLaunch(wg *sync.WaitGroup) {
 	// lcore function
 	fn := (*C.lcore_function_t)(C.lcoreFuncListener)
 
-	wg.Add(len(LcoresSlave()))
 	// launch every EAL thread lcore function
 	// it should be success since we've just called rte_eal_init()
 	C.rte_eal_mp_remote_launch(fn, unsafe.Pointer(wg), C.CALL_MASTER)
@@ -246,6 +244,10 @@ func Init(args []string) (n int, err error) {
 			wg.Done()
 			return
 		}
+
+		// we're about to launch lcore functions so we add slave
+		// lcores to WaitGroup
+		wg.Add(int(LcoreCount() - 1))
 
 		// ealLaunch runs lcoreFuncListener on all slave lcores and
 		// master lcore. It will block until lcoreFuncListener stops
