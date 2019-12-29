@@ -31,8 +31,7 @@ type mpConf struct {
 	flags        C.uint
 
 	// ops
-	opsName       *string
-	opsPoolConfig unsafe.Pointer
+	opsName *string
 }
 
 func err(n ...interface{}) error {
@@ -43,10 +42,16 @@ func err(n ...interface{}) error {
 	return common.IntToErr(n[0])
 }
 
-// OptOpsName specifies mempool's name. If option is used in Create
-// this name is used when creating memzone. This name maybe then used
-// to lookup the mempool.
+// Option is used to configure mempool at creation time.
+type Option struct {
+	f func(*mpConf)
+}
 
+// OptOpsName specifies mempool operations implementation. Each
+// implementation is provided as a mempool driver so please be sure it
+// is loaded upon start of an application. This option is used in
+// CreateMbufPool only.
+//
 // OptOpsName sets the ops of a mempool. Currently implemented in DPDK
 // are: 'ring_mp_mc', 'ring_sp_mc', 'ring_mp_sc', 'ring_sp_sc',
 // 'stack', 'lf_stack'.
@@ -56,27 +61,14 @@ func OptOpsName(name string) Option {
 	}}
 }
 
-// OptOpsPoolConfig specifies opaque argument for mempool ops.
-// Currently it's not in use by any implemented ops.
-func OptOpsPoolConfig(p unsafe.Pointer) Option {
-	return Option{func(conf *mpConf) {
-		conf.opsPoolConfig = p
-	}}
-}
-
-// Option is used to configure mempool at creation time.
-type Option struct {
-	f func(*mpConf)
-}
-
-// OptCacheSize specifies cache size. If zero, the rte_mempool library
-// will try to limit the accesses to the common lockless pool, by
-// maintaining a per-lcore object cache. This argument must be lower
-// or equal to CONFIG_RTE_MEMPOOL_CACHE_MAX_SIZE and n / 1.5 where n
-// is number of elements. It is advised to choose cache_size to have
-// "n modulo cache_size == 0": if this is not the case, some elements
-// will always stay in the pool and will never be used. The access to
-// the per-lcore table is of course faster than the
+// OptCacheSize specifies cache size. If non-zero, the rte_mempool
+// library will try to limit the accesses to the common lockless pool,
+// by maintaining a per-lcore object cache. This argument must be
+// lower or equal to CONFIG_RTE_MEMPOOL_CACHE_MAX_SIZE and n / 1.5
+// where n is number of elements. It is advised to choose cache_size
+// to have "n modulo cache_size == 0": if this is not the case, some
+// elements will always stay in the pool and will never be used. The
+// access to the per-lcore table is of course faster than the
 // multi-producer/consumer pool. The cache can be disabled if the
 // cache_size argument is set to 0; it can be useful to avoid losing
 // objects in cache.
@@ -166,18 +158,30 @@ func CreateEmpty(name string, n, eltsize uint32, opts ...Option) (*Mempool, erro
 		return nil, err()
 	}
 
-	if conf.opsName != nil {
-		err := mp.SetOpsByName(*conf.opsName, conf.opsPoolConfig)
-		if err != nil {
-			mp.Free()
-			return nil, err
-		}
-	}
-
 	return (*Mempool)(mp), nil
 }
 
-// SetOpsByName sets the ops of a mempool.  This can only be done on a
+// SetOpsRing sets the ring-based operations for mempool.  This can
+// only be done on a mempool that is not populated, i.e. just after a
+// call to CreateEmpty().
+func (mp *Mempool) SetOpsRing() error {
+	var ops string
+	if mp.flags&C.MEMPOOL_F_SP_PUT != 0 {
+		ops = "ring_sp"
+	} else {
+		ops = "ring_mp"
+	}
+
+	if mp.flags&C.MEMPOOL_F_SC_GET != 0 {
+		ops += "_sc"
+	} else {
+		ops += "_mc"
+	}
+
+	return mp.SetOpsByName(ops, nil)
+}
+
+// SetOpsByName sets the ops of a mempool. This can only be done on a
 // mempool that is not populated, i.e. just after a call to
 // CreateEmpty().
 func (mp *Mempool) SetOpsByName(name string, poolConfig unsafe.Pointer) error {
