@@ -134,10 +134,10 @@ func doReserve(rc *conf) *C.struct_rte_memzone {
 // correctly filled memzone descriptor. If the allocation cannot be
 // done, return NULL.
 //
-// Note: Reserving memzones with len set to 0 will only attempt to
+// Note: Reserving memzones with size set to 0 will only attempt to
 // allocate memzones from memory that is already available. It will
 // not trigger any new allocations.  : When reserving memzones with
-// len set to 0, it is preferable to also set a valid socket_id.
+// size set to 0, it is preferable to also set a valid socket_id.
 // Setting socket_id to SOCKET_ID_ANY is supported, but will likely
 // not yield expected results.  Specifically, the resulting memzone
 // may not necessarily be the biggest memzone available, but rather
