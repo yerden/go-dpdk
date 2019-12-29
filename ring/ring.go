@@ -14,6 +14,7 @@ package ring
 import "C"
 
 import (
+	"runtime"
 	"unsafe"
 
 	"github.com/yerden/go-dpdk/common"
@@ -100,16 +101,15 @@ func OptFlag(flag uint) Option {
 	}}
 }
 
-func cGoString(s string) *C.char {
-	a := append([]byte(s), 0)
-	return (*C.char)(unsafe.Pointer(&a[0]))
-}
-
 func makeOpts(name string, opts []Option) *ringConf {
-	rc := &ringConf{socket: C.SOCKET_ID_ANY, cname: cGoString(name)}
+	rc := &ringConf{socket: C.SOCKET_ID_ANY}
+	rc.cname = C.CString(name)
 	for i := range opts {
 		opts[i].f(rc)
 	}
+	runtime.SetFinalizer(rc, func(rc *ringConf) {
+		C.free(unsafe.Pointer(rc.cname))
+	})
 	return rc
 }
 
@@ -230,7 +230,9 @@ func (r *Ring) Name() string {
 // Lookup searches a ring from its name in RTE_TAILQ_RING, i.e. among
 // those created with Create.
 func Lookup(name string) (*Ring, error) {
-	r := (*Ring)(C.rte_ring_lookup(cGoString(name)))
+	cname := C.CString(name)
+	defer C.free(unsafe.Pointer(cname))
+	r := (*Ring)(C.rte_ring_lookup(cname))
 	if r == nil {
 		return nil, err()
 	}
