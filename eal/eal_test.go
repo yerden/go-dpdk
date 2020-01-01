@@ -71,6 +71,15 @@ func TestEALInit(t *testing.T) {
 		assert(ok && err == nil, err)
 	}
 
+	// test panic returning arbitrary error
+	err = ExecOnMaster(func(*LcoreCtx) {
+		panic(flag.ErrHelp)
+	})
+	assert(err != nil)
+	e, ok := err.(*ErrLcorePanic)
+	assert(ok)
+	assert(e.Unwrap() == flag.ErrHelp)
+
 	// invalid lcore
 	assert(ExecOnLcore(uint(1024), func(ctx *LcoreCtx) {}) == ErrLcoreInvalid)
 
