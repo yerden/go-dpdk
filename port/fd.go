@@ -11,12 +11,13 @@ import "C"
 import (
 	"unsafe"
 
+	"github.com/yerden/go-dpdk/common"
 	"github.com/yerden/go-dpdk/mempool"
 )
 
-// FdReader input port built on top of valid non-blocking file
+// FdIn input port built on top of valid non-blocking file
 // descriptor.
-type FdReader struct {
+type FdIn struct {
 	// Pre-initialized buffer pool.
 	*mempool.Mempool
 
@@ -27,20 +28,24 @@ type FdReader struct {
 	MTU uint32
 }
 
-// ReaderOps implements ReaderParams interface.
-func (rd *FdReader) ReaderOps() (*ReaderOps, unsafe.Pointer) {
-	ops := (*ReaderOps)(&C.rte_port_fd_reader_ops)
-	rc := &C.struct_rte_port_fd_reader_params{
-		fd:      C.int(rd.Fd),
-		mtu:     C.uint32_t(rd.MTU),
-		mempool: (*C.struct_rte_mempool)(unsafe.Pointer(rd.Mempool)),
-	}
-	return ops, unsafe.Pointer(rc)
+// Ops implements ConfigIn interface.
+func (rd *FdIn) Ops() *InOps {
+	return (*InOps)(&C.rte_port_fd_reader_ops)
 }
 
-// FdWriter is an output port built on top of valid non-blocking file
+// Arg implements ConfigIn interface.
+func (rd *FdIn) Arg(mem common.Allocator) *InArg {
+	var rc *C.struct_rte_port_fd_reader_params
+	common.MallocT(mem, &rc)
+	rc.fd = C.int(rd.Fd)
+	rc.mtu = C.uint32_t(rd.MTU)
+	rc.mempool = (*C.struct_rte_mempool)(unsafe.Pointer(rd.Mempool))
+	return (*InArg)(unsafe.Pointer(rc))
+}
+
+// FdOut is an output port built on top of valid non-blocking file
 // descriptor.
-type FdWriter struct {
+type FdOut struct {
 	// File descriptor.
 	Fd uintptr
 
@@ -52,16 +57,19 @@ type FdWriter struct {
 	Retries uint32
 }
 
-// WriterOps implements WriterParams interface.
-func (wr *FdWriter) WriterOps() (ops *WriterOps, arg unsafe.Pointer) {
+// Ops implements ConfigOut interface.
+func (wr *FdOut) Ops() *OutOps {
 	if !wr.NoDrop {
-		ops = (*WriterOps)(&C.rte_port_fd_writer_ops)
-	} else {
-		ops = (*WriterOps)(&C.rte_port_fd_writer_nodrop_ops)
+		return (*OutOps)(&C.rte_port_fd_writer_ops)
 	}
-	arg = unsafe.Pointer(&C.struct_rte_port_fd_writer_nodrop_params{
-		fd:        C.int(wr.Fd),
-		n_retries: C.uint32_t(wr.Retries),
-	})
-	return
+	return (*OutOps)(&C.rte_port_fd_writer_nodrop_ops)
+}
+
+// Arg implements ConfigOut interface.
+func (wr *FdOut) Arg(mem common.Allocator) *OutArg {
+	var rc *C.struct_rte_port_fd_writer_nodrop_params
+	common.MallocT(mem, &rc)
+	rc.fd = C.int(wr.Fd)
+	rc.n_retries = C.uint32_t(wr.Retries)
+	return (*OutArg)(unsafe.Pointer(rc))
 }

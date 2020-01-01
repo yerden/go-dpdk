@@ -9,37 +9,43 @@ import "C"
 
 import (
 	"unsafe"
+
+	"github.com/yerden/go-dpdk/common"
 )
 
 // compile time checks
-var _ = []ReaderParams{
-	&EthdevReader{},
+var _ = []ConfigIn{
+	&EthdevIn{},
 }
 
-var _ = []WriterParams{
-	&EthdevWriter{},
+var _ = []ConfigOut{
+	&EthdevOut{},
 }
 
-// EthdevReader is an input port built on top of pre-initialized NIC
+// EthdevIn is an input port built on top of pre-initialized NIC
 // RX queue.
-type EthdevReader struct {
+type EthdevIn struct {
 	// Configured Ethernet port and RX queue ID.
 	PortID, QueueID uint16
 }
 
-// ReaderOps implements ReaderParams interface.
-func (rd *EthdevReader) ReaderOps() (*ReaderOps, unsafe.Pointer) {
-	ops := (*ReaderOps)(&C.rte_port_ethdev_reader_ops)
-	rc := &C.struct_rte_port_ethdev_reader_params{
-		port_id:  C.uint16_t(rd.PortID),
-		queue_id: C.uint16_t(rd.QueueID),
-	}
-	return ops, unsafe.Pointer(rc)
+// Ops implements ConfigIn interface.
+func (rd *EthdevIn) Ops() *InOps {
+	return (*InOps)(&C.rte_port_ethdev_reader_ops)
 }
 
-// EthdevWriter is an output port built on top of pre-initialized NIC
+// Arg implements ConfigIn interface.
+func (rd *EthdevIn) Arg(mem common.Allocator) *InArg {
+	var rc *C.struct_rte_port_ethdev_reader_params
+	common.MallocT(mem, &rc)
+	rc.port_id = C.uint16_t(rd.PortID)
+	rc.queue_id = C.uint16_t(rd.QueueID)
+	return (*InArg)(unsafe.Pointer(rc))
+}
+
+// EthdevOut is an output port built on top of pre-initialized NIC
 // TX queue.
-type EthdevWriter struct {
+type EthdevOut struct {
 	// Configured Ethernet port and TX queue ID.
 	PortID, QueueID uint16
 
@@ -54,21 +60,24 @@ type EthdevWriter struct {
 	Retries uint32
 }
 
-// WriterOps implements WriterParams interface.
-func (wr *EthdevWriter) WriterOps() (ops *WriterOps, arg unsafe.Pointer) {
+// Ops implements ConfigOut interface.
+func (wr *EthdevOut) Ops() *OutOps {
 	if !wr.NoDrop {
-		ops = (*WriterOps)(&C.rte_port_ethdev_writer_ops)
-	} else {
-		ops = (*WriterOps)(&C.rte_port_ethdev_writer_nodrop_ops)
+		return (*OutOps)(&C.rte_port_ethdev_writer_ops)
 	}
+	return (*OutOps)(&C.rte_port_ethdev_writer_nodrop_ops)
+}
+
+// Arg implements ConfigOut interface.
+func (wr *EthdevOut) Arg(mem common.Allocator) *OutArg {
 	// NOTE: struct rte_port_ethdev_writer_params is a subset of struct
 	// rte_port_ethdev_writer_nodrop_params, so we may simply use the latter
 	// for it would fit regardless of NoDrop flag.
-	arg = unsafe.Pointer(&C.struct_rte_port_ethdev_writer_nodrop_params{
-		port_id:     C.uint16_t(wr.PortID),
-		queue_id:    C.uint16_t(wr.QueueID),
-		tx_burst_sz: C.uint32_t(wr.TxBurstSize),
-		n_retries:   C.uint32_t(wr.Retries),
-	})
-	return ops, arg
+	var rc *C.struct_rte_port_ethdev_writer_nodrop_params
+	common.MallocT(mem, &rc)
+	rc.port_id = C.uint16_t(wr.PortID)
+	rc.queue_id = C.uint16_t(wr.QueueID)
+	rc.tx_burst_sz = C.uint32_t(wr.TxBurstSize)
+	rc.n_retries = C.uint32_t(wr.Retries)
+	return (*OutArg)(unsafe.Pointer(rc))
 }
