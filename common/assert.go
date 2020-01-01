@@ -1,6 +1,10 @@
 package common
 
 import (
+	"fmt"
+	"io"
+	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -17,5 +21,23 @@ func Assert(t testing.TB, fail bool) func(bool, ...interface{}) {
 				t.FailNow()
 			}
 		}
+	}
+}
+
+// FprintStackFrames prints calling stack of the error into specified
+// writer. Program counters are specified in pc.
+func FprintStackFrames(w io.Writer, pc []uintptr) {
+	frames := runtime.CallersFrames(pc)
+	for {
+		frame, more := frames.Next()
+		if !more {
+			break
+		}
+		// skipping everything from runtime package.
+		if strings.HasPrefix(frame.Function, "runtime.") {
+			continue
+		}
+		fmt.Fprintf(w, "... at %s:%d, %s\n", frame.File, frame.Line,
+			frame.Function)
 	}
 }
