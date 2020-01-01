@@ -14,10 +14,8 @@ import "C"
 
 import (
 	"fmt"
-	"io"
 	"log"
 	"runtime"
-	"strings"
 	"sync"
 	"unsafe"
 
@@ -104,29 +102,23 @@ func LcoreToSocket(id uint) uint {
 type ErrLcorePanic struct {
 	Pc      []uintptr
 	LcoreID uint
-	errStr  string
+
+	// value returned by recover()
+	R interface{}
 }
 
 // Error implements error interface.
 func (e *ErrLcorePanic) Error() string {
-	return e.errStr
+	return fmt.Sprintf("panic on lcore %d: %v", e.LcoreID, e.R)
 }
 
-// PrintStack prints calling stack of the error into specified writer.
-func (e *ErrLcorePanic) PrintStack(w io.Writer) {
-	frames := runtime.CallersFrames(e.Pc)
-	for {
-		frame, more := frames.Next()
-		if !more {
-			break
-		}
-		// skipping everything from runtime package.
-		if strings.HasPrefix(frame.Function, "runtime.") {
-			continue
-		}
-		fmt.Fprintf(w, "... at %s:%d, %s\n", frame.File, frame.Line,
-			frame.Function)
+// Unwrap returns error value if it was supplied to panic() as an
+// argument.
+func (e *ErrLcorePanic) Unwrap() error {
+	if err, ok := e.R.(error); ok {
+		return err
 	}
+	return nil
 }
 
 // ErrLcoreInvalid is returned by ExecOnLcore in case the desired
@@ -141,13 +133,12 @@ func panicCatcher(fn func(*LcoreCtx), ctx *LcoreCtx) (err error) {
 		if r == nil {
 			return
 		}
-		errStr := fmt.Sprintf("panic on lcore %d: %v", ctx.LcoreID(), r)
 		pc := make([]uintptr, 64)
 		// this function is called from runtime package, so to
 		// unwind the stack we may skip (1) runtime.Callers
 		// function, (2) this caller function
 		n := runtime.Callers(2, pc)
-		err = &ErrLcorePanic{pc[:n], ctx.LcoreID(), errStr}
+		err = &ErrLcorePanic{pc[:n], ctx.LcoreID(), r}
 	}()
 	fn(ctx)
 	return err
