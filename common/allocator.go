@@ -29,9 +29,19 @@ type AllocatorSession struct {
 	ptrs map[unsafe.Pointer]struct{}
 }
 
+func rootAlloc(mem Allocator) Allocator {
+	for {
+		if s, ok := mem.(*AllocatorSession); ok {
+			mem = s.mem
+		} else {
+			return mem
+		}
+	}
+}
+
 // NewAllocatorSession creates new AllocatorSession.
 func NewAllocatorSession(mem Allocator) *AllocatorSession {
-	return &AllocatorSession{mem, make(map[unsafe.Pointer]struct{})}
+	return &AllocatorSession{rootAlloc(mem), make(map[unsafe.Pointer]struct{})}
 }
 
 // Malloc implements Allocator.
