@@ -625,3 +625,11 @@ func (pid Port) SetLinkUp() error {
 func (pid Port) SetLinkDown() error {
 	return err(C.rte_eth_dev_set_link_down(C.ushort(pid)))
 }
+
+// SocketID returns the NUMA socket to which an Ethernet device is
+// connected.  The function may return a default of zero if the socket
+// could not be determined. -1 is returned if the port_id value is out
+// of range.
+func (pid Port) SocketID() int {
+	return int(C.rte_eth_dev_socket_id(C.ushort(pid)))
+}
