@@ -171,7 +171,7 @@ func lcoreFuncListener(arg unsafe.Pointer) C.int {
 }
 
 // call rte_eal_init and report its return value and rte_errno as an
-// error. Should be run in master lcore thread only
+// error. Should be run in main lcore thread only
 func ealInit(args []string) (int, error) {
 	mem := common.NewAllocatorSession(&common.StdAlloc{})
 	defer mem.Flush()
@@ -190,8 +190,8 @@ func ealInit(args []string) (int, error) {
 	return n, nil
 }
 
-// launch lcoreFuncListener on all slave lcores
-// should be run in master lcore thread only
+// launch lcoreFuncListener on all worker lcores
+// should be run in main lcore thread only
 //
 // each lcore must do wg.Done() upon successful launch.
 func ealLaunch(wg *sync.WaitGroup) {
@@ -220,14 +220,14 @@ func Init(args []string) (n int, err error) {
 
 	// This WaitGroup is used to notify caller that lcoreFuncListener
 	// is successfully executed on every EAL lcore and thus must be
-	// released (i.e. unlock Wait()) upon finishing master lcore setup
+	// released (i.e. unlock Wait()) upon finishing main lcore setup
 	// or returning EAL init error.
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		// we should initialize EAL and run EAL threads in a separate
 		// goroutine because its thread is going to be acquired by EAL
-		// and become master lcore thread
+		// and become main lcore thread
 		runtime.LockOSThread()
 
 		// initialize EAL
@@ -236,13 +236,13 @@ func Init(args []string) (n int, err error) {
 			return
 		}
 
-		// we're about to launch lcore functions so we add slave
+		// we're about to launch lcore functions so we add worker
 		// lcores to WaitGroup
 		wg.Add(int(LcoreCount() - 1))
 
-		// ealLaunch runs lcoreFuncListener on all slave lcores and
-		// master lcore. It will block until lcoreFuncListener stops
-		// on master lcore, see StopLcores.
+		// ealLaunch runs lcoreFuncListener on all worker lcores and
+		// main lcore. It will block until lcoreFuncListener stops
+		// on main lcore, see StopLcores.
 		ealLaunch(&wg)
 	}()
 	wg.Wait()

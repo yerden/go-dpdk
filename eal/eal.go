@@ -56,16 +56,16 @@ func ExecOnLcore(lcoreID uint, fn func(*LcoreCtx)) error {
 	return <-ExecOnLcoreAsync(lcoreID, make(chan error, 1), fn)
 }
 
-// ExecOnMasterAsync is a shortcut for ExecOnLcoreAsync with master
+// ExecOnMainAsync is a shortcut for ExecOnLcoreAsync with main
 // lcore as a destination.
-func ExecOnMasterAsync(ret chan error, fn func(*LcoreCtx)) <-chan error {
-	return ExecOnLcoreAsync(GetMasterLcore(), ret, fn)
+func ExecOnMainAsync(ret chan error, fn func(*LcoreCtx)) <-chan error {
+	return ExecOnLcoreAsync(GetMainLcore(), ret, fn)
 }
 
-// ExecOnMaster is a shortcut for ExecOnLcore with master lcore as a
+// ExecOnMain is a shortcut for ExecOnLcore with main lcore as a
 // destination.
-func ExecOnMaster(fn func(*LcoreCtx)) error {
-	return ExecOnLcore(GetMasterLcore(), fn)
+func ExecOnMain(fn func(*LcoreCtx)) error {
+	return ExecOnLcore(GetMainLcore(), fn)
 }
 
 type lcoresIter struct {
@@ -78,10 +78,10 @@ func (iter *lcoresIter) next() bool {
 	return iter.i < C.RTE_MAX_LCORE
 }
 
-// If skipMaster is 0, master lcore will be included in the result.
+// If skipMain is 0, main lcore will be included in the result.
 // Otherwise, it will miss the output.
-func getLcores(skipMaster int) (out []uint) {
-	c := &lcoresIter{i: ^C.uint(0), sm: C.int(skipMaster)}
+func getLcores(skipMain int) (out []uint) {
+	c := &lcoresIter{i: ^C.uint(0), sm: C.int(skipMain)}
 	for c.next() {
 		out = append(out, uint(c.i))
 	}
@@ -93,9 +93,9 @@ func Lcores() []uint {
 	return getLcores(0)
 }
 
-// LcoresSlave returns all slave lcores registered in EAL.
-// Lcore is slave if it is not master.
-func LcoresSlave() []uint {
+// LcoresWorker returns all worker lcores registered in EAL.
+// Lcore is worker if it is not main.
+func LcoresWorker() []uint {
 	return getLcores(1)
 }
 
@@ -120,8 +120,8 @@ func LcoreCount() uint {
 	return uint(C.rte_lcore_count())
 }
 
-// GetMasterLcore returns CPU logical core id where the master thread
+// GetMainLcore returns CPU logical core id where the main thread
 // is executed.
-func GetMasterLcore() uint {
-	return uint(C.rte_get_master_lcore())
+func GetMainLcore() uint {
+	return uint(C.rte_get_main_lcore())
 }

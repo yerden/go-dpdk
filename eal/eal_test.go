@@ -24,7 +24,7 @@ func TestEALInit(t *testing.T) {
 		"-m", "128",
 		"--no-huge",
 		"--no-pci",
-		"--master-lcore", "0"})
+		"--main-lcore", "0"})
 	assert(n == 8, n)
 	assert(err == nil)
 
@@ -72,7 +72,7 @@ func TestEALInit(t *testing.T) {
 	}
 
 	// test panic returning arbitrary error
-	err = ExecOnMaster(func(*LcoreCtx) {
+	err = ExecOnMain(func(*LcoreCtx) {
 		panic(flag.ErrHelp)
 	})
 	assert(err != nil)
