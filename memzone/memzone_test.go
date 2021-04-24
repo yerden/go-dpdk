@@ -32,7 +32,7 @@ func TestMemzoneCreateErr(t *testing.T) {
 	assert(initEAL() == nil)
 
 	// create and test mempool on master lcore
-	err := eal.ExecOnMaster(func(ctx *eal.LcoreCtx) {
+	err := eal.ExecOnMain(func(ctx *eal.LcoreCtx) {
 		// create empty mempool
 		n := 100000000
 		mz, err := memzone.Reserve("test_mz",
@@ -51,7 +51,7 @@ func TestMemzoneCreate(t *testing.T) {
 	assert(initEAL() == nil)
 
 	// create and test mempool on master lcore
-	err := eal.ExecOnMaster(func(ctx *eal.LcoreCtx) {
+	err := eal.ExecOnMain(func(ctx *eal.LcoreCtx) {
 		// create empty mempool
 		n := 100000000
 		mz, err := memzone.Reserve("test_mz",
@@ -80,7 +80,7 @@ func TestMemzoneWriteTo(t *testing.T) {
 	assert(initEAL() == nil)
 
 	// create and test mempool on master lcore
-	err := eal.ExecOnMaster(func(ctx *eal.LcoreCtx) {
+	err := eal.ExecOnMain(func(ctx *eal.LcoreCtx) {
 		// create empty mempool
 		n := 100000000
 		mz, err := memzone.Reserve("test_mz",
@@ -105,7 +105,7 @@ func TestMemzoneAligned(t *testing.T) {
 	assert(initEAL() == nil)
 
 	// create and test mempool on master lcore
-	err := eal.ExecOnMaster(func(ctx *eal.LcoreCtx) {
+	err := eal.ExecOnMain(func(ctx *eal.LcoreCtx) {
 		// create empty mempool
 		n := 100000000
 		mz, err := memzone.Reserve("test_mz",
