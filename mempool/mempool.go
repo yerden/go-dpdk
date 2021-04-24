@@ -124,9 +124,6 @@ const (
 	// rte_mempool_get() or rte_mempool_get_bulk() is
 	// "single-consumer". Otherwise, it is "multi-consumers".
 	SCGet = C.MEMPOOL_F_SC_GET
-	// If set, allocated objects won't necessarily be contiguous in IO
-	// memory.
-	NoPhysContig = C.MEMPOOL_F_NO_PHYS_CONTIG
 )
 
 // Option shortcuts.
@@ -135,7 +132,6 @@ var (
 	OptNoCacheAlign = OptFlag(NoCacheAlign)
 	OptSPPut        = OptFlag(SPPut)
 	OptSCGet        = OptFlag(SCGet)
-	OptNoPhysContig = OptFlag(NoPhysContig)
 )
 
 // CreateEmpty creates new empty mempool. The mempool is allocated and
