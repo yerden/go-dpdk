@@ -31,7 +31,7 @@ func TestRingCreate(t *testing.T) {
 	assert := common.Assert(t, true)
 
 	assert(initEAL() == nil)
-	err := eal.ExecOnMaster(func(ctx *eal.LcoreCtx) {
+	err := eal.ExecOnMain(func(ctx *eal.LcoreCtx) {
 		r, err := ring.Create("test_ring", 1024, ring.OptSC,
 			ring.OptSP, ring.OptSocket(ctx.SocketID()))
 		assert(r != nil && err == nil, err)
@@ -48,7 +48,7 @@ func TestRingInit(t *testing.T) {
 	assert := common.Assert(t, true)
 
 	assert(initEAL() == nil)
-	err := eal.ExecOnMaster(func(ctx *eal.LcoreCtx) {
+	err := eal.ExecOnMain(func(ctx *eal.LcoreCtx) {
 		_, err := ring.GetMemSize(1023)
 		assert(err == syscall.EINVAL) // invalid count
 		n, err := ring.GetMemSize(1024)
