@@ -17,6 +17,7 @@ var initEAL = common.DoOnce(func() error {
 	if err == nil {
 		_, err = eal.Init([]string{"test",
 			"-c", common.NewMap(&set).String(),
+			"-d", eal.PmdPath,
 			"-m", "128",
 			"--no-huge",
 			"--no-pci",
