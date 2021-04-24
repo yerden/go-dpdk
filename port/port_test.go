@@ -16,10 +16,11 @@ var initEAL = common.DoOnce(func() error {
 	if err == nil {
 		_, err = eal.Init([]string{"test",
 			"-c", common.NewMap(&set).String(),
+			"-d", eal.PmdPath,
 			"-m", "128",
 			"--no-huge",
 			"--no-pci",
-			"--master-lcore", "0"})
+			"--main-lcore", "0"})
 	}
 	return err
 })
@@ -32,7 +33,7 @@ func TestPortRingIn(t *testing.T) {
 	// Initialize EAL on all cores
 	assert(initEAL() == nil)
 
-	err := eal.ExecOnMaster(func(*eal.LcoreCtx) {
+	err := eal.ExecOnMain(func(*eal.LcoreCtx) {
 		r, err := ring.Create("test_ring", 1024)
 		assert(err == nil, err)
 		defer r.Free()
@@ -65,7 +66,7 @@ func TestPortRingOut(t *testing.T) {
 	// Initialize EAL on all cores
 	assert(initEAL() == nil)
 
-	err := eal.ExecOnMaster(func(*eal.LcoreCtx) {
+	err := eal.ExecOnMain(func(*eal.LcoreCtx) {
 		r, err := ring.Create("test_ring", 1024)
 		assert(err == nil, err)
 		defer r.Free()
@@ -96,7 +97,7 @@ func TestPortRingCreateIn(t *testing.T) {
 	// Initialize EAL on all cores
 	assert(initEAL() == nil)
 
-	err := eal.ExecOnMaster(func(*eal.LcoreCtx) {
+	err := eal.ExecOnMain(func(*eal.LcoreCtx) {
 		r, err := ring.Create("test_ring", 1024)
 		assert(err == nil, err)
 		defer r.Free()
@@ -120,7 +121,7 @@ func TestPortRingCreateOut(t *testing.T) {
 	// Initialize EAL on all cores
 	assert(initEAL() == nil)
 
-	err := eal.ExecOnMaster(func(*eal.LcoreCtx) {
+	err := eal.ExecOnMain(func(*eal.LcoreCtx) {
 		r, err := ring.Create("test_ring", 1024)
 		assert(err == nil, err)
 		defer r.Free()
