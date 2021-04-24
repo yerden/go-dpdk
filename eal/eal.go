@@ -7,6 +7,10 @@ package eal
 */
 import "C"
 
+const (
+	PmdPath = C.RTE_EAL_PMD_PATH
+)
+
 // StopLcores sends signal to EAL threads to finish execution of
 // go-dpdk lcore function executor.
 //
