@@ -8,6 +8,8 @@ package eal
 import "C"
 
 const (
+	// PmdPath is the default location of shared objects to load by
+	// rte_eal_init.
 	PmdPath = C.RTE_EAL_PMD_PATH
 )
 
