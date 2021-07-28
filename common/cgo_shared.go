@@ -1,5 +1,3 @@
-// +build shared
-
 package common
 
 /*

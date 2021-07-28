@@ -1,8 +1,6 @@
-// +build shared
-
 package eal
 
 /*
-#cgo LDFLAGS: -lrte_eal
+#cgo pkg-config: libdpdk
 */
 import "C"

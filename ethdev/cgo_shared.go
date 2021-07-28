@@ -1,8 +1,6 @@
-// +build shared
-
 package ethdev
 
 /*
-#cgo LDFLAGS: -lrte_ethdev
+#cgo pkg-config: libdpdk
 */
 import "C"

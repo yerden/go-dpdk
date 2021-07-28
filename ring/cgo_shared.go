@@ -1,8 +1,6 @@
-// +build shared
-
 package ring
 
 /*
-#cgo LDFLAGS: -lrte_ring
+#cgo pkg-config: libdpdk
 */
 import "C"
