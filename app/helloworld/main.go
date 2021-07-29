@@ -12,6 +12,7 @@ func main() {
 		log.Fatalln("EAL init failed:", err)
 	}
 	defer eal.Cleanup()
+	defer eal.StopLcores()
 
 	for _, id := range eal.Lcores() {
 		eal.ExecOnLcore(id, func(ctx *eal.LcoreCtx) {
