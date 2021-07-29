@@ -9,16 +9,15 @@ import "C"
 import (
 	"unsafe"
 
-	"github.com/yerden/go-dpdk/common"
 	"github.com/yerden/go-dpdk/mempool"
 )
 
 // compile time checks
-var _ = []ConfigIn{
+var _ = []RxFactory{
 	&Source{},
 }
 
-var _ = []ConfigOut{
+var _ = []TxFactory{
 	&Sink{},
 }
 
@@ -36,21 +35,22 @@ type Source struct {
 	BytesPerPacket uint32
 }
 
-// Ops implements ConfigIn interface.
-func (rd *Source) Ops() *InOps {
-	return (*InOps)(&C.rte_port_source_ops)
-}
+// CreateRx implements RxFactory interface.
+func (rd *Source) CreateRx(socket int) (*Rx, error) {
+	rx := &Rx{ops: &C.rte_port_source_ops}
 
-// Arg implements ConfigIn interface.
-func (rd *Source) Arg(mem common.Allocator) *InArg {
-	var rc *C.struct_rte_port_source_params
-	common.MallocT(mem, &rc)
-	rc.mempool = (*C.struct_rte_mempool)(unsafe.Pointer(rd.Mempool))
-	rc.n_bytes_per_pkt = C.uint32_t(rd.BytesPerPacket)
-	if rd.Filename != "" {
-		rc.file_name = (*C.char)(common.CString(mem, rd.Filename))
+	// port
+	params := &C.struct_rte_port_source_params{
+		mempool:         (*C.struct_rte_mempool)(unsafe.Pointer(rd.Mempool)),
+		n_bytes_per_pkt: C.uint32_t(rd.BytesPerPacket),
 	}
-	return (*InArg)(unsafe.Pointer(rc))
+
+	if rd.Filename != "" {
+		params.file_name = (*C.char)(C.CString(rd.Filename))
+		defer C.free(unsafe.Pointer(params.file_name))
+	}
+
+	return rx, rx.doCreate(socket, unsafe.Pointer(params))
 }
 
 // Sink is an output port that drops all packets written to it.
@@ -63,18 +63,19 @@ type Sink struct {
 	MaxPackets uint32
 }
 
-// Ops implements ConfigOut interface.
-func (wr *Sink) Ops() *OutOps {
-	return (*OutOps)(&C.rte_port_sink_ops)
-}
+// CreateTx implements TxFactory interface.
+func (wr *Sink) CreateTx(socket int) (*Tx, error) {
+	tx := &Tx{ops: &C.rte_port_sink_ops}
 
-// Arg implements ConfigOut interface.
-func (wr *Sink) Arg(mem common.Allocator) *OutArg {
-	var rc *C.struct_rte_port_sink_params
-	common.MallocT(mem, &rc)
-	rc.max_n_pkts = C.uint32_t(wr.MaxPackets)
-	if wr.Filename != "" {
-		rc.file_name = (*C.char)(common.CString(mem, wr.Filename))
+	// port
+	params := &C.struct_rte_port_sink_params{
+		max_n_pkts: C.uint32_t(wr.MaxPackets),
 	}
-	return (*OutArg)(unsafe.Pointer(rc))
+
+	if wr.Filename != "" {
+		params.file_name = (*C.char)(C.CString(wr.Filename))
+		defer C.free(unsafe.Pointer(params.file_name))
+	}
+
+	return tx, tx.doCreate(socket, unsafe.Pointer(params))
 }

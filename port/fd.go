@@ -11,13 +11,12 @@ import "C"
 import (
 	"unsafe"
 
-	"github.com/yerden/go-dpdk/common"
 	"github.com/yerden/go-dpdk/mempool"
 )
 
-// FdIn input port built on top of valid non-blocking file
+// FdRx input port built on top of valid non-blocking file
 // descriptor.
-type FdIn struct {
+type FdRx struct {
 	// Pre-initialized buffer pool.
 	*mempool.Mempool
 
@@ -28,24 +27,25 @@ type FdIn struct {
 	MTU uint32
 }
 
-// Ops implements ConfigIn interface.
-func (rd *FdIn) Ops() *InOps {
-	return (*InOps)(&C.rte_port_fd_reader_ops)
+// CreateRx implements RxFactory interface.
+func (rd *FdRx) CreateRx(socket int) (*Rx, error) {
+	rx := &Rx{
+		ops: &C.rte_port_fd_reader_ops,
+	}
+
+	// port
+	params := &C.struct_rte_port_fd_reader_params{
+		fd:      C.int(rd.Fd),
+		mtu:     C.uint32_t(rd.MTU),
+		mempool: (*C.struct_rte_mempool)(unsafe.Pointer(rd.Mempool)),
+	}
+
+	return rx, rx.doCreate(socket, unsafe.Pointer(params))
 }
 
-// Arg implements ConfigIn interface.
-func (rd *FdIn) Arg(mem common.Allocator) *InArg {
-	var rc *C.struct_rte_port_fd_reader_params
-	common.MallocT(mem, &rc)
-	rc.fd = C.int(rd.Fd)
-	rc.mtu = C.uint32_t(rd.MTU)
-	rc.mempool = (*C.struct_rte_mempool)(unsafe.Pointer(rd.Mempool))
-	return (*InArg)(unsafe.Pointer(rc))
-}
-
-// FdOut is an output port built on top of valid non-blocking file
+// FdTx is an output port built on top of valid non-blocking file
 // descriptor.
-type FdOut struct {
+type FdTx struct {
 	// File descriptor.
 	Fd uintptr
 
@@ -57,19 +57,23 @@ type FdOut struct {
 	Retries uint32
 }
 
-// Ops implements ConfigOut interface.
-func (wr *FdOut) Ops() *OutOps {
-	if !wr.NoDrop {
-		return (*OutOps)(&C.rte_port_fd_writer_ops)
-	}
-	return (*OutOps)(&C.rte_port_fd_writer_nodrop_ops)
-}
+// CreateTx implements TxFactory interface.
+func (wr *FdTx) CreateTx(socket int) (*Tx, error) {
+	tx := &Tx{}
 
-// Arg implements ConfigOut interface.
-func (wr *FdOut) Arg(mem common.Allocator) *OutArg {
-	var rc *C.struct_rte_port_fd_writer_nodrop_params
-	common.MallocT(mem, &rc)
-	rc.fd = C.int(wr.Fd)
-	rc.n_retries = C.uint32_t(wr.Retries)
-	return (*OutArg)(unsafe.Pointer(rc))
+	var params unsafe.Pointer
+	if wr.NoDrop {
+		tx.ops = &C.rte_port_fd_writer_nodrop_ops
+		params = unsafe.Pointer(&C.struct_rte_port_fd_writer_nodrop_params{
+			fd:        C.int(wr.Fd),
+			n_retries: C.uint32_t(wr.Retries),
+		})
+	} else {
+		tx.ops = &C.rte_port_fd_writer_ops
+		params = unsafe.Pointer(&C.struct_rte_port_fd_writer_params{
+			fd: C.int(wr.Fd),
+		})
+	}
+
+	return tx, tx.doCreate(socket, params)
 }

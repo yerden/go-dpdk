@@ -11,22 +11,21 @@ import "C"
 import (
 	"unsafe"
 
-	"github.com/yerden/go-dpdk/common"
 	"github.com/yerden/go-dpdk/ring"
 )
 
 // compile time checks
-var _ = []ConfigIn{
-	&RingIn{},
+var _ = []RxFactory{
+	&RingRx{},
 }
 
-var _ = []ConfigOut{
-	&RingOut{},
+var _ = []TxFactory{
+	&RingTx{},
 }
 
-// RingIn is an input port built on top of pre-initialized single
+// RingRx is an input port built on top of pre-initialized single
 // consumer ring.
-type RingIn struct {
+type RingRx struct {
 	// Underlying ring
 	*ring.Ring
 
@@ -34,25 +33,26 @@ type RingIn struct {
 	Multi bool
 }
 
-// Ops implements ConfigIn interface.
-func (rd *RingIn) Ops() *InOps {
+// CreateRx implements RxFactory interface.
+func (rd *RingRx) CreateRx(socket int) (*Rx, error) {
+	rx := &Rx{}
+
 	if !rd.Multi {
-		return (*InOps)(&C.rte_port_ring_reader_ops)
+		rx.ops = &C.rte_port_ring_reader_ops
+	} else {
+		rx.ops = &C.rte_port_ring_multi_reader_ops
 	}
-	return (*InOps)(&C.rte_port_ring_multi_reader_ops)
+
+	params := &C.struct_rte_port_ring_reader_params{
+		ring: (*C.struct_rte_ring)(unsafe.Pointer(rd.Ring)),
+	}
+
+	return rx, rx.doCreate(socket, unsafe.Pointer(params))
 }
 
-// Arg implements ConfigIn interface.
-func (rd *RingIn) Arg(mem common.Allocator) *InArg {
-	var rc *C.struct_rte_port_ring_reader_params
-	common.MallocT(mem, &rc)
-	rc.ring = (*C.struct_rte_ring)(unsafe.Pointer(rd.Ring))
-	return (*InArg)(unsafe.Pointer(rc))
-}
-
-// RingOut is an output port built on top of pre-initialized single
+// RingTx is an output port built on top of pre-initialized single
 // producer ring.
-type RingOut struct {
+type RingTx struct {
 	// Underlying ring
 	*ring.Ring
 
@@ -70,29 +70,37 @@ type RingOut struct {
 	Retries uint32
 }
 
-// Ops implements ConfigOut interface.
-func (wr *RingOut) Ops() *OutOps {
-	switch {
-	case wr.Multi && wr.NoDrop:
-		return (*OutOps)(&C.rte_port_ring_multi_writer_nodrop_ops)
-	case wr.Multi:
-		return (*OutOps)(&C.rte_port_ring_multi_writer_ops)
-	case wr.NoDrop:
-		return (*OutOps)(&C.rte_port_ring_writer_nodrop_ops)
-	default:
-		return (*OutOps)(&C.rte_port_ring_writer_ops)
-	}
-}
+// CreateTx implements TxFactory interface.
+func (wr *RingTx) CreateTx(socket int) (*Tx, error) {
+	tx := &Tx{}
 
-// Arg implements ConfigOut interface.
-func (wr *RingOut) Arg(mem common.Allocator) *OutArg {
-	// NOTE: struct rte_port_ring_writer_params is a subset of struct
-	// rte_port_ring_writer_nodrop_params, so we may simply use the
-	// latter for it would fit regardless of NoDrop flag.
-	var rc *C.struct_rte_port_ring_writer_nodrop_params
-	common.MallocT(mem, &rc)
-	rc.ring = (*C.struct_rte_ring)(unsafe.Pointer(wr.Ring))
-	rc.tx_burst_sz = C.uint32_t(wr.TxBurstSize)
-	rc.n_retries = C.uint32_t(wr.Retries)
-	return (*OutArg)(unsafe.Pointer(rc))
+	var err error
+	if wr.NoDrop {
+		if wr.Multi {
+			tx.ops = &C.rte_port_ring_multi_writer_nodrop_ops
+		} else {
+			tx.ops = &C.rte_port_ring_writer_nodrop_ops
+		}
+
+		params := &C.struct_rte_port_ring_writer_nodrop_params{
+			ring:        (*C.struct_rte_ring)(unsafe.Pointer(wr.Ring)),
+			tx_burst_sz: C.uint32_t(wr.TxBurstSize),
+			n_retries:   C.uint32_t(wr.Retries),
+		}
+		err = tx.doCreate(socket, unsafe.Pointer(params))
+	} else {
+		if wr.Multi {
+			tx.ops = &C.rte_port_ring_multi_writer_ops
+		} else {
+			tx.ops = &C.rte_port_ring_writer_ops
+		}
+
+		params := &C.struct_rte_port_ring_writer_params{
+			ring:        (*C.struct_rte_ring)(unsafe.Pointer(wr.Ring)),
+			tx_burst_sz: C.uint32_t(wr.TxBurstSize),
+		}
+		err = tx.doCreate(socket, unsafe.Pointer(params))
+	}
+
+	return tx, err
 }

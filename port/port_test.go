@@ -25,7 +25,7 @@ var initEAL = common.DoOnce(func() error {
 	return err
 })
 
-func TestPortRingIn(t *testing.T) {
+func TestPortRingRx(t *testing.T) {
 	assert := common.Assert(t, true)
 	m := common.NewAllocatorSession(&common.StdAlloc{})
 	defer m.Flush()
@@ -38,27 +38,19 @@ func TestPortRingIn(t *testing.T) {
 		assert(err == nil, err)
 		defer r.Free()
 
-		var ops *InOps
-		var port *In
-		var arg *InArg
-		confIn := &RingIn{Ring: r, Multi: true}
+		confRx := &RingRx{Ring: r, Multi: true}
 
-		arg = confIn.Arg(m)
-		assert(arg != nil)
+		rx, err := confRx.CreateRx(-1)
+		assert(err == nil)
+		assert(rx != nil)
 
-		ops = confIn.Ops()
-		assert(ops != nil, ops)
-
-		port = ops.Create(-1, arg)
-
-		assert(port != nil, port)
-		err = ops.Free(port)
+		err = rx.Free()
 		assert(err == nil, err)
 	})
 	assert(err == nil, err)
 }
 
-func TestPortRingOut(t *testing.T) {
+func TestPortRingTx(t *testing.T) {
 	assert := common.Assert(t, true)
 	m := common.NewAllocatorSession(&common.StdAlloc{})
 	defer m.Flush()
@@ -71,27 +63,19 @@ func TestPortRingOut(t *testing.T) {
 		assert(err == nil, err)
 		defer r.Free()
 
-		var ops *OutOps
-		var port *Out
-		var arg *OutArg
-		confOut := &RingOut{Ring: r, Multi: true, NoDrop: false, TxBurstSize: 64}
+		confTx := &RingTx{Ring: r, Multi: true, NoDrop: false, TxBurstSize: 64}
 
-		arg = confOut.Arg(m)
-		assert(arg != nil)
+		tx, err := confTx.CreateTx(-1)
+		assert(err == nil)
+		assert(tx != nil)
 
-		ops = confOut.Ops()
-		assert(ops != nil, ops)
-
-		port = ops.Create(-1, arg)
-
-		assert(port != nil, port)
-		err = ops.Free(port)
+		err = tx.Free()
 		assert(err == nil, err)
 	})
 	assert(err == nil, err)
 }
 
-func TestPortRingCreateIn(t *testing.T) {
+func TestPortRingCreateRx(t *testing.T) {
 	assert := common.Assert(t, true)
 
 	// Initialize EAL on all cores
@@ -102,18 +86,16 @@ func TestPortRingCreateIn(t *testing.T) {
 		assert(err == nil, err)
 		defer r.Free()
 
-		var ops *InOps
-		var port *In
-		confIn := &RingIn{Ring: r, Multi: true}
-		ops, port = CreateIn(confIn, -1)
-		assert(ops != nil, ops)
-		assert(port != nil, port)
-		assert(ops.Free(port) == nil)
+		confRx := &RingRx{Ring: r, Multi: true}
+		rx, err := confRx.CreateRx(-1)
+		assert(err == nil, err)
+		assert(rx != nil)
+		assert(rx.Free() == nil)
 	})
 	assert(err == nil, err)
 }
 
-func TestPortRingCreateOut(t *testing.T) {
+func TestPortRingCreateTx(t *testing.T) {
 	assert := common.Assert(t, true)
 	m := common.NewAllocatorSession(&common.StdAlloc{})
 	defer m.Flush()
@@ -126,13 +108,11 @@ func TestPortRingCreateOut(t *testing.T) {
 		assert(err == nil, err)
 		defer r.Free()
 
-		var ops *OutOps
-		var port *Out
-		confOut := &RingOut{Ring: r, Multi: true, NoDrop: false, TxBurstSize: 64}
-		ops, port = CreateOut(confOut, -1)
-		assert(ops != nil, ops)
-		assert(port != nil, port)
-		assert(ops.Free(port) == nil)
+		confTx := &RingTx{Ring: r, Multi: true, NoDrop: false, TxBurstSize: 64}
+		tx, err := confTx.CreateTx(-1)
+		assert(err == nil, err)
+		assert(tx != nil, tx)
+		assert(tx.Free() == nil)
 	})
 	assert(err == nil, err)
 }
