@@ -260,6 +260,13 @@ func err(n ...interface{}) error {
 	return common.IntToErr(n[0])
 }
 
+func (t *Thresh) cThresh() (out C.struct_rte_eth_thresh) {
+	out.pthresh = C.uchar(t.PThresh)
+	out.hthresh = C.uchar(t.HThresh)
+	out.wthresh = C.uchar(t.WThresh)
+	return
+}
+
 // OptLinkSpeeds sets allowed speeds for the device.
 // LinkSpeedFixed disables link autonegotiation, and a unique speed
 // shall be set. Otherwise, the bitmap defines the set of speeds to be
@@ -351,11 +358,7 @@ func (pid Port) DevConfigure(nrxq, ntxq uint16, opts ...Option) error {
 func OptRxqConf(conf RxqConf) QueueOption {
 	return QueueOption{func(q *qConf) {
 		q.rx = C.struct_rte_eth_rxconf{
-			rx_thresh: C.struct_rte_eth_thresh{
-				pthresh: C.uchar(conf.Thresh.PThresh),
-				hthresh: C.uchar(conf.Thresh.HThresh),
-				wthresh: C.uchar(conf.Thresh.WThresh),
-			},
+			rx_thresh:         conf.Thresh.cThresh(),
 			rx_free_thresh:    C.ushort(conf.FreeThresh),
 			rx_drop_en:        C.uchar(conf.DropEn),
 			rx_deferred_start: C.uchar(conf.DeferredStart),
@@ -369,11 +372,7 @@ func OptRxqConf(conf RxqConf) QueueOption {
 func OptTxqConf(conf TxqConf) QueueOption {
 	return QueueOption{func(q *qConf) {
 		q.tx = C.struct_rte_eth_txconf{
-			tx_thresh: C.struct_rte_eth_thresh{
-				pthresh: C.uchar(conf.Thresh.PThresh),
-				hthresh: C.uchar(conf.Thresh.HThresh),
-				wthresh: C.uchar(conf.Thresh.WThresh),
-			},
+			tx_thresh:         conf.Thresh.cThresh(),
 			tx_rs_thresh:      C.ushort(conf.RsThresh),
 			tx_free_thresh:    C.ushort(conf.FreeThresh),
 			tx_deferred_start: C.uchar(conf.DeferredStart),
