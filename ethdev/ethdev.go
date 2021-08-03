@@ -639,6 +639,11 @@ func (pid Port) SocketID() int {
 // device, etc...
 type DevInfo C.struct_rte_eth_dev_info
 
+// DriverName returns driver_name as a Go string.
+func (info *DevInfo) DriverName() string {
+	return C.GoString((*C.struct_rte_eth_dev_info)(info).driver_name)
+}
+
 // InfoGet retrieves the contextual information of an Ethernet device.
 //
 // As part of this function, a number of of fields in dev_info will be
