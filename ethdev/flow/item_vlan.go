@@ -27,6 +27,15 @@ import (
 
 var _ ItemStruct = (*ItemVlan)(nil)
 
+// ItemVlan matches an 802.1Q/ad VLAN tag.
+//
+// The corresponding standard outer EtherType (TPID) values are
+// RTE_ETHER_TYPE_VLAN or RTE_ETHER_TYPE_QINQ. It can be overridden by the
+// preceding pattern item. If a VLAN item is present in the pattern, then only
+// tagged packets will match the pattern. The field has_more_vlan can be used to
+// match any type of tagged packets, instead of using the eth_proto field of hdr.
+// If the eth_proto of hdr and has_more_vlan fields are not specified, then any
+// tagged packets will match the pattern.
 type ItemVlan struct {
 	cPointer
 	HasMoreVlan bool
@@ -34,6 +43,7 @@ type ItemVlan struct {
 	InnerType   uint16
 }
 
+// Reload implements ItemStruct interface.
 func (item *ItemVlan) Reload() {
 	cptr := (*C.struct_rte_flow_item_vlan)(item.createOrRet(C.sizeof_struct_rte_flow_item_vlan))
 
@@ -50,10 +60,12 @@ func (item *ItemVlan) Reload() {
 	runtime.SetFinalizer(item, (*ItemVlan).free)
 }
 
+// Type implements ItemStruct interface.
 func (item *ItemVlan) Type() ItemType {
 	return ItemTypeVlan
 }
 
+// Mask implements ItemStruct interface.
 func (item *ItemVlan) Mask() unsafe.Pointer {
 	return C.get_item_vlan_mask()
 }
