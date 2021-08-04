@@ -11,7 +11,7 @@ func CopyFromBytes(dst unsafe.Pointer, src []byte, max int) int {
 	return copy(MakeSlice(dst, max), src)
 }
 
-// CopyFromBytes copies no more than max bytes from an area pointed to
+// CopyToBytes copies no more than max bytes from an area pointed to
 // by src to dst.
 func CopyToBytes(dst []byte, src unsafe.Pointer, max int) int {
 	return copy(dst, MakeSlice(src, max))

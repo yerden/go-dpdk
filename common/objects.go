@@ -11,6 +11,7 @@ var (
 	}
 )
 
+// ObjectID is the ID of some opaque object stored in Registry.
 type ObjectID uint64
 
 // Registry implements CRUD operations to map ID and objects.
@@ -21,6 +22,8 @@ type Registry interface {
 	Delete(ObjectID)
 }
 
+// NewRegistryMap creates new Registry which stores all objects in a
+// map.
 func NewRegistryMap() Registry {
 	return &objTable{
 		hash: make(map[ObjectID]interface{}),
@@ -72,7 +75,7 @@ func (r *objArray) Create(obj interface{}) ObjectID {
 	r.Lock()
 	id := ObjectID(len(r.array))
 	r.array = append(r.array, obj)
-	r.cnt += 1
+	r.cnt++
 	r.Unlock()
 	return id
 }
@@ -93,12 +96,13 @@ func (r *objArray) Update(id ObjectID, obj interface{}) {
 func (r *objArray) Delete(id ObjectID) {
 	r.Lock()
 	r.array[id] = nil
-	if r.cnt -= 1; r.cnt == 0 {
+	if r.cnt--; r.cnt == 0 {
 		r.array = make([]interface{}, 0, 10)
 	}
 	r.Unlock()
 }
 
+// NewRegistryArray creates new Registry as a linear array.
 func NewRegistryArray() Registry {
 	return &objArray{}
 }

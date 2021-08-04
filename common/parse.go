@@ -8,24 +8,30 @@ import (
 	"unicode/utf8"
 )
 
+// Splitter parsing errors.
 var (
-	ErrUnprintable  = errors.New("unprintable char")
-	ErrOpenQuote    = errors.New("no closing quote")
-	DefaultSplitter = &Splitter{
-		unicode.IsSpace,
-		func(r rune) (rune, bool) {
-			if r == '"' {
-				return '"', true
-			}
-			if r == '\'' {
-				return '\'', true
-			}
-			return ' ', false
-		},
-		false,
-	}
+	ErrUnprintable = errors.New("unprintable char")
+	ErrOpenQuote   = errors.New("no closing quote")
 )
 
+// DefaultSplitter parses tokens as space-separated words treating
+// double and signal quotation mark as 'quotes'.
+var DefaultSplitter = &Splitter{
+	unicode.IsSpace,
+	func(r rune) (rune, bool) {
+		if r == '"' {
+			return '"', true
+		}
+		if r == '\'' {
+			return '\'', true
+		}
+		return ' ', false
+	},
+	false,
+}
+
+// Splitter is used to parse string into words. Quotes are used to
+// protect words from being separated into separate token.
 type Splitter struct {
 	// True if rune is a white space.
 	IsSpace func(rune) bool
@@ -44,6 +50,7 @@ type Splitter struct {
 	AllowOpenQuote bool
 }
 
+// SplitFunc generates bufio.SplitFunc to use in bufio.Scanner.
 func SplitFunc(s *Splitter) bufio.SplitFunc {
 	isSpaceOrQuote := func(r rune) bool {
 		_, ok := s.IsQuote(r)

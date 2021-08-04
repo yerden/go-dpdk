@@ -101,7 +101,7 @@ func allocArray(a Allocator, ptr interface{}, nmemb int64) unsafe.Pointer {
 	return p
 }
 
-// Calloc allocates an array of objects by its type. The type and its
+// CallocT allocates an array of objects by its type. The type and its
 // size is derived from ptr which is a pointer to pointer of required
 // type where new object will be stored. For example:
 //   var x *int

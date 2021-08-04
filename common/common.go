@@ -25,6 +25,7 @@ const (
 	SocketIDAny = int(C.SOCKET_ID_ANY)
 )
 
+// Custom RTE induced errors.
 var (
 	ErrNoConfig  = errors.New("Missing rte_config")
 	ErrSecondary = errors.New("Operation not allowed in secondary processes")
