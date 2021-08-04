@@ -2,7 +2,7 @@
 
 go get -u github.com/client9/misspell/cmd/misspell
 go get -u github.com/gordonklaus/ineffassign
-go get -u github.com/fzipp/gocyclo
+go get -u github.com/fzipp/gocyclo/cmd/gocyclo@latest
 
 DIRS="common eal ethdev lcore mempool ring port"
 # Add subdirectories here as we clean up golint on each.
