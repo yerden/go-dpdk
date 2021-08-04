@@ -26,18 +26,24 @@ func mp(m *mempool.Mempool) *C.struct_rte_mempool {
 	return (*C.struct_rte_mempool)(unsafe.Pointer(m))
 }
 
+// PktMbufFree returns this mbuf into its originating mempool along
+// with all its segments.
 func PktMbufFree(m *Mbuf) {
 	C.rte_pktmbuf_free(mbuf(m))
 }
 
+// RawFree returns this mbuf into its originating mempool.
 func RawFree(m *Mbuf) {
 	C.rte_mbuf_raw_free(mbuf(m))
 }
 
+// PktMbufClone clones the mbuf using supplied mempool as the buffer
+// source.
 func PktMbufClone(m *Mbuf, p *mempool.Mempool) {
 	C.rte_pktmbuf_clone(mbuf(m), mp(p))
 }
 
+// Data returns contained packet.
 func (m *Mbuf) Data() []byte {
 	var d []byte
 	buf := mbuf(m)
