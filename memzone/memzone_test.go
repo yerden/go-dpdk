@@ -20,7 +20,7 @@ var initEAL = common.DoOnce(func() error {
 			"-m", "128",
 			"--no-huge",
 			"--no-pci",
-			"--master-lcore", "0"})
+			"--main-lcore", "0"})
 	}
 	return err
 })
@@ -31,17 +31,24 @@ func TestMemzoneCreateErr(t *testing.T) {
 	// Initialize EAL on all cores
 	assert(initEAL() == nil)
 
-	// create and test mempool on master lcore
-	err := eal.ExecOnMain(func(ctx *eal.LcoreCtx) {
+	var mz *memzone.Memzone
+	var err error
+	// create and test mempool on main lcore
+	execErr := eal.ExecOnMain(func(ctx *eal.LcoreCtx) {
 		// create empty mempool
 		n := 100000000
-		mz, err := memzone.Reserve("test_mz",
+		mz, err = memzone.Reserve("test_mz",
 			uintptr(n),            // size of zone
 			memzone.OptSocket(10), // incorrect, ctx.SocketID()),
 			memzone.OptFlag(memzone.PageSizeHintOnly))
-		assert(mz == nil && err == syscall.ENOMEM, mz, err)
 	})
-	assert(err == nil, err)
+	if eal.HasHugePages() {
+		assert(mz == nil && err == syscall.ENOMEM, mz, err)
+	} else {
+		assert(mz != nil && err == nil)
+		mz.Free()
+	}
+	assert(execErr == nil, execErr)
 }
 
 func TestMemzoneCreate(t *testing.T) {
@@ -50,7 +57,7 @@ func TestMemzoneCreate(t *testing.T) {
 	// Initialize EAL on all cores
 	assert(initEAL() == nil)
 
-	// create and test mempool on master lcore
+	// create and test mempool on main lcore
 	err := eal.ExecOnMain(func(ctx *eal.LcoreCtx) {
 		// create empty mempool
 		n := 100000000
@@ -79,7 +86,7 @@ func TestMemzoneWriteTo(t *testing.T) {
 	// Initialize EAL on all cores
 	assert(initEAL() == nil)
 
-	// create and test mempool on master lcore
+	// create and test mempool on main lcore
 	err := eal.ExecOnMain(func(ctx *eal.LcoreCtx) {
 		// create empty mempool
 		n := 100000000
@@ -104,7 +111,7 @@ func TestMemzoneAligned(t *testing.T) {
 	// Initialize EAL on all cores
 	assert(initEAL() == nil)
 
-	// create and test mempool on master lcore
+	// create and test mempool on main lcore
 	err := eal.ExecOnMain(func(ctx *eal.LcoreCtx) {
 		// create empty mempool
 		n := 100000000
