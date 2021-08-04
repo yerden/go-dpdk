@@ -3,6 +3,8 @@ FROM nedrey/dpdk-build:${DPDK_DIST}
 ARG GO_VERSION
 ENV GOPATH /go
 ENV PATH /usr/local/go/bin:$GOPATH/bin:$PATH
+ENV CGO_CFLAGS_ALLOW .*
+ENV CGO_LDFLAGS_ALLOW .*
 ENV PKG_CONFIG_PATH /usr/local/share/pkgconfig:$PKG_CONFIG_PATH
 ENV GO111MODULE on
 
