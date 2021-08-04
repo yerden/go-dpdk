@@ -19,24 +19,20 @@ env:
     - GO111MODULE=on
 
 before_install:
-    - docker build --build-arg DIST=${TRAVIS_DIST} --build-arg GO_VERSION=${GO_VERSION} --build-arg DPDK_VER=${DPDK_VER} -t test-build .
+    - docker build --build-arg DPDK_DIST=${DPDK_DIST} --build-arg GO_VERSION=${GO_VERSION} -t test-build .
 
 _test_script: &_test_script
   script:
-    - docker run -v $(pwd):/repo --rm test-build ./.travis.golint.sh
-    - docker run -v $(pwd):/repo --rm test-build ./.travis.static.sh
-    - docker run -v $(pwd):/repo --rm test-build ./.travis.govet.sh
-    - docker run -v $(pwd):/repo --rm test-build ./.travis.script.sh $TAGS
+    - docker run -w /repo -v $(pwd):/repo --rm test-build ./.travis.golint.sh
+    - docker run -w /repo -v $(pwd):/repo --rm test-build ./.travis.static.sh
+    - docker run -w /repo -v $(pwd):/repo --rm test-build ./.travis.govet.sh
+    - docker run -w /repo -v $(pwd):/repo --rm test-build ./.travis.script.sh $TAGS
 
 jobs:
   include:
-    - env: GO_VERSION=1.16.3 DPDK_VER=v20.11 TAGS=static
+    - env: GO_VERSION=1.16.3 DPDK_DIST=rockylinux8-v21.05 TAGS=shared
       <<: *_test_script
-    - env: GO_VERSION=1.15.11 DPDK_VER=v20.11 TAGS=static
-      <<: *_test_script
-    - env: GO_VERSION=1.16.3 DPDK_VER=v20.11 TAGS=shared
-      <<: *_test_script
-    - env: GO_VERSION=1.15.11 DPDK_VER=v20.11 TAGS=shared
+    - env: GO_VERSION=1.15.11 DPDK_DIST=rockylinux8-v21.05 TAGS=shared
       <<: *_test_script
   #allow_failures:
     #- env: GO_VERSION=1.13.4 DPDK_VER=v18.11 TAGS=static
