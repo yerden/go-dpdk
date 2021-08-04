@@ -633,3 +633,57 @@ func (pid Port) SetLinkDown() error {
 func (pid Port) SocketID() int {
 	return int(C.rte_eth_dev_socket_id(C.ushort(pid)))
 }
+
+// DevInfo is a structure used to retrieve the contextual information
+// of an Ethernet device, such as the controlling driver of the
+// device, etc...
+type DevInfo C.struct_rte_eth_dev_info
+
+// InfoGet retrieves the contextual information of an Ethernet device.
+//
+// As part of this function, a number of of fields in dev_info will be
+// initialized as follows:
+//
+// rx_desc_lim = lim tx_desc_lim = lim
+//
+// Where lim is defined within the rte_eth_dev_info_get as
+//
+//   const struct rte_eth_desc_lim lim = { .nb_max = UINT16_MAX, .nb_min
+//   = 0, .nb_align = 1, .nb_seg_max = UINT16_MAX, .nb_mtu_seg_max =
+//   UINT16_MAX, };
+//
+//   device = dev->device min_mtu = RTE_ETHER_MIN_MTU max_mtu =
+//   UINT16_MAX
+//
+// The following fields will be populated if support for
+// dev_infos_get() exists for the device and the rte_eth_dev 'dev' has
+// been populated successfully with a call to it:
+//
+//   driver_name = dev->device->driver->name nb_rx_queues =
+//   dev->data->nb_rx_queues nb_tx_queues = dev->data->nb_tx_queues
+//   dev_flags = &dev->data->dev_flags
+func (pid Port) InfoGet(info *DevInfo) error {
+	return err(C.rte_eth_dev_info_get(C.ushort(pid), (*C.struct_rte_eth_dev_info)(info)))
+}
+
+// IsValid checks if port_id of device is attached.
+func (pid Port) IsValid() bool {
+	return C.rte_eth_dev_is_valid_port(C.ushort(pid)) != 0
+}
+
+// CountAvail gets the number of ports which are usable for the
+// application.
+//
+// These devices must be iterated by using the macro
+// RTE_ETH_FOREACH_DEV or RTE_ETH_FOREACH_DEV_OWNED_BY to deal with
+// non-contiguous ranges of devices.
+func CountAvail() int {
+	return int(C.rte_eth_dev_count_avail())
+}
+
+// CountTotal gets the total number of ports which are allocated.
+//
+// Some devices may not be available for the application.
+func CountTotal() int {
+	return int(C.rte_eth_dev_count_total())
+}
