@@ -149,8 +149,6 @@ func panicCatcher(fn func(*LcoreCtx), ctx *LcoreCtx) (err error) {
 func lcoreFuncListener(arg unsafe.Pointer) C.int {
 	id := uint(C.rte_lcore_id())
 	ctx := goEAL.lcores[id]
-	log.Printf("lcore %d started", id)
-	defer log.Printf("lcore %d exited", id)
 
 	// wait group to signal successful launch
 	// lcore is running
