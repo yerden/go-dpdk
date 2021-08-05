@@ -350,7 +350,7 @@ func (pid Port) DevConfigure(nrxq, ntxq uint16, opts ...Option) error {
 	}
 
 	return err(C.rte_eth_dev_configure(C.ushort(pid), C.ushort(nrxq),
-		C.ushort(nrxq), conf))
+		C.ushort(ntxq), conf))
 }
 
 // OptRxqConf specifies the configuration an RX ring of an Ethernet
