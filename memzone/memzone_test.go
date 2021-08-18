@@ -63,7 +63,7 @@ func TestMemzoneCreate(t *testing.T) {
 		n := 100000000
 		mz, err := memzone.Reserve("test_mz",
 			uintptr(n), // size of zone
-			memzone.OptSocket(ctx.SocketID()),
+			memzone.OptSocket(eal.SocketID()),
 			memzone.OptFlag(memzone.PageSizeHintOnly))
 		assert(mz != nil && err == nil, err)
 
@@ -92,7 +92,7 @@ func TestMemzoneWriteTo(t *testing.T) {
 		n := 100000000
 		mz, err := memzone.Reserve("test_mz",
 			uintptr(n), // size of zone
-			memzone.OptSocket(ctx.SocketID()),
+			memzone.OptSocket(eal.SocketID()),
 			memzone.OptFlag(memzone.PageSizeHintOnly))
 		assert(mz != nil && err == nil, err)
 		defer mz.Free()
@@ -117,7 +117,7 @@ func TestMemzoneAligned(t *testing.T) {
 		n := 100000000
 		mz, err := memzone.Reserve("test_mz",
 			uintptr(n), // size of zone
-			memzone.OptSocket(ctx.SocketID()),
+			memzone.OptSocket(eal.SocketID()),
 			memzone.OptFlag(memzone.PageSizeHintOnly),
 			memzone.OptAligned(1024))
 		assert(mz != nil && err == nil, err)
