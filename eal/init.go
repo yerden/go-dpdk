@@ -89,7 +89,7 @@ func SocketID() uint {
 
 // String implements fmt.Stringer.
 func (ctx *LcoreCtx) String() string {
-	return fmt.Sprintf("lcore=%d socket=%d", LcoreID(), SocketID())
+	return fmt.Sprintf("lcore=%d socket=%d value=%v", LcoreID(), SocketID(), ctx.Value)
 }
 
 // LcoreToSocket return socket id for given lcore LcoreID.
