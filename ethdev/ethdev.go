@@ -29,6 +29,7 @@ static void set_tx_insert_pvid(struct rte_eth_txmode *txm) {
 import "C"
 
 import (
+	"reflect"
 	"unsafe"
 
 	"github.com/yerden/go-dpdk/common"
@@ -134,7 +135,7 @@ const (
 // Option represents device option which is then used by
 // DevConfigure to setup Ethernet device.
 type Option struct {
-	f func(*C.struct_rte_eth_conf)
+	f func(*ethConf)
 }
 
 // configuration options for RX/TX queue
@@ -205,6 +206,19 @@ type RssConf struct {
 	Hf uint64
 }
 
+func (pid Port) RssHashConfGet(conf *RssConf) error {
+	var rssConf C.struct_rte_eth_rss_conf
+	rc := C.rte_eth_dev_rss_hash_conf_get(C.ushort(pid), &rssConf)
+
+	sh := (*reflect.SliceHeader)(unsafe.Pointer(&conf.Key))
+	sh.Data = uintptr(unsafe.Pointer(rssConf.rss_key))
+	sh.Len = int(rssConf.rss_key_len)
+	sh.Cap = sh.Len
+
+	conf.Hf = uint64(rssConf.rss_hf)
+	return err(rc)
+}
+
 // Thresh is a structure used to configure the ring threshold
 // registers of an RX/TX queue for an Ethernet port.
 type Thresh struct {
@@ -273,15 +287,15 @@ func (t *Thresh) cThresh() (out C.struct_rte_eth_thresh) {
 // advertised. If the special value LinkSpeedAutoneg is used, all
 // speeds supported are advertised.
 func OptLinkSpeeds(speeds uint) Option {
-	return Option{func(ec *C.struct_rte_eth_conf) {
-		ec.link_speeds = C.uint(speeds)
+	return Option{func(c *ethConf) {
+		c.conf.link_speeds = C.uint(speeds)
 	}}
 }
 
 // OptRxMode specifies port RX configuration.
 func OptRxMode(conf RxMode) Option {
-	return Option{func(ec *C.struct_rte_eth_conf) {
-		ec.rxmode = C.struct_rte_eth_rxmode{
+	return Option{func(c *ethConf) {
+		c.conf.rxmode = C.struct_rte_eth_rxmode{
 			mq_mode:        uint32(conf.MqMode),
 			max_rx_pkt_len: C.uint(conf.MaxRxPktLen),
 			split_hdr_size: C.ushort(conf.SplitHdrSize),
@@ -290,22 +304,33 @@ func OptRxMode(conf RxMode) Option {
 	}}
 }
 
+type ethConf struct {
+	conf  C.struct_rte_eth_conf
+	cptrs []unsafe.Pointer // allocated C pointers
+}
+
+func (c *ethConf) free() {
+	for _, p := range c.cptrs {
+		C.free(p)
+	}
+}
+
 // OptTxMode specifies port TX configuration.
 func OptTxMode(conf TxMode) Option {
-	return Option{func(ec *C.struct_rte_eth_conf) {
-		ec.txmode = C.struct_rte_eth_txmode{
+	return Option{func(c *ethConf) {
+		c.conf.txmode = C.struct_rte_eth_txmode{
 			mq_mode:  uint32(conf.MqMode),
 			offloads: C.ulong(conf.Offloads),
 			pvid:     C.ushort(conf.Pvid),
 		}
 		if conf.HwVlanRejectTagged {
-			C.set_tx_reject_tagged(&ec.txmode)
+			C.set_tx_reject_tagged(&c.conf.txmode)
 		}
 		if conf.HwVlanRejectUntagged {
-			C.set_tx_reject_untagged(&ec.txmode)
+			C.set_tx_reject_untagged(&c.conf.txmode)
 		}
 		if conf.HwVlanInsertPvid {
-			C.set_tx_insert_pvid(&ec.txmode)
+			C.set_tx_insert_pvid(&c.conf.txmode)
 		}
 	}}
 }
@@ -315,22 +340,24 @@ func OptTxMode(conf TxMode) Option {
 // datasheet of given ethernet controller for details. The possible
 // values of this field are defined in implementation of each driver.
 func OptLoopbackMode(mode uint32) Option {
-	return Option{func(ec *C.struct_rte_eth_conf) {
-		ec.lpbk_mode = C.uint(mode)
+	return Option{func(c *ethConf) {
+		c.conf.lpbk_mode = C.uint(mode)
 	}}
 }
 
 // OptRss specifies RSS configuration.
 func OptRss(conf RssConf) Option {
-	return Option{func(ec *C.struct_rte_eth_conf) {
-		c := C.struct_rte_eth_rss_conf{
+	return Option{func(c *ethConf) {
+		rssConf := C.struct_rte_eth_rss_conf{
 			rss_key_len: C.uchar(len(conf.Key)),
 			rss_hf:      C.ulong(conf.Hf),
 		}
 		if conf.Key != nil && len(conf.Key) > 0 {
-			c.rss_key = (*C.uchar)(unsafe.Pointer(&conf.Key[0]))
+			p := C.CBytes(conf.Key)
+			rssConf.rss_key = (*C.uchar)(p)
+			c.cptrs = append(c.cptrs, p)
 		}
-		ec.rx_adv_conf.rss_conf = c
+		c.conf.rx_adv_conf.rss_conf = rssConf
 	}}
 }
 
@@ -344,13 +371,14 @@ func OptRss(conf RssConf) Option {
 //
 // Several Opt* options may be specified as well.
 func (pid Port) DevConfigure(nrxq, ntxq uint16, opts ...Option) error {
-	conf := &C.struct_rte_eth_conf{}
+	ec := &ethConf{}
 	for i := range opts {
-		opts[i].f(conf)
+		opts[i].f(ec)
 	}
+	defer ec.free()
 
 	return err(C.rte_eth_dev_configure(C.ushort(pid), C.ushort(nrxq),
-		C.ushort(ntxq), conf))
+		C.ushort(ntxq), &ec.conf))
 }
 
 // OptRxqConf specifies the configuration an RX ring of an Ethernet
@@ -669,6 +697,14 @@ func (info *DevInfo) DriverName() string {
 //   dev_flags = &dev->data->dev_flags
 func (pid Port) InfoGet(info *DevInfo) error {
 	return err(C.rte_eth_dev_info_get(C.ushort(pid), (*C.struct_rte_eth_dev_info)(info)))
+}
+
+func (info *DevInfo) NbRxQueues() uint16 {
+	return uint16(info.nb_rx_queues)
+}
+
+func (info *DevInfo) NbTxQueues() uint16 {
+	return uint16(info.nb_tx_queues)
 }
 
 // IsValid checks if port_id of device is attached.
