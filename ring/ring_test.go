@@ -33,7 +33,7 @@ func TestRingCreate(t *testing.T) {
 	assert(initEAL() == nil)
 	err := eal.ExecOnMain(func(ctx *eal.LcoreCtx) {
 		r, err := ring.Create("test_ring", 1024, ring.OptSC,
-			ring.OptSP, ring.OptSocket(ctx.SocketID()))
+			ring.OptSP, ring.OptSocket(eal.SocketID()))
 		assert(r != nil && err == nil, err)
 		defer r.Free()
 		r1, err := ring.Lookup("test_ring")
@@ -57,7 +57,7 @@ func TestRingInit(t *testing.T) {
 		ringData := make([]byte, n)
 		r := (*ring.Ring)(unsafe.Pointer(&ringData[0]))
 		err = r.Init("test_ring", 1024, ring.OptSC,
-			ring.OptSP, ring.OptSocket(ctx.SocketID()))
+			ring.OptSP, ring.OptSocket(eal.SocketID()))
 		assert(err == nil, err)
 	})
 	assert(err == nil, err)
