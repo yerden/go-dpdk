@@ -348,16 +348,14 @@ func OptLoopbackMode(mode uint32) Option {
 // OptRss specifies RSS configuration.
 func OptRss(conf RssConf) Option {
 	return Option{func(c *ethConf) {
-		rssConf := C.struct_rte_eth_rss_conf{
-			rss_key_len: C.uchar(len(conf.Key)),
-			rss_hf:      C.ulong(conf.Hf),
-		}
+		rssConf := &c.conf.rx_adv_conf.rss_conf
+		rssConf.rss_key_len = C.uchar(len(conf.Key))
+		rssConf.rss_hf = C.ulong(conf.Hf)
 		if conf.Key != nil && len(conf.Key) > 0 {
 			p := C.CBytes(conf.Key)
 			rssConf.rss_key = (*C.uchar)(p)
 			c.cptrs = append(c.cptrs, p)
 		}
-		c.conf.rx_adv_conf.rss_conf = rssConf
 	}}
 }
 
