@@ -14,8 +14,10 @@ import "C"
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"runtime"
+	"strings"
 	"sync"
 	"unsafe"
 
@@ -121,6 +123,22 @@ func (e *ErrLcorePanic) Unwrap() error {
 	return nil
 }
 
+// FprintStack prints PCs into w.
+func (e *ErrLcorePanic) FprintStack(w io.Writer) {
+	frames := runtime.CallersFrames(e.Pc)
+	for {
+		frame, more := frames.Next()
+		if !strings.Contains(frame.File, "runtime/") {
+			break
+		}
+		fmt.Printf(" -- %s, %s:%d\n", frame.Function, frame.File, frame.Line)
+		if !more {
+			break
+		}
+
+	}
+}
+
 // ErrLcoreInvalid is returned by ExecOnLcore in case the desired
 // lcore ID is invalid.
 var ErrLcoreInvalid = fmt.Errorf("Invalid logical core")
@@ -133,11 +151,18 @@ func panicCatcher(fn func(*LcoreCtx), ctx *LcoreCtx) (err error) {
 		if r == nil {
 			return
 		}
-		pc := make([]uintptr, 64)
+		pc := make([]uintptr, 16)
+		n := 0
+
+		for {
+			if n = runtime.Callers(2, pc); n < len(pc) {
+				break
+			}
+			pc = append(pc, make([]uintptr, len(pc))...)
+		}
 		// this function is called from runtime package, so to
 		// unwind the stack we may skip (1) runtime.Callers
 		// function, (2) this caller function
-		n := runtime.Callers(2, pc)
 		err = &ErrLcorePanic{pc[:n], LcoreID(), r}
 	}()
 	fn(ctx)
