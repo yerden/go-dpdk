@@ -228,7 +228,7 @@ func ealLaunch(wg *sync.WaitGroup) {
 
 	// launch every EAL thread lcore function
 	// it should be success since we've just called rte_eal_init()
-	C.rte_eal_mp_remote_launch(fn, unsafe.Pointer(wg), C.CALL_MASTER)
+	C.rte_eal_mp_remote_launch(fn, unsafe.Pointer(wg), C.CALL_MAIN)
 }
 
 // Init initializes EAL as in rte_eal_init. Options are specified in a
