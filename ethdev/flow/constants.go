@@ -118,14 +118,14 @@ const (
 	 *
 	 * See struct rte_flow_item_ipv4.
 	 */
-	ItemTypeIpv4 ItemType = C.RTE_FLOW_ITEM_TYPE_IPV4
+	ItemTypeIPv4 ItemType = C.RTE_FLOW_ITEM_TYPE_IPV4
 
 	/**
 	 * Matches an IPv6 header.
 	 *
 	 * See struct rte_flow_item_ipv6.
 	 */
-	ItemTypeIpv6 ItemType = C.RTE_FLOW_ITEM_TYPE_IPV6
+	ItemTypeIPv6 ItemType = C.RTE_FLOW_ITEM_TYPE_IPV6
 
 	/**
 	 * Matches an ICMP header.
@@ -255,14 +255,14 @@ const (
 	 *
 	 * See struct rte_flow_item_arp_eth_ipv4.
 	 */
-	ItemTypeArpEthIpv4 ItemType = C.RTE_FLOW_ITEM_TYPE_ARP_ETH_IPV4
+	ItemTypeArpEthIPv4 ItemType = C.RTE_FLOW_ITEM_TYPE_ARP_ETH_IPV4
 
 	/**
 	 * Matches the presence of any IPv6 extension header.
 	 *
 	 * See struct rte_flow_item_ipv6_ext.
 	 */
-	ItemTypeIpv6Ext ItemType = C.RTE_FLOW_ITEM_TYPE_IPV6_EXT
+	ItemTypeIPv6Ext ItemType = C.RTE_FLOW_ITEM_TYPE_IPV6_EXT
 
 	/**
 	 * Matches any ICMPv6 header.
@@ -611,7 +611,7 @@ const (
 	 *
 	 * See struct rte_flow_action_set_ipv4.
 	 */
-	ActionTypeSetIpv4Src ActionType = C.RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC
+	ActionTypeSetIPv4Src ActionType = C.RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC
 
 	/**
 	 * Modify IPv4 destination address in the outermost IPv4 header.
@@ -621,7 +621,7 @@ const (
 	 *
 	 * See struct rte_flow_action_set_ipv4.
 	 */
-	ActionTypeSetIpv4Dst ActionType = C.RTE_FLOW_ACTION_TYPE_SET_IPV4_DST
+	ActionTypeSetIPv4Dst ActionType = C.RTE_FLOW_ACTION_TYPE_SET_IPV4_DST
 
 	/**
 	 * Modify IPv6 source address in the outermost IPv6 header.
@@ -631,7 +631,7 @@ const (
 	 *
 	 * See struct rte_flow_action_set_ipv6.
 	 */
-	ActionTypeSetIpv6Src ActionType = C.RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC
+	ActionTypeSetIPv6Src ActionType = C.RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC
 
 	/**
 	 * Modify IPv6 destination address in the outermost IPv6 header.
@@ -641,7 +641,7 @@ const (
 	 *
 	 * See struct rte_flow_action_set_ipv6.
 	 */
-	ActionTypeSetIpv6Dst ActionType = C.RTE_FLOW_ACTION_TYPE_SET_IPV6_DST
+	ActionTypeSetIPv6Dst ActionType = C.RTE_FLOW_ACTION_TYPE_SET_IPV6_DST
 
 	/**
 	 * Modify source port number in the outermost TCP/UDP header.

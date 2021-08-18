@@ -57,7 +57,7 @@ func cvtIPv4Header(dst *C.struct_rte_ipv4_hdr, src *layers.IPv4) {
 
 // Type implements ItemStruct interface.
 func (item *ItemIPv4) Type() ItemType {
-	return ItemTypeIpv4
+	return ItemTypeIPv4
 }
 
 // Mask implements ItemStruct interface.
