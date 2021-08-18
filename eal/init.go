@@ -77,19 +77,19 @@ func err(n ...interface{}) error {
 
 // LcoreID returns CPU logical core id. This function must be called
 // only in EAL thread.
-func (ctx *LcoreCtx) LcoreID() uint {
+func LcoreID() uint {
 	return uint(C.rte_lcore_id())
 }
 
 // SocketID returns NUMA socket where the current thread resides. This
 // function must be called only in EAL thread.
-func (ctx *LcoreCtx) SocketID() uint {
+func SocketID() uint {
 	return uint(C.rte_socket_id())
 }
 
 // String implements fmt.Stringer.
 func (ctx *LcoreCtx) String() string {
-	return fmt.Sprintf("lcore=%d socket=%d", ctx.LcoreID(), ctx.SocketID())
+	return fmt.Sprintf("lcore=%d socket=%d", LcoreID(), SocketID())
 }
 
 // LcoreToSocket return socket id for given lcore LcoreID.
@@ -138,7 +138,7 @@ func panicCatcher(fn func(*LcoreCtx), ctx *LcoreCtx) (err error) {
 		// unwind the stack we may skip (1) runtime.Callers
 		// function, (2) this caller function
 		n := runtime.Callers(2, pc)
-		err = &ErrLcorePanic{pc[:n], ctx.LcoreID(), r}
+		err = &ErrLcorePanic{pc[:n], LcoreID(), r}
 	}()
 	fn(ctx)
 	return err

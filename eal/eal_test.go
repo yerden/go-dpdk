@@ -33,8 +33,8 @@ func TestEALInit(t *testing.T) {
 	for _, id := range Lcores() {
 		ExecOnLcore(id, func(id uint) func(*LcoreCtx) {
 			return func(ctx *LcoreCtx) {
-				assert(id == ctx.LcoreID())
-				ch <- ctx.LcoreID()
+				assert(id == LcoreID())
+				ch <- LcoreID()
 			}
 		}(id))
 	}
@@ -126,7 +126,7 @@ func ExampleExecOnLcore() {
 	lid := uint(1)
 
 	err := ExecOnLcore(lid, func(ctx *LcoreCtx) {
-		log.Printf("this is lcore #%d\n", ctx.LcoreID())
+		log.Printf("this is lcore #%d\n", LcoreID())
 	})
 
 	if err == ErrLcoreInvalid {
