@@ -12,7 +12,6 @@ RUN dnf install -y epel-release dnf-plugins-core && \
         dnf config-manager --set-enabled powertools && \
         dnf install -y libibverbs rdma-core-devel \
                 jansson-devel zlib-devel gcc make git curl pkg-config \
-                libpcap-devel numactl-devel
-
-RUN curl -SL https://dl.google.com/go/go${GO_VERSION}.linux-amd64.tar.gz |\
-                tar -C /usr/local -xzf -
+                libpcap-devel numactl-devel && \
+        (curl -SL https://dl.google.com/go/go${GO_VERSION}.linux-amd64.tar.gz |\
+                tar -C /usr/local -xzf -)
