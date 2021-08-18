@@ -206,6 +206,8 @@ type RssConf struct {
 	Hf uint64
 }
 
+// RssHashConfGet retrieves current configuration of Receive Side
+// Scaling hash computation of Ethernet device.
 func (pid Port) RssHashConfGet(conf *RssConf) error {
 	var rssConf C.struct_rte_eth_rss_conf
 	rc := C.rte_eth_dev_rss_hash_conf_get(C.ushort(pid), &rssConf)
@@ -697,10 +699,12 @@ func (pid Port) InfoGet(info *DevInfo) error {
 	return err(C.rte_eth_dev_info_get(C.ushort(pid), (*C.struct_rte_eth_dev_info)(info)))
 }
 
+// NbRxQueues returns number of configured RX queues for the device.
 func (info *DevInfo) NbRxQueues() uint16 {
 	return uint16(info.nb_rx_queues)
 }
 
+// NbTxQueues returns number of configured TX queues for the device.
 func (info *DevInfo) NbTxQueues() uint16 {
 	return uint16(info.nb_tx_queues)
 }
