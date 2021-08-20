@@ -29,6 +29,7 @@ static void set_tx_insert_pvid(struct rte_eth_txmode *txm) {
 import "C"
 
 import (
+	"net"
 	"reflect"
 	"unsafe"
 
@@ -204,6 +205,30 @@ type RssConf struct {
 	Key []byte
 	/**< Hash functions to apply. */
 	Hf uint64
+}
+
+// MACAddr is a universally administered address is uniquely assigned
+// to a device by its manufacturer. The first three octets (in
+// transmission order) contain the Organizationally Unique Identifier
+// (OUI). The following three (MAC-48 and EUI-48) octets are assigned
+// by that organization with the only constraint of uniqueness. A
+// locally administered address is assigned to a device by a network
+// administrator and does not contain OUIs.
+type MACAddr C.struct_rte_ether_addr
+
+// MACAddrGet retrieves the Ethernet address of an Ethernet device.
+func (pid Port) MACAddrGet(addr *MACAddr) error {
+	return err(C.rte_eth_macaddr_get(C.ushort(pid), (*C.struct_rte_ether_addr)(addr)))
+}
+
+// HardwareAddr converts MACAddr into Go's native net.HardwareAddr.
+func (addr *MACAddr) HardwareAddr() net.HardwareAddr {
+	p := &addr.addr_bytes
+	return (*[unsafe.Sizeof(*p)]byte)(unsafe.Pointer(&p[0]))[:]
+}
+
+func (addr *MACAddr) String() string {
+	return addr.HardwareAddr().String()
 }
 
 // RssHashConfGet retrieves current configuration of Receive Side
