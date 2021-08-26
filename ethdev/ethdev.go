@@ -25,6 +25,36 @@ static void set_tx_reject_untagged(struct rte_eth_txmode *txm) {
 static void set_tx_insert_pvid(struct rte_eth_txmode *txm) {
 	txm->hw_vlan_insert_pvid = 1;
 }
+
+struct go_rte_eth_link {
+	uint32_t link_speed;
+	uint8_t link_duplex;
+	uint8_t link_autoneg;
+	uint8_t link_status;
+};
+
+static int go_rte_eth_link_get(uint16_t port_id, struct go_rte_eth_link *link)
+{
+	struct rte_eth_link data;
+	int rc = rte_eth_link_get(port_id, &data);
+	link->link_speed = data.link_speed;
+	link->link_duplex= data.link_duplex;
+	link->link_autoneg= data.link_autoneg;
+	link->link_status= data.link_status;
+	return rc;
+}
+
+static int go_rte_eth_link_get_nowait(uint16_t port_id, struct go_rte_eth_link *link)
+{
+	struct rte_eth_link data;
+	int rc = rte_eth_link_get_nowait(port_id, &data);
+	link->link_speed = data.link_speed;
+	link->link_duplex= data.link_duplex;
+	link->link_autoneg= data.link_autoneg;
+	link->link_status= data.link_status;
+	return rc;
+}
+
 */
 import "C"
 
@@ -754,4 +784,32 @@ func CountAvail() int {
 // Some devices may not be available for the application.
 func CountTotal() int {
 	return int(C.rte_eth_dev_count_total())
+}
+
+type EthLink C.struct_go_rte_eth_link
+
+func (link *EthLink) Speed() uint32 {
+	return uint32(link.link_speed)
+}
+
+func (link *EthLink) Duplex() bool {
+	return link.link_duplex > 0
+}
+
+func (link *EthLink) AutoNeg() bool {
+	return link.link_autoneg > 0
+}
+
+func (link *EthLink) Status() bool {
+	return link.link_status > 0
+}
+
+func (pid Port) EthLinkGet() (EthLink, error) {
+	var d EthLink
+	return d, err(C.go_rte_eth_link_get(C.ushort(pid), (*C.struct_go_rte_eth_link)(&d)))
+}
+
+func (pid Port) EthLinkGetNowait() (EthLink, error) {
+	var d EthLink
+	return d, err(C.go_rte_eth_link_get_nowait(C.ushort(pid), (*C.struct_go_rte_eth_link)(&d)))
 }
