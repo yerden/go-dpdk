@@ -671,14 +671,14 @@ func (pid Port) Close() {
 
 // PromiscEnable enables receipt in promiscuous mode for an Ethernet
 // device.
-func (pid Port) PromiscEnable() {
-	C.rte_eth_promiscuous_enable(C.ushort(pid))
+func (pid Port) PromiscEnable() error {
+	return err(C.rte_eth_promiscuous_enable(C.ushort(pid)))
 }
 
 // PromiscDisable disables receipt in promiscuous mode for an Ethernet
 // device.
-func (pid Port) PromiscDisable() {
-	C.rte_eth_promiscuous_disable(C.ushort(pid))
+func (pid Port) PromiscDisable() error {
+	return err(C.rte_eth_promiscuous_disable(C.ushort(pid)))
 }
 
 // SetLinkUp set link status to 'up' an Ethernet device.
