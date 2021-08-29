@@ -9,6 +9,8 @@ package ethdev
 import "C"
 import (
 	"unsafe"
+
+	"github.com/yerden/go-dpdk/common"
 )
 
 // for testing
@@ -69,29 +71,16 @@ func (pid Port) XstatNames() ([]XstatName, error) {
 }
 
 // XstatsGet retrieves xstat from eth dev. Returns number of retrieved
-// statistics and possible error. If len(*pout) is insufficient to
-// store all stats it gets extended.
-func (pid Port) XstatsGet(pout *[]Xstat) (int, error) {
-	for {
-		out := *pout
-
-		var p *C.struct_rte_eth_xstat
-		if len(out) != 0 {
-			p = (*C.struct_rte_eth_xstat)(unsafe.Pointer(&out[0]))
-		}
-
-		n := int(C.rte_eth_xstats_get(C.ushort(pid), p, C.uint(len(out))))
-		if n < 0 {
-			return 0, err(n)
-		}
-
-		if n >= len(out) {
-			return n, nil
-		}
-
-		out = append(out[:0], make([]Xstat, n)...)
-		*pout = out
+// statistics and possible error. If returned number is greater than
+// len(out) extend the slice and try again.
+func (pid Port) XstatsGet(out []Xstat) (int, error) {
+	var p *C.struct_rte_eth_xstat
+	if len(out) != 0 {
+		p = (*C.struct_rte_eth_xstat)(unsafe.Pointer(&out[0]))
 	}
+
+	n := C.rte_eth_xstats_get(C.ushort(pid), p, C.uint(len(out)))
+	return common.IntOrErr(n)
 }
 
 // XstatsReset resets xstats counters.
