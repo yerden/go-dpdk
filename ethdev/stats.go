@@ -55,14 +55,14 @@ func (s *Stats) Cast() *GoStats {
 
 // StatsGet retrieves statistics from ethernet device.
 func (pid Port) StatsGet(stats *Stats) error {
-	return err(C.rte_eth_stats_get(C.ushort(pid), (*C.struct_rte_eth_stats)(stats)))
+	return errget(C.rte_eth_stats_get(C.ushort(pid), (*C.struct_rte_eth_stats)(stats)))
 }
 
 // XstatNames returns list of names for custom eth dev stats.
 func (pid Port) XstatNames() ([]XstatName, error) {
 	n := C.rte_eth_xstats_get_names(C.ushort(pid), nil, 0)
 	if n <= 0 {
-		return nil, err(n)
+		return nil, errget(n)
 	}
 
 	names := make([]XstatName, n)
@@ -85,10 +85,10 @@ func (pid Port) XstatsGet(out []Xstat) (int, error) {
 
 // XstatsReset resets xstats counters.
 func (pid Port) XstatsReset() error {
-	return err(C.rte_eth_xstats_reset(C.ushort(pid)))
+	return errget(C.rte_eth_xstats_reset(C.ushort(pid)))
 }
 
 // StatsReset resets stats counters.
 func (pid Port) StatsReset() error {
-	return err(C.rte_eth_stats_reset(C.ushort(pid)))
+	return errget(C.rte_eth_stats_reset(C.ushort(pid)))
 }

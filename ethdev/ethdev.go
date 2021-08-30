@@ -248,7 +248,7 @@ type MACAddr C.struct_rte_ether_addr
 
 // MACAddrGet retrieves the Ethernet address of an Ethernet device.
 func (pid Port) MACAddrGet(addr *MACAddr) error {
-	return err(C.rte_eth_macaddr_get(C.ushort(pid), (*C.struct_rte_ether_addr)(addr)))
+	return errget(C.rte_eth_macaddr_get(C.ushort(pid), (*C.struct_rte_ether_addr)(addr)))
 }
 
 // HardwareAddr converts MACAddr into Go's native net.HardwareAddr.
@@ -273,7 +273,7 @@ func (pid Port) RssHashConfGet(conf *RssConf) error {
 	sh.Cap = sh.Len
 
 	conf.Hf = uint64(rssConf.rss_hf)
-	return err(rc)
+	return errget(rc)
 }
 
 // Thresh is a structure used to configure the ring threshold
@@ -323,7 +323,7 @@ type TxqConf struct {
 // Port is the number of the Ethernet device.
 type Port uint16
 
-func err(n ...interface{}) error {
+func errget(n ...interface{}) error {
 	if len(n) == 0 {
 		return common.RteErrno()
 	}
@@ -432,7 +432,7 @@ func (pid Port) DevConfigure(nrxq, ntxq uint16, opts ...Option) error {
 	}
 	defer ec.free()
 
-	return err(C.rte_eth_dev_configure(C.ushort(pid), C.ushort(nrxq),
+	return errget(C.rte_eth_dev_configure(C.ushort(pid), C.ushort(nrxq),
 		C.ushort(ntxq), &ec.conf))
 }
 
@@ -525,7 +525,7 @@ func (pid Port) RxqSetup(qid, nDesc uint16, mp *mempool.Mempool, opts ...QueueOp
 		opts[i].f(conf)
 	}
 
-	return err(C.rte_eth_rx_queue_setup(C.ushort(pid), C.ushort(qid),
+	return errget(C.rte_eth_rx_queue_setup(C.ushort(pid), C.ushort(qid),
 		C.ushort(nDesc), C.uint(conf.socket), &conf.rx,
 		(*C.struct_rte_mempool)(unsafe.Pointer(mp))))
 }
@@ -588,7 +588,7 @@ func (pid Port) TxqSetup(qid, nDesc uint16, opts ...QueueOption) error {
 		opts[i].f(conf)
 	}
 
-	return err(C.rte_eth_tx_queue_setup(C.ushort(pid), C.ushort(qid),
+	return errget(C.rte_eth_tx_queue_setup(C.ushort(pid), C.ushort(qid),
 		C.ushort(nDesc), C.uint(conf.socket), &conf.tx))
 }
 
@@ -632,7 +632,7 @@ func (pid Port) TxqSetup(qid, nDesc uint16, opts ...QueueOption) error {
 //
 //   - (-EAGAIN) if the reset temporarily failed and should be retried later.
 func (pid Port) Reset() error {
-	return err(C.rte_eth_dev_reset(C.ushort(pid)))
+	return errget(C.rte_eth_dev_reset(C.ushort(pid)))
 }
 
 // Start an Ethernet device.
@@ -653,7 +653,7 @@ func (pid Port) Reset() error {
 //
 // - <0: Error code of the driver device start function.
 func (pid Port) Start() error {
-	return err(C.rte_eth_dev_start(C.ushort(pid)))
+	return errget(C.rte_eth_dev_start(C.ushort(pid)))
 }
 
 // Stop an Ethernet device. The device can be restarted with a call to
@@ -672,13 +672,13 @@ func (pid Port) Close() {
 // PromiscEnable enables receipt in promiscuous mode for an Ethernet
 // device.
 func (pid Port) PromiscEnable() error {
-	return err(C.rte_eth_promiscuous_enable(C.ushort(pid)))
+	return errget(C.rte_eth_promiscuous_enable(C.ushort(pid)))
 }
 
 // PromiscDisable disables receipt in promiscuous mode for an Ethernet
 // device.
 func (pid Port) PromiscDisable() error {
-	return err(C.rte_eth_promiscuous_disable(C.ushort(pid)))
+	return errget(C.rte_eth_promiscuous_disable(C.ushort(pid)))
 }
 
 // SetLinkUp set link status to 'up' an Ethernet device.
@@ -692,7 +692,7 @@ func (pid Port) PromiscDisable() error {
 //
 //   - <0: Error code of the driver device link up function.
 func (pid Port) SetLinkUp() error {
-	return err(C.rte_eth_dev_set_link_up(C.ushort(pid)))
+	return errget(C.rte_eth_dev_set_link_up(C.ushort(pid)))
 }
 
 // SetLinkDown set link status to 'down' an Ethernet device.
@@ -706,7 +706,7 @@ func (pid Port) SetLinkUp() error {
 //
 //   - <0: Error code of the driver device link down function.
 func (pid Port) SetLinkDown() error {
-	return err(C.rte_eth_dev_set_link_down(C.ushort(pid)))
+	return errget(C.rte_eth_dev_set_link_down(C.ushort(pid)))
 }
 
 // SocketID returns the NUMA socket to which an Ethernet device is
@@ -725,6 +725,12 @@ type DevInfo C.struct_rte_eth_dev_info
 // DriverName returns driver_name as a Go string.
 func (info *DevInfo) DriverName() string {
 	return C.GoString((*C.struct_rte_eth_dev_info)(info).driver_name)
+}
+
+// RetaSize returns Device redirection table size, the total number of
+// entries.
+func (info *DevInfo) RetaSize() uint16 {
+	return uint16(info.reta_size)
 }
 
 // InfoGet retrieves the contextual information of an Ethernet device.
@@ -751,7 +757,7 @@ func (info *DevInfo) DriverName() string {
 //   dev->data->nb_rx_queues nb_tx_queues = dev->data->nb_tx_queues
 //   dev_flags = &dev->data->dev_flags
 func (pid Port) InfoGet(info *DevInfo) error {
-	return err(C.rte_eth_dev_info_get(C.ushort(pid), (*C.struct_rte_eth_dev_info)(info)))
+	return errget(C.rte_eth_dev_info_get(C.ushort(pid), (*C.struct_rte_eth_dev_info)(info)))
 }
 
 // NbRxQueues returns number of configured RX queues for the device.
@@ -806,10 +812,10 @@ func (link *EthLink) Status() bool {
 
 func (pid Port) EthLinkGet() (EthLink, error) {
 	var d EthLink
-	return d, err(C.go_rte_eth_link_get(C.ushort(pid), (*C.struct_go_rte_eth_link)(&d)))
+	return d, errget(C.go_rte_eth_link_get(C.ushort(pid), (*C.struct_go_rte_eth_link)(&d)))
 }
 
 func (pid Port) EthLinkGetNowait() (EthLink, error) {
 	var d EthLink
-	return d, err(C.go_rte_eth_link_get_nowait(C.ushort(pid), (*C.struct_go_rte_eth_link)(&d)))
+	return d, errget(C.go_rte_eth_link_get_nowait(C.ushort(pid), (*C.struct_go_rte_eth_link)(&d)))
 }
