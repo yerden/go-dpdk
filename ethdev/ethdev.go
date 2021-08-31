@@ -276,6 +276,66 @@ func (pid Port) RssHashConfGet(conf *RssConf) error {
 	return errget(rc)
 }
 
+// RssRetaEntry64 is a structure used to configure 64 entries of
+// Redirection Table of the Receive Side Scaling (RSS) feature of an
+// Ethernet port. To configure more than 64 entries supported by
+// hardware, an array of this structure is needed.
+type RssRetaEntry64 C.struct_rte_eth_rss_reta_entry64
+
+// Reta returns group of 64 redirection table entries. You may set
+// elements of returned slice but no appends are allowed.
+func (conf *RssRetaEntry64) Reta() (reta []uint16) {
+	sh := (*reflect.SliceHeader)(unsafe.Pointer(&reta))
+	sh.Len = len(conf.reta)
+	sh.Cap = len(conf.reta)
+	sh.Data = uintptr(unsafe.Pointer(&conf.reta))
+	return
+}
+
+// Mask returns bits indicate which entries need to be
+// updated/queried.
+func (conf *RssRetaEntry64) Mask() *uint64 {
+	return (*uint64)(&conf.mask)
+}
+
+// Update Redirection Table(RETA) of Receive Side Scaling of Ethernet device.
+//
+// conf is a RETA to update. retaSize is redirection table size. The
+// table size can be queried by rte_eth_dev_info_get().
+//
+// Returns:
+//   (0) if successful.
+//   (-ENODEV) if port_id is invalid.
+//   (-ENOTSUP) if hardware doesn't support.
+//   (-EINVAL) if bad parameter.
+//   (-EIO) if device is removed.
+func (pid Port) RssRetaUpdate(conf []RssRetaEntry64, retaSize uint16) error {
+	p := (*C.struct_rte_eth_rss_reta_entry64)(nil)
+	if len(conf) > 0 {
+		p = (*C.struct_rte_eth_rss_reta_entry64)(&conf[0])
+	}
+	return errget(C.rte_eth_dev_rss_reta_update(C.ushort(pid), p, C.ushort(retaSize)))
+}
+
+// RssRetaQuery queries Redirection Table(RETA) of Receive Side Scaling of Ethernet device.
+//
+// conf is a RETA to query. For each requested reta entry, corresponding bit in mask must be set.
+// retaSize is a redirection table size. The table size can be queried by rte_eth_dev_info_get().
+//
+// Returns:
+//   (0) if successful.
+//   (-ENODEV) if port_id is invalid.
+//   (-ENOTSUP) if hardware doesn't support.
+//   (-EINVAL) if bad parameter.
+//   (-EIO) if device is removed.
+func (pid Port) RssRetaQuery(conf []RssRetaEntry64, retaSize uint16) error {
+	p := (*C.struct_rte_eth_rss_reta_entry64)(nil)
+	if len(conf) > 0 {
+		p = (*C.struct_rte_eth_rss_reta_entry64)(&conf[0])
+	}
+	return errget(C.rte_eth_dev_rss_reta_query(C.ushort(pid), p, C.ushort(retaSize)))
+}
+
 // Thresh is a structure used to configure the ring threshold
 // registers of an RX/TX queue for an Ethernet port.
 type Thresh struct {
