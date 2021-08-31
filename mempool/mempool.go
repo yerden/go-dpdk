@@ -20,6 +20,19 @@ import (
 	"github.com/yerden/go-dpdk/common"
 )
 
+// Factory returns new mempool per each invocation of NewMempool.
+type Factory interface {
+	NewMempool(string, []Option) (*Mempool, error)
+}
+
+// FactoryFunc implements Factory as a function.
+type FactoryFunc func(string, []Option) (*Mempool, error)
+
+// NewMempool implements Factory interface.
+func (fn FactoryFunc) NewMempool(name string, opts []Option) (*Mempool, error) {
+	return fn(name, opts)
+}
+
 // Mempool represents RTE mempool.
 type Mempool C.struct_rte_mempool
 
