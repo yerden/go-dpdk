@@ -7,6 +7,7 @@ package ethdev
 
 /*
 #include <stdlib.h>
+#include <net/if.h>
 
 #include <rte_config.h>
 #include <rte_ring.h>
@@ -786,6 +787,12 @@ type DevInfo C.struct_rte_eth_dev_info
 // DriverName returns driver_name as a Go string.
 func (info *DevInfo) DriverName() string {
 	return C.GoString((*C.struct_rte_eth_dev_info)(info).driver_name)
+}
+
+// InterfaceName is the name of the interface in the system.
+func (info *DevInfo) InterfaceName() string {
+	var buf [C.IF_NAMESIZE]C.char
+	return C.GoString(C.if_indextoname(info.if_index, &buf[0]))
 }
 
 // RetaSize returns Device redirection table size, the total number of
