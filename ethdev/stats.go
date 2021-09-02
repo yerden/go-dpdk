@@ -53,6 +53,21 @@ func (s *Stats) Cast() *GoStats {
 	return (*GoStats)(unsafe.Pointer(s))
 }
 
+type statsAsU64 [unsafe.Sizeof(Stats{}) / 8]uint64
+
+// Diff computes delta between s and old.
+func (s *Stats) Diff(old, delta *Stats) {
+	cur := (*statsAsU64)(unsafe.Pointer(s))
+	src := (*statsAsU64)(unsafe.Pointer(old))
+	d := (*statsAsU64)(unsafe.Pointer(delta))
+
+	for i := range cur {
+		if cur[i] > src[i] && src[i] != 0 {
+			d[i] = cur[i] - src[i]
+		}
+	}
+}
+
 // StatsGet retrieves statistics from ethernet device.
 func (pid Port) StatsGet(stats *Stats) error {
 	return errget(C.rte_eth_stats_get(C.ushort(pid), (*C.struct_rte_eth_stats)(stats)))
@@ -91,4 +106,50 @@ func (pid Port) XstatsReset() error {
 // StatsReset resets stats counters.
 func (pid Port) StatsReset() error {
 	return errget(C.rte_eth_stats_reset(C.ushort(pid)))
+}
+
+// return position of an Xstat with Index equal to idx, or -1 if not
+// found.
+func searchXstat(in []Xstat, idx uint64) int {
+	for n := range in {
+		if in[n].Index == idx {
+			return n
+		}
+	}
+	return -1
+}
+
+// XstatDiff computes delta from incoming stats array (incoming) and
+// old stats array (old) with the result placed in delta.
+//
+// If old contains zero-value Xstat the resulting delta is zero to
+// filter out outliers.
+//
+// If old doesn't contain Xstat contained in incoming new Xstat is
+// appended to old.
+//
+// If delta doesn't contain new Xstat it is appended.
+//
+// The resulting "old" (now updated) and delta are returned.
+func XstatDiff(incoming, old, delta []Xstat) (newOld, newDelta []Xstat) {
+	for _, d := range incoming {
+		if n := searchXstat(old, d.Index); n < 0 {
+			old = append(old, d)
+			d.Value = 0
+		} else if f := old[n].Value; f > 0 && f < d.Value {
+			old[n].Value = d.Value
+			d.Value -= f
+		} else {
+			old[n].Value = d.Value
+			d.Value = 0
+		}
+
+		if k := searchXstat(delta, d.Index); k < 0 {
+			delta = append(delta, d)
+		} else {
+			delta[k].Value = d.Value
+		}
+	}
+
+	return old, delta
 }
