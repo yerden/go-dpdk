@@ -73,17 +73,22 @@ func (buf *MbufArray) cursor() *mbuf.Mbuf {
 	return p[buf.n]
 }
 
-// Mbufs returns all mbufs retrieved by the ethdev API.
-func (buf *MbufArray) Mbufs() (ret []*mbuf.Mbuf) {
+// Buffer returns all mbufs in buf.
+func (buf *MbufArray) Buffer() (ret []*mbuf.Mbuf) {
 	sh := (*reflect.SliceHeader)(unsafe.Pointer(&ret))
-	sh.Len = int(buf.length)
+	sh.Len = int(buf.size)
 	sh.Cap = int(buf.size)
 	sh.Data = uintptr(unsafe.Pointer(&buf.pkts[0]))
 	return
 }
 
+// Mbufs returns all mbufs retrieved by the ethdev API.
+func (buf *MbufArray) Mbufs() (ret []*mbuf.Mbuf) {
+	return buf.Buffer()[:buf.length]
+}
+
 // Recharge releases previously retrieved packets and retrieve new
-// ones.
+// ones. Returns number of retrived packets.
 func (buf *MbufArray) Recharge() int {
 	return int(C.mbuf_array_ethdev_reload((*C.struct_mbuf_array)(buf)))
 }
