@@ -4,6 +4,7 @@ package mbuf
 #include <stdint.h>
 #include <rte_config.h>
 #include <rte_mbuf.h>
+
 char *reset_and_append(struct rte_mbuf *mbuf, void *ptr, size_t len)
 {
 	rte_pktmbuf_reset(mbuf);
@@ -26,6 +27,11 @@ struct rte_mbuf *alloc_reset_and_append(struct rte_mempool *mp, void *ptr, size_
 	rte_memcpy(data, ptr, len);
 	return mbuf;
 }
+
+enum {
+	MBUF_RSS_OFF = offsetof(struct rte_mbuf, hash.rss),
+};
+
 */
 import "C"
 
@@ -39,7 +45,8 @@ import (
 	"github.com/yerden/go-dpdk/mempool"
 )
 
-var NullData = errors.New("NULL response returned")
+// ErrNullData is returned if NULL is returned by Cgo call.
+var ErrNullData = errors.New("NULL response returned")
 
 // Mbuf contains a packet.
 type Mbuf C.struct_rte_mbuf
@@ -101,7 +108,7 @@ func PktMbufPrivSize(p *mempool.Mempool) int {
 func (m *Mbuf) PktMbufAppend(data []byte) error {
 	ptr := C.rte_pktmbuf_append(mbuf(m), C.uint16_t(len(data)))
 	if ptr == nil {
-		return NullData
+		return ErrNullData
 	}
 
 	sh := (*reflect.SliceHeader)(unsafe.Pointer(&ptr))
@@ -158,7 +165,7 @@ func (m *Mbuf) PrivData(ptr *common.CStruct) {
 func (m *Mbuf) ResetAndAppend(data *common.CStruct) error {
 	ptr := C.reset_and_append(mbuf(m), data.Ptr, C.size_t(data.Len))
 	if ptr == nil {
-		return NullData
+		return ErrNullData
 	}
 	return nil
 }
@@ -215,4 +222,11 @@ func (m *Mbuf) PktMbufHeadRoomSize() uint16 {
 // Use TailRoomSize instead.
 func (m *Mbuf) PktMbufTailRoomSize() uint16 {
 	return uint16(C.rte_pktmbuf_tailroom(mbuf(m)))
+}
+
+// HashRss returns hash.rss field of an mbuf.
+func (m *Mbuf) HashRss() uint32 {
+	p := unsafe.Pointer(m)
+	p = unsafe.Pointer(uintptr(p) + C.MBUF_RSS_OFF)
+	return *(*uint32)(p)
 }
