@@ -164,6 +164,18 @@ const (
 	MqTxVmdqOnly      = C.ETH_MQ_TX_VMDQ_ONLY /**< Only VT on, no DCB */
 )
 
+// This enum indicates the flow control mode.
+const (
+	// Disable flow control.
+	FcNone uint32 = C.RTE_FC_NONE
+	// RX pause frame, enable flowctrl on TX side.
+	FcRxPause uint32 = C.RTE_FC_RX_PAUSE
+	// TX pause frame, enable flowctrl on RX side.
+	FcTxPause uint32 = C.RTE_FC_TX_PAUSE
+	// Enable flow control on both side.
+	FcFull uint32 = C.RTE_FC_FULL
+)
+
 // Option represents device option which is then used by
 // DevConfigure to setup Ethernet device.
 type Option struct {
@@ -915,4 +927,25 @@ func (pid Port) EthLinkGet() (EthLink, error) {
 func (pid Port) EthLinkGetNowait() (EthLink, error) {
 	var d EthLink
 	return d, errget(C.go_rte_eth_link_get_nowait(C.ushort(pid), (*C.struct_go_rte_eth_link)(&d)))
+}
+
+// FcConf is a structure used to configure Ethernet flow control
+// parameter.  These parameters will be configured into the register
+// of the NIC. Please refer to the corresponding data sheet for proper
+// value.
+type FcConf C.struct_rte_eth_fc_conf
+
+// SetMode sets Flow Control mode.
+func (conf *FcConf) SetMode(n uint32) {
+	conf.mode = n
+}
+
+// FlowCtrlGet gets current status of the Ethernet link flow control for Ethernet device.
+func (pid Port) FlowCtrlGet(conf *FcConf) error {
+	return errget(C.rte_eth_dev_flow_ctrl_get(C.ushort(pid), (*C.struct_rte_eth_fc_conf)(conf)))
+}
+
+// FlowCtrlSet configures the Ethernet link flow control for Ethernet device.
+func (pid Port) FlowCtrlSet(conf *FcConf) error {
+	return errget(C.rte_eth_dev_flow_ctrl_set(C.ushort(pid), (*C.struct_rte_eth_fc_conf)(conf)))
 }
