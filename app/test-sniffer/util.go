@@ -1,15 +1,11 @@
 package main
 
-/*
-#include <rte_ethdev.h>
-*/
-import "C"
-
 import (
-	"bytes"
 	"errors"
+	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/yerden/go-dpdk/eal"
 	"github.com/yerden/go-dpdk/ethdev"
@@ -57,7 +53,7 @@ func driverName(pid ethdev.Port) string {
 	return devInfo.DriverName()
 }
 
-func rssEthVlanIPv4(pid ethdev.Port) (*flow.Flow, error) {
+func rssEthVlanIPv4(pid ethdev.Port, conf *ethdev.RssConf) (*flow.Flow, error) {
 	attr := &flow.Attr{Ingress: true}
 
 	pattern := []flow.Item{
@@ -68,8 +64,8 @@ func rssEthVlanIPv4(pid ethdev.Port) (*flow.Flow, error) {
 
 	actions := []flow.Action{
 		&flow.ActionRSS{
-			Types: C.ETH_RSS_IPV4,
-			Func:  flow.HashFunctionSymmetricToeplitz,
+			Types: conf.Hf,
+			Func:  flow.HashFunctionToeplitz,
 		},
 	}
 
@@ -83,7 +79,7 @@ func rssEthVlanIPv4(pid ethdev.Port) (*flow.Flow, error) {
 	return nil, e
 }
 
-func mlxRssEthVlanIPv4(pid ethdev.Port) (*flow.Flow, error) {
+func mlxRssEthVlanIPv4(pid ethdev.Port, conf *ethdev.RssConf) (*flow.Flow, error) {
 	attr := &flow.Attr{Ingress: true}
 
 	pattern := []flow.Item{
@@ -99,8 +95,8 @@ func mlxRssEthVlanIPv4(pid ethdev.Port) (*flow.Flow, error) {
 
 	actions := []flow.Action{
 		&flow.ActionRSS{
-			Types:  C.ETH_RSS_IPV4,
-			Key:    bytes.Repeat([]byte{0x6D, 0x5A}, 20),
+			Types:  conf.Hf,
+			Key:    conf.Key,
 			Queues: queuesSeq(int(info.NbRxQueues())),
 			Func:   flow.HashFunctionToeplitz,
 		},
@@ -117,19 +113,52 @@ func mlxRssEthVlanIPv4(pid ethdev.Port) (*flow.Flow, error) {
 }
 
 type RssConfig struct {
+	Conf *ethdev.RssConf
 }
 
 func (c *RssConfig) EthdevCall(pid ethdev.Port) error {
 	var err error
 	switch driverName(pid) {
 	case "mlx5_pci":
-		_, err = mlxRssEthVlanIPv4(pid)
+		_, err = mlxRssEthVlanIPv4(pid, c.Conf)
 	case "net_af_packet":
 		fallthrough
 	case "net_ice":
-		_, err = rssEthVlanIPv4(pid)
+		_, err = rssEthVlanIPv4(pid, c.Conf)
 	default:
+		fmt.Println("no RSS configured")
 	}
 
 	return err
+}
+
+var fcModes = map[string]uint32{
+	"none":    ethdev.FcNone,
+	"rxpause": ethdev.FcRxPause,
+	"txpause": ethdev.FcTxPause,
+	"full":    ethdev.FcFull,
+}
+
+type FcModeFlag struct {
+	Mode uint32
+}
+
+func (fc *FcModeFlag) Set(s string) error {
+	var ok bool
+	fc.Mode, ok = fcModes[strings.ToLower(s)]
+	if !ok {
+		return fmt.Errorf("invalid Flow Control mode: %s", s)
+	}
+
+	return nil
+}
+
+func (fc *FcModeFlag) String() string {
+	for desc, mode := range fcModes {
+		if mode == fc.Mode {
+			return desc
+		}
+	}
+
+	return fmt.Sprintf("mode=%d", fc.Mode)
 }

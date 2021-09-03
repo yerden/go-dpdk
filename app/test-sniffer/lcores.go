@@ -14,6 +14,8 @@ import (
 )
 
 var burstSize = flag.Int("burst", 256, "Specify RX burst size")
+var printMetadata = flag.Bool("print", false, "Specify to print each packet's metadata")
+var dryRun = flag.Bool("dryRun", false, "If true traffic will not be processed")
 
 // PortQueue describes port and rx queue id.
 type PortQueue struct {
@@ -81,22 +83,32 @@ func distributeQueuesPort(pid ethdev.Port, lcoreMap map[uint][]uint, table map[u
 		return os.ErrClosed
 	}
 
+	if int(nrx) > len(lcores) {
+		return fmt.Errorf("pid=%d nrx=%d cannot run on %d lcores", pid, nrx, len(lcores))
+	}
+
 	var lcore uint
+	var acquired util.LcoresList
 	for i := uint16(0); i < nrx; i++ {
-		if len(lcores) == 0 {
-			return os.ErrNotExist
-		}
 		lcore, lcores = lcores[0], lcores[1:]
+		acquired = append(acquired, lcore)
 		lcoreMap[uint(socket)] = lcores
 		table[lcore] = PortQueue{Pid: pid, Qid: i}
 	}
 
+	fmt.Printf("pid=%d runs on socket=%d, lcores=%v\n", pid, socket, util.LcoresList(acquired))
+
 	return nil
 }
 
-func LcoreFunc(pq PortQueue) func(*eal.LcoreCtx) {
+func LcoreFunc(pq PortQueue, qcr *QueueCounterReporter) func(*eal.LcoreCtx) {
 	return func(ctx *eal.LcoreCtx) {
 		defer log.Println("lcore", eal.LcoreID(), "exited")
+
+		if *dryRun {
+			return
+		}
+
 		// parser
 		var (
 			eth  layers.Ethernet
@@ -121,6 +133,7 @@ func LcoreFunc(pq PortQueue) func(*eal.LcoreCtx) {
 		// eal
 		pid := pq.Pid
 		qid := pq.Qid
+		qc := qcr.Register(pid, qid)
 
 		src := util.NewEthdevMbufArray(pid, qid, int(eal.SocketID()), uint16(*burstSize))
 		defer src.Free()
@@ -140,7 +153,13 @@ func LcoreFunc(pq PortQueue) func(*eal.LcoreCtx) {
 					log.Println("parsing error:", err)
 					continue
 				}
+
+				if *printMetadata {
+					fmt.Printf("packet: %d bytes\n", len(data))
+				}
 			}
+
+			qc.Incr(buf[:n])
 		}
 
 	}

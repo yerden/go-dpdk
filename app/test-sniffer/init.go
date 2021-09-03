@@ -1,6 +1,12 @@
 package main
 
+/*
+#include <rte_ethdev.h>
+*/
+import "C"
+
 import (
+	"bytes"
 	"flag"
 	"fmt"
 
@@ -27,6 +33,7 @@ type App struct {
 	Stats *Stats
 	Ports []ethdev.Port
 	Work  map[uint]PortQueue
+	QCR   *QueueCounterReporter
 }
 
 func NewApp(eng *stats.Engine) (*App, error) {
@@ -49,14 +56,23 @@ func newApp(eng *stats.Engine) (*App, error) {
 		return nil, err
 	}
 
+	rssConf := &ethdev.RssConf{
+		Key: bytes.Repeat([]byte{0x6D, 0x5A}, 20),
+		Hf:  C.ETH_RSS_IPV4,
+	}
+
 	ethdevCfg := &EthdevConfig{
+		Options: []ethdev.Option{
+			ethdev.OptRss(*rssConf),
+		},
 		RxQueues: uint16(*rxQueues),
 		OnConfig: []EthdevCallback{
 			EthdevCallbackFunc((ethdev.Port).Start),
-			&RssConfig{},
+			&RssConfig{rssConf},
 		},
 		Pooler:        rxqPools,
 		RxDescriptors: uint16(*rxDesc),
+		FcMode:        fcMode.Mode,
 	}
 
 	ports := make([]ethdev.Port, 0, ethdev.CountTotal())
@@ -91,6 +107,7 @@ func newApp(eng *stats.Engine) (*App, error) {
 		Ports:        ports,
 		Stats:        metrics,
 		Work:         work,
+		QCR:          &QueueCounterReporter{},
 	}
 
 	return app, nil

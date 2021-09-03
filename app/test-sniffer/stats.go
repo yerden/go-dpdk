@@ -44,6 +44,11 @@ func NewStats(eng *stats.Engine, pids []ethdev.Port) (*Stats, error) {
 			return nil, err
 		}
 
+		devName, err := pid.Name()
+		if err != nil {
+			return nil, err
+		}
+
 		ps.newStats = new(ethdev.Stats)
 		ps.oldStats = new(ethdev.Stats)
 
@@ -58,7 +63,7 @@ func NewStats(eng *stats.Engine, pids []ethdev.Port) (*Stats, error) {
 		ps.eng = eng.WithTags(
 			stats.T("index", fmt.Sprint(pid)),
 			stats.T("driver", devInfo.DriverName()),
-			stats.T("iface", devInfo.InterfaceName()),
+			stats.T("name", devName),
 		)
 
 		s.ports = append(s.ports, ps)

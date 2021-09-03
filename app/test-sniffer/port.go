@@ -1,9 +1,12 @@
 package main
 
 import (
+	"errors"
 	"log"
+	"syscall"
 
 	"github.com/yerden/go-dpdk/ethdev"
+	"github.com/yerden/go-dpdk/util"
 )
 
 // EthdevCallback specifies callback to call on ethdev.Port.
@@ -29,14 +32,14 @@ type EthdevConfig struct {
 	Pooler        RxqMempooler
 	RxDescriptors uint16
 	RxOptions     []ethdev.QueueOption
+
+	// Flow Control Mode
+	FcMode uint32
 }
 
 func ifaceName(pid ethdev.Port) string {
-	var info ethdev.DevInfo
-	if err := pid.InfoGet(&info); err != nil {
-		panic(err)
-	}
-	return info.InterfaceName()
+	name, _ := pid.Name()
+	return name
 }
 
 // Configure must be called on main lcore to configure ethdev.Port.
@@ -60,9 +63,22 @@ func (conf *EthdevConfig) Configure(pid ethdev.Port) error {
 		}
 	}
 
+	var fc ethdev.FcConf
+
+	if err := pid.FlowCtrlGet(&fc); err == nil {
+		fc.SetMode(conf.FcMode)
+		if err := pid.FlowCtrlSet(&fc); err != nil {
+			return util.ErrWrapf(err, "FlowCtrlSet")
+		}
+
+		log.Printf("pid=%d: Flow Control set to %d", pid, conf.FcMode)
+	} else if !errors.Is(err, syscall.ENOTSUP) {
+		return util.ErrWrapf(err, "FlowCtrlGet")
+	}
+
 	for i := range conf.OnConfig {
 		if err := conf.OnConfig[i].EthdevCall(pid); err != nil {
-			return err
+			return util.ErrWrapf(err, "OnConfig %d: %v", i, conf.OnConfig[i])
 		}
 	}
 

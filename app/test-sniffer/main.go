@@ -14,6 +14,7 @@ import (
 )
 
 var metricsEndpoint = flag.String("metrics", ":10010", "Specify listen address for Prometheus endpoint")
+var fcMode FcModeFlag
 
 func main() {
 	n, err := eal.Init(os.Args)
@@ -24,6 +25,8 @@ func main() {
 	defer eal.StopLcores()
 
 	os.Args[n], os.Args = os.Args[0], os.Args[n:]
+	flag.Var(&fcMode, "flowctrl", "Specify Flow Control mode: none (default), rxpause, txpause, full")
+
 	flag.Parse()
 	statsHandler := prometheus.DefaultHandler
 	eng := stats.NewEngine("dpdk", statsHandler)
@@ -35,7 +38,7 @@ func main() {
 	retCh := make(chan error, len(app.Work))
 
 	for lcore, pq := range app.Work {
-		eal.ExecOnLcoreAsync(lcore, retCh, LcoreFunc(pq))
+		eal.ExecOnLcoreAsync(lcore, retCh, LcoreFunc(pq, app.QCR))
 	}
 
 	// stats report
@@ -43,24 +46,30 @@ func main() {
 		ticker := time.NewTicker(10 * time.Second)
 		defer ticker.Stop()
 
+		qcrEng := eng.WithPrefix("rxq")
 		for t := range ticker.C {
 			app.Stats.ReportAt(t)
+			app.QCR.ReportAt(t, qcrEng)
 		}
 	}()
 
 	go func() {
-		mux := http.NewServeMux()
-		mux.Handle("/metrics", statsHandler)
-		srv := &http.Server{
-			Addr:    *metricsEndpoint,
-			Handler: mux,
+		for err := range retCh {
+			if err == nil {
+				continue
+			}
+			if e, ok := err.(*eal.ErrLcorePanic); ok {
+				e.FprintStack(os.Stdout)
+			}
+			log.Println(err)
 		}
-		srv.ListenAndServe()
 	}()
 
-	err = <-retCh
-	if e, ok := err.(*eal.ErrLcorePanic); ok {
-		e.FprintStack(os.Stdout)
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", statsHandler)
+	srv := &http.Server{
+		Addr:    *metricsEndpoint,
+		Handler: mux,
 	}
-	log.Println(err)
+	log.Println(srv.ListenAndServe())
 }
