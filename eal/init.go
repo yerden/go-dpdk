@@ -123,20 +123,28 @@ func (e *ErrLcorePanic) Unwrap() error {
 	return nil
 }
 
+func strStack(pc []uintptr) string {
+	b := &strings.Builder{}
+	fPrintStack(b, pc)
+	return b.String()
+}
+
+func fPrintStack(w io.Writer, pc []uintptr) {
+	frames := runtime.CallersFrames(pc)
+	var frame runtime.Frame
+	more := true
+	for n := 0; more; n++ {
+		frame, more = frames.Next()
+		if strings.Contains(frame.File, "runtime/") {
+			continue
+		}
+		fmt.Fprintf(w, " -- (%2d): %s, %s:%d\n", n, frame.Function, frame.File, frame.Line)
+	}
+}
+
 // FprintStack prints PCs into w.
 func (e *ErrLcorePanic) FprintStack(w io.Writer) {
-	frames := runtime.CallersFrames(e.Pc)
-	for {
-		frame, more := frames.Next()
-		if !strings.Contains(frame.File, "runtime/") {
-			break
-		}
-		fmt.Printf(" -- %s, %s:%d\n", frame.Function, frame.File, frame.Line)
-		if !more {
-			break
-		}
-
-	}
+	fPrintStack(w, e.Pc)
 }
 
 // ErrLcoreInvalid is returned by ExecOnLcore in case the desired
@@ -151,11 +159,11 @@ func panicCatcher(fn func(*LcoreCtx), ctx *LcoreCtx) (err error) {
 		if r == nil {
 			return
 		}
-		pc := make([]uintptr, 16)
+		pc := make([]uintptr, 64)
 		n := 0
 
 		for {
-			if n = runtime.Callers(2, pc); n < len(pc) {
+			if n = runtime.Callers(1, pc); n < len(pc) {
 				break
 			}
 			pc = append(pc, make([]uintptr, len(pc))...)
