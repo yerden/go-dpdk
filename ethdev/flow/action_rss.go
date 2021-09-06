@@ -56,25 +56,30 @@ func (action *ActionRSS) Reload() {
 	}
 
 	// set queues
-	sz := C.size_t(len(action.Queues)) * C.size_t(unsafe.Sizeof(action.Queues[0]))
-	cQueues := C.malloc(sz)
-	C.memcpy(cQueues, unsafe.Pointer(&action.Queues[0]), sz)
-	C.free(unsafe.Pointer(cptr.queue))
-	cptr.queue_num = C.uint32_t(len(action.Queues))
-	cptr.queue = (*C.uint16_t)(cQueues)
+	if len(action.Queues) > 0 {
+		sz := C.size_t(len(action.Queues)) * C.size_t(unsafe.Sizeof(action.Queues[0]))
+		cQueues := C.malloc(sz)
+		C.memcpy(cQueues, unsafe.Pointer(&action.Queues[0]), sz)
+		C.free(unsafe.Pointer(cptr.queue))
+		cptr.queue_num = C.uint32_t(len(action.Queues))
+		cptr.queue = (*C.uint16_t)(cQueues)
+	}
 
 	// set key
-	sz = C.size_t(len(action.Key))
-	cKey := C.malloc(sz)
-	C.memcpy(cKey, unsafe.Pointer(&action.Key[0]), sz)
-	C.free(unsafe.Pointer(cptr.key))
-	cptr.key_len = C.uint32_t(len(action.Key))
-	cptr.key = (*C.uint8_t)(cKey)
+	if len(action.Key) > 0 {
+		sz := C.size_t(len(action.Key))
+		cKey := C.malloc(sz)
+		C.memcpy(cKey, unsafe.Pointer(&action.Key[0]), sz)
+		C.free(unsafe.Pointer(cptr.key))
+		cptr.key_len = C.uint32_t(len(action.Key))
+		cptr.key = (*C.uint8_t)(cKey)
+	}
 
 	cptr.level = C.uint32_t(action.Level)
 	cptr.types = C.uint64_t(action.Types)
 	cptr._func = uint32(action.Func)
 
+	runtime.SetFinalizer(action, nil)
 	runtime.SetFinalizer(action, (*ActionRSS).free)
 }
 
