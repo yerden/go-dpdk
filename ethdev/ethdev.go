@@ -292,13 +292,14 @@ func (conf *RssRetaEntry64) Reta() (reta []uint16) {
 	return
 }
 
-// Mask returns bits indicate which entries need to be
+// Mask returns bits indicating which entries need to be
 // updated/queried.
 func (conf *RssRetaEntry64) Mask() *uint64 {
 	return (*uint64)(&conf.mask)
 }
 
-// Update Redirection Table(RETA) of Receive Side Scaling of Ethernet device.
+// RssRetaUpdate updates Redirection Table(RETA) of Receive Side
+// Scaling of Ethernet device.
 //
 // conf is a RETA to update. retaSize is redirection table size. The
 // table size can be queried by rte_eth_dev_info_get().
@@ -852,29 +853,58 @@ func CountTotal() int {
 	return int(C.rte_eth_dev_count_total())
 }
 
+// EthLink is a structure used to retrieve link-level information of
+// an Ethernet port.
 type EthLink C.struct_go_rte_eth_link
 
+// Speed returns speed in Mbps.
 func (link *EthLink) Speed() uint32 {
 	return uint32(link.link_speed)
 }
 
+// Duplex returns true if the port is in full-duplex, otherwise it's
+// in half-duplex.
 func (link *EthLink) Duplex() bool {
 	return link.link_duplex > 0
 }
 
+// AutoNeg returns true if auto-negotiation is true.
 func (link *EthLink) AutoNeg() bool {
 	return link.link_autoneg > 0
 }
 
+// Status returns true if link is on, false otherwise.
 func (link *EthLink) Status() bool {
 	return link.link_status > 0
 }
 
+// EthLinkGet retrieves the link status (up/down), the duplex mode
+// (half/full), the negotiation (auto/fixed), and if available, the
+// speed (Mbps).
+//
+// It might need to wait up to 9 seconds.
+//
+// Returns:
+//
+//   (0) if successful.
+//   (-ENOTSUP) if the function is not supported in PMD driver.
+//   (-ENODEV) if port_id invalid.
+//   (-EINVAL) if bad parameter.
 func (pid Port) EthLinkGet() (EthLink, error) {
 	var d EthLink
 	return d, errget(C.go_rte_eth_link_get(C.ushort(pid), (*C.struct_go_rte_eth_link)(&d)))
 }
 
+// EthLinkGetNowait retrieves the link status (up/down), the duplex
+// mode (half/full), the negotiation (auto/fixed), and if available,
+// the speed (Mbps).
+//
+// Returns:
+//
+//   (0) if successful.
+//   (-ENOTSUP) if the function is not supported in PMD driver.
+//   (-ENODEV) if port_id invalid.
+//   (-EINVAL) if bad parameter.
 func (pid Port) EthLinkGetNowait() (EthLink, error) {
 	var d EthLink
 	return d, errget(C.go_rte_eth_link_get_nowait(C.ushort(pid), (*C.struct_go_rte_eth_link)(&d)))
