@@ -2,11 +2,14 @@ package util
 
 /*
 #cgo pkg-config: libdpdk
-#include <stdlib.h>
 
+#define MBUF_ARRAY_USER_SIZE 64
+
+#include <stdlib.h>
 #include <rte_config.h>
 #include <rte_ethdev.h>
-#include "rx_buffer.h"
+#include "mbuf_array.h"
+
 */
 import "C"
 
@@ -21,7 +24,7 @@ import (
 	"github.com/yerden/go-dpdk/mbuf"
 )
 
-func err(n ...interface{}) error {
+func geterr(n ...interface{}) error {
 	if len(n) == 0 {
 		return common.RteErrno()
 	}
@@ -29,37 +32,49 @@ func err(n ...interface{}) error {
 	return common.IntToErr(n[0])
 }
 
-// RxBuffer implements gopacket.ZeroCopyPacketDataSource interface
+// MbufArray implements gopacket.ZeroCopyPacketDataSource interface
 // wrapping port and queue id.
-type RxBuffer C.struct_rx_buffer
+type MbufArray C.struct_mbuf_array
 
-// NewRxBuffer allocates new RxBuffer from huge pages memory for
-// specified queue id, socket NUMA node and containing up to size
-// mbufs. If EAL failed to allocate memory it will panic.
-func NewRxBuffer(pid ethdev.Port, qid uint16, socket int, size uint16) *RxBuffer {
-	var p *C.struct_rx_buffer
-	e := err(C.new_rx_buffer(C.int(socket), C.ushort(size), &p))
-	if e != nil {
+// NewMbufArray allocates new MbufArray from huge pages memory for
+// socket NUMA node and containing up to size mbufs. If EAL failed to
+// allocate memory it will panic.
+func NewMbufArray(socket int, size uint16) *MbufArray {
+	var p *C.struct_mbuf_array
+	if e := geterr(C.new_mbuf_array(C.int(socket), C.ushort(size), &p)); e != nil {
 		panic(e)
 	}
+	return (*MbufArray)(p)
+}
 
-	p.pid = C.ushort(pid)
-	p.qid = C.ushort(qid)
-	return (*RxBuffer)(p)
+// Opaque returns slice of bytes pointing to user-defined data in MbufArray.
+func (buf *MbufArray) Opaque() (opaque []byte) {
+	return (*[unsafe.Sizeof(buf.opaque)]byte)(unsafe.Pointer(&opaque))[:]
+}
+
+// NewEthdevMbufArray allocates new MbufArray from huge pages memory
+// for specified queue id, socket NUMA node and containing up to size
+// mbufs. If EAL failed to allocate memory it will panic.
+func NewEthdevMbufArray(pid ethdev.Port, qid uint16, socket int, size uint16) *MbufArray {
+	p := NewMbufArray(socket, size)
+	opaque := (*C.struct_ethdev_data)(unsafe.Pointer(&p.opaque))
+	opaque.pid = C.ushort(pid)
+	opaque.qid = C.ushort(qid)
+	return p
 }
 
 // Free releases acquired huge pages memory.
-func (buf *RxBuffer) Free() {
+func (buf *MbufArray) Free() {
 	C.rte_free(unsafe.Pointer(buf))
 }
 
-func (buf *RxBuffer) cursor() *mbuf.Mbuf {
-	p := (*[1e6]*mbuf.Mbuf)(unsafe.Pointer(&buf.pkts[0]))
+func (buf *MbufArray) cursor() *mbuf.Mbuf {
+	p := (*[1 << 31]*mbuf.Mbuf)(unsafe.Pointer(&buf.pkts[0]))
 	return p[buf.n]
 }
 
 // Mbufs returns all mbufs retrieved by the ethdev API.
-func (buf *RxBuffer) Mbufs() (ret []*mbuf.Mbuf) {
+func (buf *MbufArray) Mbufs() (ret []*mbuf.Mbuf) {
 	sh := (*reflect.SliceHeader)(unsafe.Pointer(&ret))
 	sh.Len = int(buf.length)
 	sh.Cap = int(buf.size)
@@ -69,8 +84,8 @@ func (buf *RxBuffer) Mbufs() (ret []*mbuf.Mbuf) {
 
 // Recharge releases previously retrieved packets and retrieve new
 // ones.
-func (buf *RxBuffer) Recharge() int {
-	return int(C.recharge_rx_buffer((*C.struct_rx_buffer)(buf)))
+func (buf *MbufArray) Recharge() int {
+	return int(C.mbuf_array_ethdev_reload((*C.struct_mbuf_array)(buf)))
 }
 
 // ZeroCopyReadPacketData implements
@@ -81,7 +96,7 @@ func (buf *RxBuffer) Recharge() int {
 //
 // XXX: Please note that timestamp for CaptureInfo is not set by this
 // call.
-func (buf *RxBuffer) ZeroCopyReadPacketData() (data []byte, ci gopacket.CaptureInfo, err error) {
+func (buf *MbufArray) ZeroCopyReadPacketData() (data []byte, ci gopacket.CaptureInfo, err error) {
 	if buf.n >= buf.length {
 		buf.Recharge()
 	}
@@ -91,11 +106,12 @@ func (buf *RxBuffer) ZeroCopyReadPacketData() (data []byte, ci gopacket.CaptureI
 		return
 	}
 
+	opaque := (*C.struct_ethdev_data)(unsafe.Pointer(&buf.opaque))
 	m := buf.cursor()
 	data = m.Data()
 	ci.Length = len(data)
 	ci.CaptureLength = len(data)
-	ci.InterfaceIndex = int(buf.pid)
+	ci.InterfaceIndex = int(opaque.pid)
 	buf.n++
 	return
 }
