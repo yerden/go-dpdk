@@ -99,6 +99,21 @@ func LcoreToSocket(id uint) uint {
 	return uint(C.rte_lcore_to_socket_id(C.uint(id)))
 }
 
+// Sockets returns list of socket ids.
+func Sockets() []uint {
+	sockets := make([]uint, C.rte_socket_count())
+
+	for i := range sockets {
+		if s := C.rte_socket_id_by_idx(C.uint(i)); s < 0 {
+			panic(fmt.Sprintf("error getting socket by id=%d\n", i))
+		} else {
+			sockets[i] = uint(s)
+		}
+	}
+
+	return sockets
+}
+
 // ErrLcorePanic is an error returned by ExecOnLcore in case lcore
 // function panics.
 type ErrLcorePanic struct {
