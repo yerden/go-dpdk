@@ -840,6 +840,21 @@ func (pid Port) InfoGet(info *DevInfo) error {
 	return errget(C.rte_eth_dev_info_get(C.ushort(pid), (*C.struct_rte_eth_dev_info)(info)))
 }
 
+// Name get the device name from port id. The device name is specified as below:
+//
+//   * PCIe address (Domain:Bus:Device.Function), for example- 0000:02:00.0
+//   * SoC device name, for example- fsl-gmac0
+//   * vdev dpdk name, for example- net_[pcap0|null0|tun0|tap0]
+//
+// (0) if successful.
+// (-ENODEV) if port_id is invalid.
+// (-EINVAL) on failure.
+func (pid Port) Name() (string, error) {
+	var buf [C.RTE_ETH_NAME_MAX_LEN]C.char
+	err := errget(C.rte_eth_dev_get_name_by_port(C.ushort(pid), &buf[0]))
+	return C.GoString(&buf[0]), err
+}
+
 // NbRxQueues returns number of configured RX queues for the device.
 func (info *DevInfo) NbRxQueues() uint16 {
 	return uint16(info.nb_rx_queues)
