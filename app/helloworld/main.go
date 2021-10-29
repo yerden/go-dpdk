@@ -16,7 +16,7 @@ func main() {
 
 	for _, id := range eal.Lcores() {
 		eal.ExecOnLcore(id, func(ctx *eal.LcoreCtx) {
-			log.Println("hello from core", ctx.LcoreID())
+			log.Println("hello from core", eal.LcoreID())
 		})
 	}
 }
