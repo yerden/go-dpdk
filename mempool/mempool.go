@@ -47,14 +47,6 @@ type mpConf struct {
 	opsName *string
 }
 
-func err(n ...interface{}) error {
-	if len(n) == 0 {
-		return common.RteErrno()
-	}
-
-	return common.IntToErr(n[0])
-}
-
 // Option is used to configure mempool at creation time.
 type Option struct {
 	f func(*mpConf)
@@ -164,7 +156,7 @@ func CreateEmpty(name string, n, eltsize uint32, opts ...Option) (*Mempool, erro
 	C.free(unsafe.Pointer(cname))
 
 	if mp == nil {
-		return nil, err()
+		return nil, common.Err()
 	}
 
 	return (*Mempool)(mp), nil
@@ -197,7 +189,7 @@ func (mp *Mempool) SetOpsByName(name string, poolConfig unsafe.Pointer) error {
 	cname := C.CString(name)
 	defer C.free(unsafe.Pointer(cname))
 	cmp := (*C.struct_rte_mempool)(mp)
-	return err(C.rte_mempool_set_ops_byname(cmp, cname, poolConfig))
+	return common.Err(C.rte_mempool_set_ops_byname(cmp, cname, poolConfig))
 }
 
 // PopulateDefault adds memory for objects in the pool at init. This
@@ -305,7 +297,7 @@ func Lookup(name string) (*Mempool, error) {
 	mp := (*Mempool)(C.rte_mempool_lookup(cname))
 	C.free(unsafe.Pointer(cname))
 	if mp == nil {
-		return nil, err()
+		return nil, common.Err()
 	}
 	return mp, nil
 }
@@ -321,7 +313,7 @@ func (mp *Mempool) GenericPut(objs []unsafe.Pointer, cache *Cache) {
 
 // GenericGet gets object from mempool with optional cache.
 func (mp *Mempool) GenericGet(objs []unsafe.Pointer, cache *Cache) error {
-	return err(C.rte_mempool_generic_get(
+	return common.Err(C.rte_mempool_generic_get(
 		(*C.struct_rte_mempool)(mp),
 		(*unsafe.Pointer)(unsafe.Pointer(&objs[0])),
 		C.uint(len(objs)),

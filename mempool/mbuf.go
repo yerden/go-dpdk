@@ -14,6 +14,8 @@ import "C"
 
 import (
 	"unsafe"
+
+	"github.com/yerden/go-dpdk/common"
 )
 
 // CreateMbufPool creates mempool of mbufs. See CreateEmpty options
@@ -47,7 +49,7 @@ func CreateMbufPool(name string, n uint32, dataRoomSize uint16, opts ...Option) 
 		conf.socket, cOps))
 
 	if mp == nil {
-		return nil, err()
+		return nil, common.Err()
 	}
 
 	return mp, nil

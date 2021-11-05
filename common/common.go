@@ -86,3 +86,11 @@ func DoOnce(fn func() error) func() error {
 		return err
 	}
 }
+
+func Err(n ...interface{}) error {
+	if len(n) == 0 {
+		return RteErrno()
+	}
+
+	return IntToErr(n[0])
+}
