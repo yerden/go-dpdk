@@ -1,9 +1,11 @@
 package mempool_test
 
 import (
+	"bytes"
 	"syscall"
 	"testing"
 
+	"github.com/yerden/go-dpdk/mbuf"
 	"golang.org/x/sys/unix"
 
 	"github.com/yerden/go-dpdk/common"
@@ -144,6 +146,35 @@ func TestMempoolCreate(t *testing.T) {
 		assert(mp != nil)
 		defer mp.Free()
 
+		data := []byte("hello from mbuf")
+		myMbuf := mbuf.PktMbufAlloc(mp)
+		mbuf.PktMbufAppend(myMbuf, data)
+		assert(bytes.Equal(myMbuf.Data(), data))
+		memp := myMbuf.GetPool()
+		mymp, err := mempool.Lookup("test_mbuf_pool")
+		assert(mymp == memp)
+		assert(err == nil)
+		defer mbuf.PktMbufFree(myMbuf)
+
+		var mbufArr []*mbuf.Mbuf
+		mbufArr = make([]*mbuf.Mbuf, 4)
+		err = mbuf.PktMbufAllocBulk(mp, mbufArr)
+		assert(err == nil)
+		for _, m := range mbufArr {
+			mbuf.PktMbufAppend(m, data)
+			assert(bytes.Equal(m.Data(), data))
+		}
+
+		for _, m := range mbufArr {
+			mbuf.PktMbufReset(m)
+			assert(bytes.Equal(m.Data(), []byte{}))
+		}
+
+		var mbufArrEmpty []*mbuf.Mbuf
+		err = mbuf.PktMbufAllocBulk(mp, mbufArrEmpty)
+		assert(err == nil)
+		assert(len(mbufArrEmpty) == 0)
+
 		mp, err = mempool.CreateMbufPool("test_mbuf_pool_err",
 			n,    // elements count
 			2048, // size of element
@@ -153,6 +184,41 @@ func TestMempoolCreate(t *testing.T) {
 			mempool.OptPrivateDataSize(63), // for each mbuf
 		)
 		assert(err != nil, err)
+	})
+	assert(err == nil, err)
+}
+
+func TestMbufpoolPriv(t *testing.T) {
+	assert := common.Assert(t, false)
+
+	// Initialize EAL on all cores
+	assert(initEAL() == nil)
+
+	// create and test mempool on main lcore
+	err := eal.ExecOnMain(func(ctx *eal.LcoreCtx) {
+		// create empty mempool
+		n := uint32(10240)
+		mp, err := mempool.CreateMbufPool("test_mbuf_pool_priv",
+			n,    // elements count
+			2048, // size of element
+			mempool.OptSocket(int(eal.SocketID())),
+			mempool.OptCacheSize(32),
+			mempool.OptOpsName("stack"),
+			mempool.OptPrivateDataSize(64), // for each mbuf
+		)
+		assert(err == nil, err)
+		assert(mp != nil)
+		defer mp.Free()
+
+		data := []byte("hello from private area")
+		myMbuf := mbuf.PktMbufAlloc(mp)
+		mData := myMbuf.GetPrivData()
+		assert(len(mData) == int(myMbuf.GetPrivSize()))
+
+		copy(mData, data)
+		newData := myMbuf.GetPrivData()
+		assert(bytes.Equal(data, newData[:len(data)]))
+		mbuf.PktMbufFree(myMbuf)
 	})
 	assert(err == nil, err)
 }
