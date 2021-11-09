@@ -1,9 +1,11 @@
 package mempool_test
 
 import (
+	"bytes"
 	"syscall"
 	"testing"
 
+	"github.com/yerden/go-dpdk/mbuf"
 	"golang.org/x/sys/unix"
 
 	"github.com/yerden/go-dpdk/common"
@@ -143,6 +145,31 @@ func TestMempoolCreate(t *testing.T) {
 		assert(err == nil, err)
 		assert(mp != nil)
 		defer mp.Free()
+
+		data := []byte("hello from mbuf")
+		myMbuf := mbuf.PktMbufAlloc(mp)
+		mbuf.PktMbufAppend(myMbuf, data)
+		assert(bytes.Equal(myMbuf.Data(), data))
+		defer mbuf.PktMbufFree(myMbuf)
+
+		var mbufArr []*mbuf.Mbuf
+		mbufArr = make([]*mbuf.Mbuf, 4)
+		err = mbuf.PktMbufAllocBulk(mp, mbufArr)
+		assert(err == nil)
+		for _, m := range mbufArr {
+			mbuf.PktMbufAppend(m, data)
+			assert(bytes.Equal(m.Data(), data))
+		}
+
+		for _, m := range mbufArr {
+			mbuf.PktMbufReset(m)
+			assert(bytes.Equal(m.Data(), []byte{}))
+		}
+
+		var mbufArrEmpty []*mbuf.Mbuf
+		err = mbuf.PktMbufAllocBulk(mp, mbufArrEmpty)
+		assert(err == nil)
+		assert(len(mbufArrEmpty) == 0)
 
 		mp, err = mempool.CreateMbufPool("test_mbuf_pool_err",
 			n,    // elements count
