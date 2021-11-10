@@ -82,6 +82,13 @@ func PktMbufReset(m *Mbuf) {
 	C.rte_pktmbuf_reset(mbuf(m))
 }
 
+// GetPool return a pool from which mbuf was allocated.
+func (m *Mbuf) GetPool() *mempool.Mempool {
+	rteMbuf := mbuf(m)
+	memp := rteMbuf.pool
+	return (*mempool.Mempool)(unsafe.Pointer(memp))
+}
+
 // Data returns contained packet.
 func (m *Mbuf) Data() []byte {
 	var d []byte

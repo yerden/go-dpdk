@@ -150,6 +150,10 @@ func TestMempoolCreate(t *testing.T) {
 		myMbuf := mbuf.PktMbufAlloc(mp)
 		mbuf.PktMbufAppend(myMbuf, data)
 		assert(bytes.Equal(myMbuf.Data(), data))
+		memp := myMbuf.GetPool()
+		mymp, err := mempool.Lookup("test_mbuf_pool")
+		assert(mymp == memp)
+		assert(err == nil)
 		defer mbuf.PktMbufFree(myMbuf)
 
 		var mbufArr []*mbuf.Mbuf
