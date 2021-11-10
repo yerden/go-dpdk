@@ -60,6 +60,10 @@ func PktMbufAllocBulk(p *mempool.Mempool, ms []*Mbuf) error {
 	return common.Err(C.rte_pktmbuf_alloc_bulk(mp(p), mbufs(ms), C.uint(len(ms))))
 }
 
+// PktMbufPrivSize get the application private size of mbufs
+// stored in a pktmbuf_pool. The private size of mbuf is a zone
+// located between the rte_mbuf structure and the data buffer
+// where an application can store data associated to a packet.
 func PktMbufPrivSize(p *mempool.Mempool) int {
 	return (int)(C.rte_pktmbuf_priv_size(mp(p)))
 }
