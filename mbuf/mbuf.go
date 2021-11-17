@@ -8,6 +8,7 @@ package mbuf
 import "C"
 
 import (
+	"errors"
 	// "syscall"
 	"reflect"
 	"unsafe"
@@ -15,6 +16,8 @@ import (
 	"github.com/yerden/go-dpdk/common"
 	"github.com/yerden/go-dpdk/mempool"
 )
+
+var TooLargeData = errors.New("data size can't be larger then priv_size")
 
 // Mbuf contains a packet.
 type Mbuf C.struct_rte_mbuf
@@ -67,6 +70,40 @@ func PktMbufAllocBulk(p *mempool.Mempool, ms []*Mbuf) error {
 // where an application can store data associated to a packet.
 func PktMbufPrivSize(p *mempool.Mempool) int {
 	return (int)(C.rte_pktmbuf_priv_size(mp(p)))
+}
+
+// GetPrivData return data stored in private data area
+// embedded in the given mbuf. Note that no check is made
+// to ensure that a private data area actually exists in the supplied mbuf.
+func GetPrivData(m *Mbuf) []byte {
+	a := C.rte_mbuf_to_priv(mbuf(m))
+
+	var priv []byte
+	cmb := (*C.struct_rte_mbuf)(m)
+	sh := (*reflect.SliceHeader)(unsafe.Pointer(&priv))
+	sh.Data = uintptr(a)
+	if sh.Data != 0 {
+		sh.Len = int(cmb.priv_size)
+		sh.Cap = sh.Len
+	}
+	return priv
+}
+
+// PutToPriv append the given data to a private data area.
+// Note that the data size cannot be larger than size.
+// Note that no check is made to ensure that a private data area
+// actually exists in the supplied mbuf.
+func PutToPriv(m *Mbuf, data []byte) error {
+	cmb := (*C.struct_rte_mbuf)(m)
+	if len(data) > int(cmb.priv_size) {
+		return TooLargeData
+	}
+
+	a := C.rte_mbuf_to_priv(mbuf(m))
+
+	sh := (*reflect.SliceHeader)(unsafe.Pointer(&a))
+	copy((*(*[]byte)(unsafe.Pointer(sh)))[:], data)
+	return nil
 }
 
 // PktMbufAppend append the given data to an mbuf.

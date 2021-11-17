@@ -187,3 +187,40 @@ func TestMempoolCreate(t *testing.T) {
 	})
 	assert(err == nil, err)
 }
+
+func TestMbufpoolPriv(t *testing.T) {
+	assert := common.Assert(t, false)
+
+	// Initialize EAL on all cores
+	assert(initEAL() == nil)
+
+	// create and test mempool on main lcore
+	err := eal.ExecOnMain(func(ctx *eal.LcoreCtx) {
+		// create empty mempool
+		n := uint32(10240)
+		mp, err := mempool.CreateMbufPool("test_mbuf_pool",
+			n,    // elements count
+			2048, // size of element
+			mempool.OptSocket(int(eal.SocketID())),
+			mempool.OptCacheSize(32),
+			mempool.OptOpsName("stack"),
+			mempool.OptPrivateDataSize(64), // for each mbuf
+		)
+		assert(err == nil, err)
+		assert(mp != nil)
+		defer mp.Free()
+
+		data := []byte("hello from private area")
+		myMbuf := mbuf.PktMbufAlloc(mp)
+		defer mbuf.PktMbufFree(myMbuf)
+
+		privSize := mbuf.PktMbufPrivSize(mp)
+		assert(privSize == 64)
+		err = mbuf.PutToPriv(myMbuf, data)
+		assert(err == nil, err)
+		privData := mbuf.GetPrivData(myMbuf)
+		assert(len(privData) == privSize)
+		assert(bytes.Equal(privData[:len(data)], data))
+	})
+	assert(err == nil, err)
+}
