@@ -50,6 +50,7 @@ func PktMbufClone(m *Mbuf, p *mempool.Mempool) {
 }
 
 // PktMbufAlloc allocate an uninitialized mbuf from mempool p.
+// Note that NULL may be returned if allocation failed.
 func PktMbufAlloc(p *mempool.Mempool) *Mbuf {
 	m := C.rte_pktmbuf_alloc(mp(p))
 	return (*Mbuf)(m)
@@ -73,8 +74,7 @@ func PktMbufAppend(m *Mbuf, data []byte) {
 	a := C.rte_pktmbuf_append(mbuf(m), C.uint16_t(len(data)))
 
 	sh := (*reflect.SliceHeader)(unsafe.Pointer(&a))
-	copy((*[unsafe.Sizeof(data)]byte)(unsafe.Pointer(sh.Data))[:], data)
-
+	copy((*(*[]byte)(unsafe.Pointer(sh)))[:], data)
 }
 
 // PktMbufReset reset the fields of a packet mbuf to their default values.
