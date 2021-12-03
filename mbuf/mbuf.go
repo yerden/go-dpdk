@@ -136,3 +136,27 @@ func (m *Mbuf) Data() []byte {
 	sh.Cap = int(buf.data_len)
 	return d
 }
+
+type MpPrivateData struct {
+	MbufDataRoomSize uint16
+	MbufPrivSize     uint16
+	Flags            uint32
+}
+
+func (d *MpPrivateData) SetFrom(mp *mempool.Mempool) {
+	p := C.rte_mempool_get_priv((*C.struct_rte_mempool)(mp))
+	pd := (*C.struct_rte_pktmbuf_pool_private)(p)
+
+	d.MbufDataRoomSize = uint16(pd.mbuf_data_room_size)
+	// TODO
+}
+
+func (d *MpPrivateData) PrivData(m *Mbuf) []byte {
+	p := unsafe.Add(m, unsafe.Sizeof(*m))
+	var b []byte
+	sh := (*reflect.SliceHeader)(unsafe.Pointer(&b))
+	sh.Data = uintptr(p)
+	sh.Len = int(d.MbufPrivSize)
+	sh.Cap = int(d.MbufPrivSize)
+	return b
+}
