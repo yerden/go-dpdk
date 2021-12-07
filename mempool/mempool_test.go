@@ -198,7 +198,7 @@ func TestMbufpoolPriv(t *testing.T) {
 	err := eal.ExecOnMain(func(ctx *eal.LcoreCtx) {
 		// create empty mempool
 		n := uint32(10240)
-		mp, err := mempool.CreateMbufPool("test_mbuf_pool",
+		mp, err := mempool.CreateMbufPool("test_mbuf_pool_priv",
 			n,    // elements count
 			2048, // size of element
 			mempool.OptSocket(int(eal.SocketID())),
@@ -209,18 +209,18 @@ func TestMbufpoolPriv(t *testing.T) {
 		assert(err == nil, err)
 		assert(mp != nil)
 		defer mp.Free()
+		var mpPrivData mbuf.MpPrivateData
+		mpPrivData.SetFrom(mp)
 
 		data := []byte("hello from private area")
 		myMbuf := mbuf.PktMbufAlloc(mp)
-		defer mbuf.PktMbufFree(myMbuf)
+		mData := mpPrivData.PrivData(myMbuf)
+		assert(len(mData) == int(mpPrivData.MbufPrivSize))
 
-		privSize := mbuf.PktMbufPrivSize(mp)
-		assert(privSize == 64)
-		err = mbuf.PutToPriv(myMbuf, data)
-		assert(err == nil, err)
-		privData := mbuf.GetPrivData(myMbuf)
-		assert(len(privData) == privSize)
-		assert(bytes.Equal(privData[:len(data)], data))
+		copy(mData, data)
+		newData := mpPrivData.PrivData(myMbuf)
+		assert(bytes.Equal(data, newData[:len(data)]))
+		mbuf.PktMbufFree(myMbuf)
 	})
 	assert(err == nil, err)
 }

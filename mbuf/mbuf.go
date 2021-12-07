@@ -72,40 +72,6 @@ func PktMbufPrivSize(p *mempool.Mempool) int {
 	return (int)(C.rte_pktmbuf_priv_size(mp(p)))
 }
 
-// GetPrivData return data stored in private data area
-// embedded in the given mbuf. Note that no check is made
-// to ensure that a private data area actually exists in the supplied mbuf.
-func GetPrivData(m *Mbuf) []byte {
-	a := C.rte_mbuf_to_priv(mbuf(m))
-
-	var priv []byte
-	cmb := (*C.struct_rte_mbuf)(m)
-	sh := (*reflect.SliceHeader)(unsafe.Pointer(&priv))
-	sh.Data = uintptr(a)
-	if sh.Data != 0 {
-		sh.Len = int(cmb.priv_size)
-		sh.Cap = sh.Len
-	}
-	return priv
-}
-
-// PutToPriv append the given data to a private data area.
-// Note that the data size cannot be larger than size.
-// Note that no check is made to ensure that a private data area
-// actually exists in the supplied mbuf.
-func PutToPriv(m *Mbuf, data []byte) error {
-	cmb := (*C.struct_rte_mbuf)(m)
-	if len(data) > int(cmb.priv_size) {
-		return TooLargeData
-	}
-
-	a := C.rte_mbuf_to_priv(mbuf(m))
-
-	sh := (*reflect.SliceHeader)(unsafe.Pointer(&a))
-	copy((*(*[]byte)(unsafe.Pointer(sh)))[:], data)
-	return nil
-}
-
 // PktMbufAppend append the given data to an mbuf.
 func PktMbufAppend(m *Mbuf, data []byte) {
 	a := C.rte_pktmbuf_append(mbuf(m), C.uint16_t(len(data)))
@@ -137,22 +103,26 @@ func (m *Mbuf) Data() []byte {
 	return d
 }
 
+// MpPrivateData contains size of data
+// that are appended after the mempool structure (in private data).
 type MpPrivateData struct {
-	MbufDataRoomSize uint16
-	MbufPrivSize     uint16
-	Flags            uint32
+	MbufPrivSize uint16
 }
 
-func (d *MpPrivateData) SetFrom(mp *mempool.Mempool) {
-	p := C.rte_mempool_get_priv((*C.struct_rte_mempool)(mp))
+// SetFrom sets the size of the private data
+// that was specified when the mempool was created,
+// and store it in a MpPrivateData to avoid frequent calls to CGO in the hot path.
+// The mbuf_priv_size value is constant for all mbufs within one mempool.
+func (d *MpPrivateData) SetFrom(m *mempool.Mempool) {
+	p := C.rte_mempool_get_priv(mp(m))
 	pd := (*C.struct_rte_pktmbuf_pool_private)(p)
 
-	d.MbufDataRoomSize = uint16(pd.mbuf_data_room_size)
-	// TODO
+	d.MbufPrivSize = uint16(pd.mbuf_priv_size)
 }
 
+// PrivData returns a slice of mbuf private data.
 func (d *MpPrivateData) PrivData(m *Mbuf) []byte {
-	p := unsafe.Add(m, unsafe.Sizeof(*m))
+	p := unsafe.Add(unsafe.Pointer(m), unsafe.Sizeof(*m))
 	var b []byte
 	sh := (*reflect.SliceHeader)(unsafe.Pointer(&b))
 	sh.Data = uintptr(p)
