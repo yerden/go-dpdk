@@ -209,16 +209,14 @@ func TestMbufpoolPriv(t *testing.T) {
 		assert(err == nil, err)
 		assert(mp != nil)
 		defer mp.Free()
-		var mpPrivData mbuf.MpPrivateData
-		mpPrivData.SetFrom(mp)
 
 		data := []byte("hello from private area")
 		myMbuf := mbuf.PktMbufAlloc(mp)
-		mData := mpPrivData.PrivData(myMbuf)
-		assert(len(mData) == int(mpPrivData.MbufPrivSize))
+		mData := myMbuf.GetPrivData()
+		assert(len(mData) == int(myMbuf.GetPrivSize()))
 
 		copy(mData, data)
-		newData := mpPrivData.PrivData(myMbuf)
+		newData := myMbuf.GetPrivData()
 		assert(bytes.Equal(data, newData[:len(data)]))
 		mbuf.PktMbufFree(myMbuf)
 	})

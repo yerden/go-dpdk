@@ -92,6 +92,13 @@ func (m *Mbuf) GetPool() *mempool.Mempool {
 	return (*mempool.Mempool)(unsafe.Pointer(memp))
 }
 
+// GetPrivSize return a size of private data area.
+func (m *Mbuf) GetPrivSize() uint16 {
+	rteMbuf := mbuf(m)
+	s := rteMbuf.priv_size
+	return uint16(s)
+}
+
 // Data returns contained packet.
 func (m *Mbuf) Data() []byte {
 	var d []byte
@@ -103,30 +110,17 @@ func (m *Mbuf) Data() []byte {
 	return d
 }
 
-// MpPrivateData contains size of data
-// that are appended after the mempool structure (in private data).
-type MpPrivateData struct {
-	MbufPrivSize uint16
-}
+// GetPrivData returns a slice of mbuf private data.
+// Feel free to edit the contents of the slice but
+// don't extend it by appending or other tools.
+func (m *Mbuf) GetPrivData() []byte {
+	rteMbuf := mbuf(m)
 
-// SetFrom sets the size of the private data
-// that was specified when the mempool was created,
-// and store it in a MpPrivateData to avoid frequent calls to CGO in the hot path.
-// The mbuf_priv_size value is constant for all mbufs within one mempool.
-func (d *MpPrivateData) SetFrom(m *mempool.Mempool) {
-	p := C.rte_mempool_get_priv(mp(m))
-	pd := (*C.struct_rte_pktmbuf_pool_private)(p)
-
-	d.MbufPrivSize = uint16(pd.mbuf_priv_size)
-}
-
-// PrivData returns a slice of mbuf private data.
-func (d *MpPrivateData) PrivData(m *Mbuf) []byte {
 	p := unsafe.Add(unsafe.Pointer(m), unsafe.Sizeof(*m))
 	var b []byte
 	sh := (*reflect.SliceHeader)(unsafe.Pointer(&b))
 	sh.Data = uintptr(p)
-	sh.Len = int(d.MbufPrivSize)
-	sh.Cap = int(d.MbufPrivSize)
+	sh.Len = int(rteMbuf.priv_size)
+	sh.Cap = int(rteMbuf.priv_size)
 	return b
 }
