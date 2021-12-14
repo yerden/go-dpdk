@@ -4,6 +4,27 @@ package mbuf
 #include <stdint.h>
 #include <rte_config.h>
 #include <rte_mbuf.h>
+
+char *reset_and_append(struct rte_mbuf *mbuf, char *arr, int n, int len)
+{
+	rte_pktmbuf_reset(mbuf);
+	char *data = rte_pktmbuf_append(mbuf, len);
+	rte_memcpy(data, arr, n);
+	return data;
+}
+
+struct rte_mbuf *alloc_reset_and_append(struct rte_mempool *mp, char *arr, int n, int len)
+{
+	struct rte_mbuf *mbuf;
+	mbuf = rte_pktmbuf_alloc(mp);
+	rte_pktmbuf_reset(mbuf);
+	char *data = rte_pktmbuf_append(mbuf, len);
+	if (data == NULL)
+		return NULL;
+	rte_memcpy(data, arr, n);
+
+	return mbuf;
+}
 */
 import "C"
 
@@ -18,6 +39,7 @@ import (
 )
 
 var TooLargeData = errors.New("data size can't be larger then priv_size")
+var NullData = errors.New("NULL response returned")
 
 // Mbuf contains a packet.
 type Mbuf C.struct_rte_mbuf
@@ -118,4 +140,23 @@ func (m *Mbuf) GetPrivData() *common.CArray {
 	rteMbuf := mbuf(m)
 	p := unsafe.Add(unsafe.Pointer(m), unsafe.Sizeof(*m))
 	return &common.CArray{Ptr: p, Len: int(rteMbuf.priv_size)}
+}
+
+// ResetAndAppend reset the fields of a mbuf to their default values
+// and append the given data to an mbuf. Error may be returned
+// if there is not enough tailroom space in the last segment of mbuf.
+func (m *Mbuf) ResetAndAppend(data []byte) error {
+	ptr := C.reset_and_append(mbuf(m), (*C.char)(unsafe.Pointer(&data[0])), C.int(unsafe.Sizeof(data)), C.int(len(data)))
+	if ptr == nil {
+		return NullData
+	}
+	return nil
+}
+
+// AllocResetAndAppend allocate an uninitialized mbuf from mempool p.
+// Note that NULL may be returned if allocation failed or if
+// there is not enough tailroom space in the last segment of mbuf.
+func AllocResetAndAppend(p *mempool.Mempool, data []byte) *Mbuf {
+	mbuf := C.alloc_reset_and_append(mp(p), (*C.char)(unsafe.Pointer(&data[0])), C.int(unsafe.Sizeof(data)), C.int(len(data)))
+	return (*Mbuf)(unsafe.Pointer(mbuf))
 }
