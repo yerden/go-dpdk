@@ -4,13 +4,42 @@ package mbuf
 #include <stdint.h>
 #include <rte_config.h>
 #include <rte_mbuf.h>
+
+char *reset_and_append(struct rte_mbuf *mbuf, void *ptr, size_t len)
+{
+	rte_pktmbuf_reset(mbuf);
+	char *data = rte_pktmbuf_append(mbuf, len);
+	rte_memcpy(data, ptr, len);
+	return data;
+}
+
+struct rte_mbuf *alloc_reset_and_append(struct rte_mempool *mp, void *ptr, size_t len)
+{
+	struct rte_mbuf *mbuf;
+	mbuf = rte_pktmbuf_alloc(mp);
+	rte_pktmbuf_reset(mbuf);
+	char *data = rte_pktmbuf_append(mbuf, len);
+	if (data == NULL)
+		return NULL;
+	rte_memcpy(data, ptr, len);
+
+	return mbuf;
+}
+
+
+static inline void *get_go_struct(struct rte_mbuf *mbuf, void *ptr, size_t len)
+{
+	char *data_offset;
+	data_offset = rte_pktmbuf_mtod(mbuf, char *);
+	rte_memcpy(ptr, data_offset, len);
+}
 */
 import "C"
 
 import (
 	"errors"
-	// "syscall"
 	"reflect"
+	"syscall"
 	"unsafe"
 
 	"github.com/yerden/go-dpdk/common"
@@ -18,6 +47,8 @@ import (
 )
 
 var TooLargeData = errors.New("data size can't be larger then priv_size")
+var NullData = errors.New("NULL response returned")
+var NotEnoughMbufs = errors.New("not enough entries in the mempool; no mbufs are retrieved")
 
 // Mbuf contains a packet.
 type Mbuf C.struct_rte_mbuf
@@ -61,7 +92,13 @@ func PktMbufAlloc(p *mempool.Mempool) *Mbuf {
 
 // PktMbufAllocBulk allocate a bulk of mbufs.
 func PktMbufAllocBulk(p *mempool.Mempool, ms []*Mbuf) error {
-	return common.Err(C.rte_pktmbuf_alloc_bulk(mp(p), mbufs(ms), C.uint(len(ms))))
+	e := C.rte_pktmbuf_alloc_bulk(mp(p), mbufs(ms), C.uint(len(ms)))
+	if syscall.Errno(e) != 0 && syscall.Errno(e) == syscall.ENOENT {
+		return NotEnoughMbufs
+	} else {
+		return syscall.Errno(e)
+	}
+	return nil
 }
 
 // PktMbufPrivSize get the application private size of mbufs
@@ -110,17 +147,43 @@ func (m *Mbuf) Data() []byte {
 	return d
 }
 
-// GetPrivData returns a slice of mbuf private data.
-// Feel free to edit the contents of the slice but
-// don't extend it by appending or other tools.
-func (m *Mbuf) GetPrivData() []byte {
+// GetPrivData returns the content of the mbufs private area.
+// The private area has a certain length,
+// which is set when creating the mbufpool, do not try to increase it.
+// Feel free to edit the contents.
+func (m *Mbuf) GetPrivData() *common.CStruct {
 	rteMbuf := mbuf(m)
-
 	p := unsafe.Add(unsafe.Pointer(m), unsafe.Sizeof(*m))
-	var b []byte
-	sh := (*reflect.SliceHeader)(unsafe.Pointer(&b))
-	sh.Data = uintptr(p)
-	sh.Len = int(rteMbuf.priv_size)
-	sh.Cap = int(rteMbuf.priv_size)
-	return b
+	return &common.CStruct{Ptr: p, Len: int(rteMbuf.priv_size)}
+}
+
+// ResetAndAppend reset the fields of a mbuf to their default values
+// and append the given data to an mbuf. Error may be returned
+// if there is not enough tailroom space in the last segment of mbuf.
+// Len is the amount of data to append (in bytes).
+func (m *Mbuf) ResetAndAppend(data *common.CStruct) error {
+	ptr := C.reset_and_append(mbuf(m), data.Ptr, C.size_t(data.Len))
+	if ptr == nil {
+		return NullData
+	}
+	return nil
+}
+
+// AllocResetAndAppend allocate an uninitialized mbuf from mempool p,
+// reset the fields of a mbuf to their default values
+// and append the given data to an mbuf.
+// Note that NULL may be returned if allocation failed or if
+// there is not enough tailroom space in the last segment of mbuf.
+// p is the mempool from which the mbuf is allocated.
+// Len is the amount of data to append (in bytes).
+func AllocResetAndAppend(p *mempool.Mempool, data *common.CStruct) *Mbuf {
+	m := C.alloc_reset_and_append(mp(p), data.Ptr, C.size_t(data.Len))
+	return (*Mbuf)(unsafe.Pointer(m))
+}
+
+// CastToGoStruct represent bytes from data_room of given mbuf in go representation.
+// Accepts a pointer to the go type or structure
+// to which the data should be written, and the amount of data.
+func (m *Mbuf) CastToGoStruct(data *common.CStruct) {
+	C.get_go_struct(mbuf(m), data.Ptr, C.size_t(data.Len))
 }
