@@ -110,17 +110,12 @@ func (m *Mbuf) Data() []byte {
 	return d
 }
 
-// GetPrivData returns a slice of mbuf private data.
-// Feel free to edit the contents of the slice but
-// don't extend it by appending or other tools.
-func (m *Mbuf) GetPrivData() []byte {
+// GetPrivData returns the content of the mbufs private area.
+// The private area has a certain length,
+// which is set when creating the mbufpool, do not try to increase it.
+// Feel free to edit the contents.
+func (m *Mbuf) GetPrivData() *common.CArray {
 	rteMbuf := mbuf(m)
-
 	p := unsafe.Add(unsafe.Pointer(m), unsafe.Sizeof(*m))
-	var b []byte
-	sh := (*reflect.SliceHeader)(unsafe.Pointer(&b))
-	sh.Data = uintptr(p)
-	sh.Len = int(rteMbuf.priv_size)
-	sh.Cap = int(rteMbuf.priv_size)
-	return b
+	return &common.CArray{Ptr: p, Len: int(rteMbuf.priv_size)}
 }
