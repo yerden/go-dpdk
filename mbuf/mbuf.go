@@ -5,15 +5,15 @@ package mbuf
 #include <rte_config.h>
 #include <rte_mbuf.h>
 
-char *reset_and_append(struct rte_mbuf *mbuf, char *arr, int n, int len)
+char *reset_and_append(struct rte_mbuf *mbuf, void *ptr, size_t len)
 {
 	rte_pktmbuf_reset(mbuf);
 	char *data = rte_pktmbuf_append(mbuf, len);
-	rte_memcpy(data, arr, n);
+	rte_memcpy(data, ptr, len);
 	return data;
 }
 
-struct rte_mbuf *alloc_reset_and_append(struct rte_mempool *mp, char *arr, int n, int len)
+struct rte_mbuf *alloc_reset_and_append(struct rte_mempool *mp, void *ptr, size_t len)
 {
 	struct rte_mbuf *mbuf;
 	mbuf = rte_pktmbuf_alloc(mp);
@@ -21,16 +21,23 @@ struct rte_mbuf *alloc_reset_and_append(struct rte_mempool *mp, char *arr, int n
 	char *data = rte_pktmbuf_append(mbuf, len);
 	if (data == NULL)
 		return NULL;
-	rte_memcpy(data, arr, n);
+	rte_memcpy(data, ptr, len);
 
 	return mbuf;
+}
+
+
+static inline void *get_go_struct(struct rte_mbuf *mbuf, void *ptr, size_t len)
+{
+	char *data_offset;
+	data_offset = rte_pktmbuf_mtod(mbuf, char *);
+	rte_memcpy(ptr, data_offset, len);
 }
 */
 import "C"
 
 import (
 	"errors"
-	// "syscall"
 	"reflect"
 	"unsafe"
 
@@ -136,27 +143,39 @@ func (m *Mbuf) Data() []byte {
 // The private area has a certain length,
 // which is set when creating the mbufpool, do not try to increase it.
 // Feel free to edit the contents.
-func (m *Mbuf) GetPrivData() *common.CArray {
+func (m *Mbuf) GetPrivData() *common.CStruct {
 	rteMbuf := mbuf(m)
 	p := unsafe.Add(unsafe.Pointer(m), unsafe.Sizeof(*m))
-	return &common.CArray{Ptr: p, Len: int(rteMbuf.priv_size)}
+	return &common.CStruct{Ptr: p, Len: int(rteMbuf.priv_size)}
 }
 
 // ResetAndAppend reset the fields of a mbuf to their default values
 // and append the given data to an mbuf. Error may be returned
 // if there is not enough tailroom space in the last segment of mbuf.
-func (m *Mbuf) ResetAndAppend(data []byte) error {
-	ptr := C.reset_and_append(mbuf(m), (*C.char)(unsafe.Pointer(&data[0])), C.int(unsafe.Sizeof(data)), C.int(len(data)))
+// Len is the amount of data to append (in bytes).
+func (m *Mbuf) ResetAndAppend(data *common.CStruct) error {
+	ptr := C.reset_and_append(mbuf(m), data.Ptr, C.size_t(data.Len))
 	if ptr == nil {
 		return NullData
 	}
 	return nil
 }
 
-// AllocResetAndAppend allocate an uninitialized mbuf from mempool p.
+// AllocResetAndAppend allocate an uninitialized mbuf from mempool p,
+// reset the fields of a mbuf to their default values
+// and append the given data to an mbuf.
 // Note that NULL may be returned if allocation failed or if
 // there is not enough tailroom space in the last segment of mbuf.
-func AllocResetAndAppend(p *mempool.Mempool, data []byte) *Mbuf {
-	mbuf := C.alloc_reset_and_append(mp(p), (*C.char)(unsafe.Pointer(&data[0])), C.int(unsafe.Sizeof(data)), C.int(len(data)))
-	return (*Mbuf)(unsafe.Pointer(mbuf))
+// p is the mempool from which the mbuf is allocated.
+// Len is the amount of data to append (in bytes).
+func AllocResetAndAppend(p *mempool.Mempool, data *common.CStruct) *Mbuf {
+	m := C.alloc_reset_and_append(mp(p), data.Ptr, C.size_t(data.Len))
+	return (*Mbuf)(unsafe.Pointer(m))
+}
+
+// GetGoStruct represent bytes from data_room of given mbuf in go representation.
+// Accepts a pointer to the go type or structure
+// to which the data should be written, and the amount of data.
+func (m *Mbuf) GetGoStruct(data *common.CStruct) {
+	C.get_go_struct(mbuf(m), data.Ptr, C.size_t(data.Len))
 }

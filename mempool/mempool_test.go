@@ -2,8 +2,10 @@ package mempool_test
 
 import (
 	"bytes"
+	"reflect"
 	"syscall"
 	"testing"
+	"unsafe"
 
 	"github.com/yerden/go-dpdk/mbuf"
 	"golang.org/x/sys/unix"
@@ -57,7 +59,7 @@ func doOnMain(t *testing.T, fn func(p *mempool.Mempool, data []byte)) {
 		defer mp.Free()
 		fn(mp, data)
 	})
-	assert(t, err == nil)
+	assert(t, err == nil, err)
 }
 
 func TestMempoolCreateErr(t *testing.T) {
@@ -205,15 +207,65 @@ func TestMbufpoolPriv(t *testing.T) {
 	})
 }
 
+type someStruct struct {
+	intField    int
+	stringField string
+	bytes4Field [4]byte
+	uint8Fields uint8
+}
+
 func TestAllocResetAppend(t *testing.T) {
 	doOnMain(t, func(p *mempool.Mempool, data []byte) {
-		myMbuf := mbuf.PktMbufAlloc(p)
-		myMbuf.ResetAndAppend(data)
-		assert(t, bytes.Equal(myMbuf.Data(), data))
+		// test with slice of byte
+		cArr := &common.CStruct{
+			Ptr: unsafe.Pointer(&data[0]),
+			Len: len(data),
+		}
 
-		newMbuf := mbuf.AllocResetAndAppend(p, data)
+		myMbuf := mbuf.PktMbufAlloc(p)
+		assert(t, myMbuf != nil)
+		err := myMbuf.ResetAndAppend(cArr)
+		assert(t, err == nil)
+		assert(t, len(myMbuf.Data()) == len(data))
+		buf := make([]byte, len(myMbuf.Data()))
+		cstr := &common.CStruct{
+			Ptr: unsafe.Pointer(&buf[0]),
+			Len: len(myMbuf.Data()),
+		}
+		myMbuf.GetGoStruct(cstr)
+		assert(t, bytes.Equal(buf, data))
+		mbuf.PktMbufFree(myMbuf)
+
+		newMbuf := mbuf.AllocResetAndAppend(p, cArr)
 		assert(t, newMbuf != nil)
-		assert(t, bytes.Equal(newMbuf.Data(), data))
+		assert(t, len(newMbuf.Data()) == len(data))
+		mbuf.PktMbufFree(newMbuf)
+
+		//TODO вынести в отдельную функцию повторяющийся код
+		// test with struct
+		testdata := someStruct{
+			intField:    250,
+			stringField: "hello from mbuf",
+			bytes4Field: [4]byte{10, 15, 20, 30},
+			uint8Fields: 128,
+		}
+		var arr []someStruct
+		for i := 0; i < 2; i++ {
+			arr = append(arr, testdata)
+		}
+		cArr.Ptr = unsafe.Pointer(&arr[0])
+		cArr.Len = int(uintptr(len(arr)) * reflect.TypeOf(arr).Elem().Size())
+
+		m := mbuf.AllocResetAndAppend(p, cArr)
+		assert(t, m != nil)
+		assert(t, len(m.Data()) == cArr.Len)
+
+		str := make([]someStruct, 2)
+		cstr.Ptr = unsafe.Pointer(&str[0])
+		cstr.Len = cArr.Len
+		m.GetGoStruct(cstr)
+		assert(t, str[0] == testdata)
+		assert(t, str[1] == testdata)
 	})
 
 }
@@ -223,6 +275,11 @@ func BenchmarkAllocFromChannel(b *testing.B) {
 	n := uint32(10240)
 	ch := make(chan *mbuf.Mbuf, n)
 	data := []byte("Some data for test")
+	cArr := &common.CStruct{
+		Ptr: unsafe.Pointer(&data[0]),
+		Len: len(data),
+	}
+	defer close(ch)
 	eal.ExecOnMain(func(ctx *eal.LcoreCtx) {
 		mp, _ := mempool.CreateMbufPool("test_mbuf_pool",
 			n,    // elements count
@@ -241,17 +298,20 @@ func BenchmarkAllocFromChannel(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			myMbuf := <-ch
-			myMbuf.ResetAndAppend(data)
+			myMbuf.ResetAndAppend(cArr)
 			ch <- myMbuf
 		}
 	})
-	close(ch)
 }
 
 func BenchmarkAllocFromMempool(b *testing.B) {
 	initEAL()
 	n := uint32(10240)
 	data := []byte("Some data for test")
+	cArr := &common.CStruct{
+		Ptr: unsafe.Pointer(&data[0]),
+		Len: len(data),
+	}
 	eal.ExecOnMain(func(ctx *eal.LcoreCtx) {
 		mp, _ := mempool.CreateMbufPool("test_mbuf_pool",
 			n,    // elements count
@@ -264,7 +324,7 @@ func BenchmarkAllocFromMempool(b *testing.B) {
 		defer mp.Free()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			newMbuf := mbuf.AllocResetAndAppend(mp, data)
+			newMbuf := mbuf.AllocResetAndAppend(mp, cArr)
 			mbuf.PktMbufFree(newMbuf)
 		}
 	})
