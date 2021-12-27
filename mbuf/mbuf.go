@@ -93,12 +93,14 @@ func PktMbufAlloc(p *mempool.Mempool) *Mbuf {
 // PktMbufAllocBulk allocate a bulk of mbufs.
 func PktMbufAllocBulk(p *mempool.Mempool, ms []*Mbuf) error {
 	e := C.rte_pktmbuf_alloc_bulk(mp(p), mbufs(ms), C.uint(len(ms)))
-	if syscall.Errno(e) != 0 && syscall.Errno(e) == syscall.ENOENT {
+	switch syscall.Errno(e) {
+	case 0:
+		return nil
+	case syscall.ENOENT:
 		return NotEnoughMbufs
-	} else {
+	default:
 		return syscall.Errno(e)
 	}
-	return nil
 }
 
 // PktMbufPrivSize get the application private size of mbufs
