@@ -181,9 +181,9 @@ func AllocResetAndAppend(p *mempool.Mempool, data *common.CStruct) *Mbuf {
 	return (*Mbuf)(unsafe.Pointer(m))
 }
 
-// GetGoStruct represent bytes from data_room of given mbuf in go representation.
+// CastToGoStruct represent bytes from data_room of given mbuf in go representation.
 // Accepts a pointer to the go type or structure
 // to which the data should be written, and the amount of data.
-func (m *Mbuf) GetGoStruct(data *common.CStruct) {
+func (m *Mbuf) CastToGoStruct(data *common.CStruct) {
 	C.get_go_struct(mbuf(m), data.Ptr, C.size_t(data.Len))
 }

@@ -232,7 +232,7 @@ func TestAllocResetAppend(t *testing.T) {
 			Ptr: unsafe.Pointer(&buf[0]),
 			Len: len(myMbuf.Data()),
 		}
-		myMbuf.GetGoStruct(cstr)
+		myMbuf.CastToGoStruct(cstr)
 		assert(t, bytes.Equal(buf, data))
 		mbuf.PktMbufFree(myMbuf)
 
@@ -263,7 +263,7 @@ func TestAllocResetAppend(t *testing.T) {
 		str := make([]someStruct, 2)
 		cstr.Ptr = unsafe.Pointer(&str[0])
 		cstr.Len = cArr.Len
-		m.GetGoStruct(cstr)
+		m.CastToGoStruct(cstr)
 		assert(t, str[0] == testdata)
 		assert(t, str[1] == testdata)
 	})
