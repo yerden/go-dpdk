@@ -162,7 +162,13 @@ func TestMbufMethods(t *testing.T) {
 	doOnMain(t, func(p *mempool.Mempool, data []byte) {
 		myMbuf := mbuf.PktMbufAlloc(p)
 		mbuf.PktMbufReset(myMbuf)
+		assert(t, myMbuf.BufLen() == 2048)
+		assert(t, myMbuf.HeadRoomSize() == 128)
+		assert(t, myMbuf.TailRoomSize() == myMbuf.BufLen()-myMbuf.HeadRoomSize()-uint16(len(myMbuf.Data())))
 		mbuf.PktMbufAppend(myMbuf, data)
+		assert(t, myMbuf.BufLen() == 2048)
+		assert(t, myMbuf.HeadRoomSize() == 128)
+		assert(t, myMbuf.TailRoomSize() == myMbuf.BufLen()-myMbuf.HeadRoomSize()-uint16(len(myMbuf.Data())))
 		assert(t, bytes.Equal(myMbuf.Data(), data))
 		memp := myMbuf.GetPool()
 		mymp, err := mempool.Lookup("test_mbuf_pool")

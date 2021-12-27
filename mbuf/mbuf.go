@@ -187,3 +187,20 @@ func AllocResetAndAppend(p *mempool.Mempool, data *common.CStruct) *Mbuf {
 func (m *Mbuf) CastToGoStruct(data *common.CStruct) {
 	C.get_go_struct(mbuf(m), data.Ptr, C.size_t(data.Len))
 }
+
+// HeadRoomSize represents RTE_PKTMBUF_HEADROOM size in concrete mbuf.
+func (m *Mbuf) HeadRoomSize() uint16 {
+	return uint16(C.rte_pktmbuf_headroom(mbuf(m)))
+}
+
+// TailRoomSize represents RTE_PKTMBUF_TAILROOM which is available length that can be appended to mbuf.
+func (m *Mbuf) TailRoomSize() uint16 {
+	return uint16(C.rte_pktmbuf_tailroom(mbuf(m)))
+}
+
+// BufLen represents DataRoomSize that was initiated in ./mempool:CreateMbufPool.
+// NOTE: Max available data length that mbuf can hold is BufLen - HeadRoomSize.
+func (m *Mbuf) BufLen() uint16 {
+	rteMbuf := mbuf(m)
+	return uint16(rteMbuf.buf_len)
+}
