@@ -8,6 +8,7 @@ import (
 )
 
 func main() {
+	// Checkout for available params: https://doc.dpdk.org/guides/linux_gsg/linux_eal_parameters.html
 	if _, err := eal.Init(os.Args); err != nil {
 		log.Fatalln("EAL init failed:", err)
 	}
