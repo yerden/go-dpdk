@@ -39,6 +39,7 @@ import "C"
 import (
 	"errors"
 	"reflect"
+	"syscall"
 	"unsafe"
 
 	"github.com/yerden/go-dpdk/common"
@@ -47,6 +48,7 @@ import (
 
 var TooLargeData = errors.New("data size can't be larger then priv_size")
 var NullData = errors.New("NULL response returned")
+var NotEnoughMbufs = errors.New("not enough entries in the mempool; no mbufs are retrieved")
 
 // Mbuf contains a packet.
 type Mbuf C.struct_rte_mbuf
@@ -90,7 +92,13 @@ func PktMbufAlloc(p *mempool.Mempool) *Mbuf {
 
 // PktMbufAllocBulk allocate a bulk of mbufs.
 func PktMbufAllocBulk(p *mempool.Mempool, ms []*Mbuf) error {
-	return common.Err(C.rte_pktmbuf_alloc_bulk(mp(p), mbufs(ms), C.uint(len(ms))))
+	e := C.rte_pktmbuf_alloc_bulk(mp(p), mbufs(ms), C.uint(len(ms)))
+	if syscall.Errno(e) != 0 && syscall.Errno(e) == syscall.ENOENT {
+		return NotEnoughMbufs
+	} else {
+		return syscall.Errno(e)
+	}
+	return nil
 }
 
 // PktMbufPrivSize get the application private size of mbufs
