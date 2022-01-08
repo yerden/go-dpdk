@@ -44,7 +44,6 @@ func doOnMain(t *testing.T, fn func(p *mempool.Mempool, data []byte)) {
 	data := []byte("hello from Mbuf")
 	// create and test mempool on main lcore
 	err := eal.ExecOnMain(func(ctx *eal.LcoreCtx) {
-		// create empty mempool
 		n := uint32(10240)
 		mp, err := mempool.CreateMbufPool("test_mbuf_pool",
 			n,    // elements count
@@ -157,39 +156,47 @@ func TestMempoolPriv(t *testing.T) {
 	})
 }
 
-// TODO: add docs
 func TestMbufMethods(t *testing.T) {
 	doOnMain(t, func(p *mempool.Mempool, data []byte) {
+		// allocate mbuf from mempool
 		myMbuf := mbuf.PktMbufAlloc(p)
-		mbuf.PktMbufReset(myMbuf)
+
+		// reset the fields
+		myMbuf.PktMbufReset()
 		assert(t, myMbuf.BufLen() == 2048)
 		assert(t, myMbuf.HeadRoomSize() == 128)
 		assert(t, myMbuf.TailRoomSize() == myMbuf.BufLen()-myMbuf.HeadRoomSize()-uint16(len(myMbuf.Data())))
-		mbuf.PktMbufAppend(myMbuf, data)
+
+		// append data to the mbuf
+		myMbuf.PktMbufAppend(data)
 		assert(t, myMbuf.BufLen() == 2048)
 		assert(t, myMbuf.HeadRoomSize() == 128)
 		assert(t, myMbuf.TailRoomSize() == myMbuf.BufLen()-myMbuf.HeadRoomSize()-uint16(len(myMbuf.Data())))
 		assert(t, bytes.Equal(myMbuf.Data(), data))
+
 		memp := myMbuf.GetPool()
 		mymp, err := mempool.Lookup("test_mbuf_pool")
 		assert(t, mymp == memp)
 		assert(t, err == nil)
-		defer mbuf.PktMbufFree(myMbuf)
+		defer myMbuf.PktMbufFree()
 
+		// allocate a bulk of mbufs and append the data to them
 		var mbufArr []*mbuf.Mbuf
 		mbufArr = make([]*mbuf.Mbuf, 4)
 		err = mbuf.PktMbufAllocBulk(p, mbufArr)
 		assert(t, err == nil)
 		for _, m := range mbufArr {
-			mbuf.PktMbufAppend(m, data)
+			m.PktMbufAppend(data)
 			assert(t, bytes.Equal(m.Data(), data))
 		}
 
+		// reset the fields
 		for _, m := range mbufArr {
-			mbuf.PktMbufReset(m)
+			m.PktMbufReset()
 			assert(t, bytes.Equal(m.Data(), []byte{}))
 		}
 
+		// check the allocation to the empty array
 		var mbufArrEmpty []*mbuf.Mbuf
 		err = mbuf.PktMbufAllocBulk(p, mbufArrEmpty)
 		assert(t, err == nil)
@@ -199,17 +206,23 @@ func TestMbufMethods(t *testing.T) {
 
 func TestMbufpoolPriv(t *testing.T) {
 	doOnMain(t, func(p *mempool.Mempool, data []byte) {
+		// alloc mbuf from mempool
 		myMbuf := mbuf.PktMbufAlloc(p)
+
+		// get the content of mbuf private area specified by pointer and len
 		mData := myMbuf.GetPrivData()
 		assert(t, mData.Len == int(myMbuf.GetPrivSize()))
-		ptrSlice := common.MakeSlice(mData.Ptr, mData.Len)
 
+		// create byte slice from pointer to the private area of mbuf
+		ptrSlice := common.MakeSlice(mData.Ptr, mData.Len)
+		// copy the data to mbufs private area
 		copy(ptrSlice, data)
+
 		newData := myMbuf.GetPrivData()
 		newSlice := common.MakeSlice(newData.Ptr, newData.Len)
 		assert(t, bytes.Equal(data, newSlice[:len(data)]))
 		assert(t, newData.Len == int(myMbuf.GetPrivSize()))
-		mbuf.PktMbufFree(myMbuf)
+		myMbuf.PktMbufFree()
 	})
 }
 
@@ -240,12 +253,12 @@ func TestAllocResetAppend(t *testing.T) {
 		}
 		myMbuf.CastToGoStruct(cstr)
 		assert(t, bytes.Equal(buf, data))
-		mbuf.PktMbufFree(myMbuf)
+		myMbuf.PktMbufFree()
 
 		newMbuf := mbuf.AllocResetAndAppend(p, cArr)
 		assert(t, newMbuf != nil)
 		assert(t, len(newMbuf.Data()) == len(data))
-		mbuf.PktMbufFree(newMbuf)
+		newMbuf.PktMbufFree()
 
 		//TODO вынести в отдельную функцию повторяющийся код
 		// test with struct
@@ -331,7 +344,7 @@ func BenchmarkAllocFromMempool(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			newMbuf := mbuf.AllocResetAndAppend(mp, cArr)
-			mbuf.PktMbufFree(newMbuf)
+			newMbuf.PktMbufFree()
 		}
 	})
 }

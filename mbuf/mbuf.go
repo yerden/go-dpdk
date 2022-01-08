@@ -46,7 +46,6 @@ import (
 	"github.com/yerden/go-dpdk/mempool"
 )
 
-var TooLargeData = errors.New("data size can't be larger then priv_size")
 var NullData = errors.New("NULL response returned")
 var NotEnoughMbufs = errors.New("not enough entries in the mempool; no mbufs are retrieved")
 
@@ -68,18 +67,18 @@ func mp(m *mempool.Mempool) *C.struct_rte_mempool {
 
 // PktMbufFree returns this mbuf into its originating mempool along
 // with all its segments.
-func PktMbufFree(m *Mbuf) {
+func (m *Mbuf) PktMbufFree() {
 	C.rte_pktmbuf_free(mbuf(m))
 }
 
 // RawFree returns this mbuf into its originating mempool.
-func RawFree(m *Mbuf) {
+func (m *Mbuf) RawFree() {
 	C.rte_mbuf_raw_free(mbuf(m))
 }
 
 // PktMbufClone clones the mbuf using supplied mempool as the buffer
 // source.
-func PktMbufClone(m *Mbuf, p *mempool.Mempool) {
+func (m *Mbuf) PktMbufClone(p *mempool.Mempool) {
 	C.rte_pktmbuf_clone(mbuf(m), mp(p))
 }
 
@@ -112,7 +111,7 @@ func PktMbufPrivSize(p *mempool.Mempool) int {
 }
 
 // PktMbufAppend append the given data to an mbuf.
-func PktMbufAppend(m *Mbuf, data []byte) {
+func (m *Mbuf) PktMbufAppend(data []byte) {
 	a := C.rte_pktmbuf_append(mbuf(m), C.uint16_t(len(data)))
 
 	sh := (*reflect.SliceHeader)(unsafe.Pointer(&a))
@@ -120,7 +119,7 @@ func PktMbufAppend(m *Mbuf, data []byte) {
 }
 
 // PktMbufReset reset the fields of a packet mbuf to their default values.
-func PktMbufReset(m *Mbuf) {
+func (m *Mbuf) PktMbufReset() {
 	C.rte_pktmbuf_reset(mbuf(m))
 }
 
