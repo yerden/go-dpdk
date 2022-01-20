@@ -19,7 +19,7 @@ func main() {
 	// create a ring
 	var r *ring.Ring
 	var err error
-	e := eal.ExecOnMaster(func(*eal.LcoreCtx) {
+	e := eal.ExecOnMain(func(*eal.LcoreCtx) {
 		r, err = ring.Create("test_ring", 1024)
 	})
 	if e != nil {
@@ -27,10 +27,10 @@ func main() {
 	} else if err != nil {
 		panic(err)
 	}
-	defer eal.ExecOnMaster(func(*eal.LcoreCtx) { r.Free() })
+	defer eal.ExecOnMain(func(*eal.LcoreCtx) { r.Free() })
 
 	// Pick first slave, panic if none.
-	slave := eal.LcoresSlave()[0]
+	slave := eal.LcoresWorker()[0]
 
 	// start sending and receiving messages
 	var wg sync.WaitGroup
@@ -38,7 +38,7 @@ func main() {
 	n := 1000000 // 1M messages
 	go func() {
 		defer wg.Done()
-		eal.ExecOnMaster(func(ctx *eal.LcoreCtx) {
+		eal.ExecOnMain(func(ctx *eal.LcoreCtx) {
 			for i := 0; i < n; {
 				if r.Enqueue(unsafe.Pointer(r)) {
 					i++

@@ -22,7 +22,7 @@ var initEAL = common.DoOnce(func() error {
 			"-m", "128",
 			"--no-huge",
 			"--no-pci",
-			"--master-lcore", "0"})
+			"--main-lcore", "0"})
 	}
 	return err
 })
