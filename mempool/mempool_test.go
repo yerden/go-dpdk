@@ -70,7 +70,7 @@ func TestMempoolPriv(t *testing.T) {
 		assert(mp != nil && err == nil, err)
 		defer mp.Free()
 
-		priv := mp.GetPrivBytes()
+		priv := mp.PrivBytes()
 		assert(len(priv) == 1024, len(priv))
 	})
 	assert(err == nil, err)
