@@ -283,10 +283,10 @@ func (mp *Mempool) IsEmpty() bool {
 	return C.rte_mempool_empty((*C.struct_rte_mempool)(mp)) != 0
 }
 
-// GetPrivBytes returns private data in an mempool structure in a form
+// PrivBytes returns private data in an mempool structure in a form
 // of slice of bytes. Feel free to edit the contents of the slice but
 // don't extend it by appending or other tools.
-func (mp *Mempool) GetPrivBytes() []byte {
+func (mp *Mempool) PrivBytes() []byte {
 	var priv []byte
 	cmp := (*C.struct_rte_mempool)(mp)
 	sh := (*reflect.SliceHeader)(unsafe.Pointer(&priv))
