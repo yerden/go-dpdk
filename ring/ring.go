@@ -15,6 +15,7 @@ import "C"
 
 import (
 	"runtime"
+	"syscall"
 	"unsafe"
 
 	"github.com/yerden/go-dpdk/common"
@@ -45,6 +46,7 @@ type Ring C.struct_rte_ring
 type ringConf struct {
 	cname  *C.char
 	socket C.int
+	align  C.uint
 	flags  C.uint
 }
 
@@ -84,6 +86,14 @@ func err(n ...interface{}) error {
 	}
 
 	return common.IntToErr(n[0])
+}
+
+// OptAlign specifies the alignment requirement for allocation using
+// malloc. Not used in Create.
+func OptAlign(align uint) Option {
+	return Option{func(rc *ringConf) {
+		rc.align = C.uint(align)
+	}}
 }
 
 // OptSocket specifies the socket id where the memzone would be
@@ -170,6 +180,30 @@ func New(name string, count uint, opts ...Option) (*Ring, error) {
 	return r, r.Init(name, count, opts...)
 }
 
+// NewEAL allocates and initializes Ring in EAL memory. It allocates a
+// memory with rte_zmalloc_socket with enough length to hold a Ring
+// with requested parameters. Then this pointer is casted to Ring and
+// initialized with Init.
+func NewEAL(name string, count uint, opts ...Option) (*Ring, error) {
+	size, err := GetMemSize(count)
+	if err != nil {
+		return nil, err
+	}
+
+	rc := makeOpts(name, opts)
+	r := (*Ring)(C.rte_zmalloc_socket(rc.cname, C.ulong(size), rc.align, rc.socket))
+	if r == nil {
+		return nil, syscall.ENOMEM
+	}
+
+	if err := r.Init(name, count, opts...); err != nil {
+		C.rte_free(unsafe.Pointer(r))
+		return nil, err
+	}
+
+	return r, nil
+}
+
 // GetMemSize calculates the memory size needed for a ring.
 //
 // This function returns the number of bytes needed for a ring, given
@@ -185,8 +219,16 @@ func GetMemSize(count uint) (int, error) {
 }
 
 // Free deallocates all memory used by the ring.
+//
+// This function must be called only if r was created with
+// Create or NewEAL.
 func (r *Ring) Free() {
-	C.rte_ring_free((*C.struct_rte_ring)(r))
+	if r != nil && r.memzone != nil {
+		C.rte_ring_free((*C.struct_rte_ring)(r))
+		return
+	}
+
+	C.rte_free(unsafe.Pointer(r))
 }
 
 // Count returns the number of entries in a ring.

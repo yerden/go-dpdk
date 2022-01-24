@@ -42,6 +42,14 @@ func TestRingCreate(t *testing.T) {
 		assert(err != nil)
 	})
 	assert(err == nil, err)
+
+	err = eal.ExecOnMain(func(ctx *eal.LcoreCtx) {
+		r, err := ring.NewEAL("test_ring", 1024, ring.OptSC,
+			ring.OptSP, ring.OptSocket(eal.SocketID()))
+		assert(r != nil && err == nil, err)
+		defer r.Free()
+	})
+	assert(err == nil, err)
 }
 
 func TestRingInit(t *testing.T) {
@@ -63,13 +71,55 @@ func TestRingInit(t *testing.T) {
 	assert(err == nil, err)
 }
 
+func TestRingNewEAL(t *testing.T) {
+	assert := common.Assert(t, true)
+
+	n := 64
+	err := eal.ExecOnMain(func(ctx *eal.LcoreCtx) {
+		r, err := ring.NewEAL("test_ring", uint(n))
+		assert(r != nil && err == nil, err)
+		defer r.Free()
+
+		assert(r.IsEmpty())
+		assert(!r.IsFull())
+		assert(r.Cap() == uint(n)-1, r.Cap())
+		assert(r.FreeCount() == r.Cap(), r.FreeCount(), r.Cap())
+
+		// test array
+		array := make([]int, r.Cap())
+
+		for i := 0; i < int(r.Cap()); i++ {
+			objIn := unsafe.Pointer(&array[i])
+			assert(r.Count() == uint(i), r.Count())
+			assert(r.FreeCount() == r.Cap()-uint(i), r.Count())
+			assert(r.FreeCount()+r.Count() == r.Cap())
+			cons, free := r.SpEnqueueBulk([]unsafe.Pointer{objIn})
+			assert(cons == 1, cons, i)
+			assert(free == uint32(r.FreeCount()), free, r.FreeCount())
+		}
+
+		assert(!r.IsEmpty())
+		assert(r.IsFull())
+		for i := 0; i < int(r.Cap()); i++ {
+			objOut, ok := r.ScDequeue()
+			assert(objOut == unsafe.Pointer(&array[i]) && ok, i)
+		}
+
+		assert(r.IsEmpty())
+		assert(!r.IsFull())
+		_, ok := r.ScDequeue()
+		assert(!ok)
+	})
+
+	assert(err == nil)
+}
+
 func TestRingNew(t *testing.T) {
 	assert := common.Assert(t, true)
 
 	n := 64
 	r, err := ring.New("test_ring", uint(n))
 	assert(r != nil && err == nil, err)
-	defer r.Free() // should have no effect
 
 	assert(r.IsEmpty())
 	assert(!r.IsFull())
