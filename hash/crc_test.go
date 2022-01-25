@@ -1,5 +1,6 @@
 package hash
 
+import "C"
 import (
 	"hash"
 	"hash/crc32"
@@ -163,4 +164,8 @@ func BenchmarkGoCrc32Update8(b *testing.B) {
 
 func BenchmarkGoCrc32Update31(b *testing.B) {
 	benchmarkHash32Func(b, makeGoHash32Func(), 31)
+}
+
+func CrcUint32(ip, seed uint32) uint32 {
+	return uint32(C.rte_hash_crc_4byte(C.uint32_t(ip), C.uint32_t(seed)))
 }
