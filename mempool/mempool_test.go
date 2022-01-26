@@ -2,6 +2,8 @@ package mempool_test
 
 import (
 	"bytes"
+	"log"
+
 	"reflect"
 	"syscall"
 	"testing"
@@ -59,6 +61,67 @@ func doOnMain(t *testing.T, fn func(p *mempool.Mempool, data []byte)) {
 		fn(mp, data)
 	})
 	assert(t, err == nil, err)
+}
+
+type TestStruct struct {
+	a int
+	b string
+}
+
+func doOnMainStruct(t *testing.T, fn func(p *mempool.Mempool, str []TestStruct)) {
+	// Initialize EAL on all cores
+	assert(t, initEAL() == nil)
+
+	data := []TestStruct{}
+	for i := 0; i < 10; i++ {
+		data = append(data, TestStruct{
+			a: i,
+			b: "asd",
+		})
+	}
+
+	// create and test mempool on main lcore
+	err := eal.ExecOnMain(func(ctx *eal.LcoreCtx) {
+		n := uint32(10240)
+		mp, err := mempool.CreateMbufPool("test_mbuf_pool",
+			n,    // elements count
+			2048, // size of element
+			mempool.OptSocket(int(eal.SocketID())),
+			mempool.OptCacheSize(32),
+			mempool.OptOpsName("stack"),
+			mempool.OptPrivateDataSize(64), // for each Mbuf
+		)
+		assert(t, err == nil, err)
+		assert(t, mp != nil)
+		defer mp.Free()
+		fn(mp, data)
+	})
+	assert(t, err == nil, err)
+}
+
+func TestGetGoStruct(t *testing.T) {
+	strSize := int(unsafe.Sizeof(TestStruct{}))
+
+	const expectedTotalLengthOfSlice = 240
+
+	doOnMainStruct(t, func(p *mempool.Mempool, data []TestStruct) {
+		cstr := &common.CStruct{}
+		cstr.Ptr = unsafe.Pointer(&data[0])
+		cstr.Len = len(data) * strSize
+		myMbuf := mbuf.AllocResetAndAppend(p, cstr)
+
+		mbufData := myMbuf.Data()
+
+		if len(myMbuf.Data()) == expectedTotalLengthOfSlice {
+			// cast slice to byte array
+			//byteArray = *(*[10]byte)(myMbuf.Data())
+			// cast array to array of structs
+			expectedSlice := *(*[10]TestStruct)(unsafe.Pointer(&mbufData[0]))
+			log.Println(expectedSlice)
+		} else {
+			// other length
+		}
+	})
 }
 
 func TestMempoolCreateErr(t *testing.T) {
