@@ -855,6 +855,22 @@ func (pid Port) Name() (string, error) {
 	return C.GoString(&buf[0]), err
 }
 
+// GetPortByName gets the port ID from device name. The device name
+// should be specified as below:
+//
+//   * PCIe address (Domain:Bus:Device.Function), for example- 0000:02:00.0
+//   * SoC device name, for example- fsl-gmac0
+//   * vdev dpdk name, for example- net_[pcap0|null0|tun0|tap0]
+//
+// (0) if successful.
+// (-ENODEV or -EINVAL) in case of failure.
+func GetPortByName(name string) (Port, error) {
+	cstr := C.CString(name)
+	defer C.free(unsafe.Pointer(cstr))
+	var p C.ushort
+	return Port(p), errget(C.rte_eth_dev_get_port_by_name(cstr, &p))
+}
+
 // NbRxQueues returns number of configured RX queues for the device.
 func (info *DevInfo) NbRxQueues() uint16 {
 	return uint16(info.nb_rx_queues)
