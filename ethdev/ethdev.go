@@ -274,6 +274,23 @@ func (addr *MACAddr) String() string {
 	return addr.HardwareAddr().String()
 }
 
+// RssHashUpdate updates configuration of Receive Side Scaling hash
+// computation of Ethernet device.
+func (pid Port) RssHashUpdate(conf *RssConf) error {
+	var rssConf C.struct_rte_eth_rss_conf
+
+	rssConf.rss_key_len = C.uchar(len(conf.Key))
+	rssConf.rss_hf = C.ulong(conf.Hf)
+
+	if len(conf.Key) > 0 {
+		p := C.CBytes(conf.Key)
+		defer C.free(p)
+		rssConf.rss_key = (*C.uchar)(p)
+	}
+
+	return errget(C.rte_eth_dev_rss_hash_update(C.ushort(pid), &rssConf))
+}
+
 // RssHashConfGet retrieves current configuration of Receive Side
 // Scaling hash computation of Ethernet device.
 func (pid Port) RssHashConfGet(conf *RssConf) error {
