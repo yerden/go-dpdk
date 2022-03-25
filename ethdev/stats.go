@@ -8,6 +8,7 @@ package ethdev
 */
 import "C"
 import (
+	"os"
 	"unsafe"
 
 	"github.com/yerden/go-dpdk/common"
@@ -83,6 +84,78 @@ func (pid Port) XstatNames() ([]XstatName, error) {
 	names := make([]XstatName, n)
 	C.rte_eth_xstats_get_names(C.ushort(pid), (*C.struct_rte_eth_xstat_name)(&names[0]), C.uint(n))
 	return names, nil
+}
+
+func (pid Port) xstatIDByName(x *XstatName) (id uint64, err error) {
+	return id, errget(C.rte_eth_xstats_get_id_by_name(C.ushort(pid), &x.name[0], (*C.uint64_t)(&id)))
+}
+
+// XstatNameIDs returns names of extended statistics mapped by their
+// ID and an error. This is supposed to be called to cache counter
+// ids and not used in hot path.
+func (pid Port) XstatNameIDs() (map[uint64]string, error) {
+	names, err := pid.XstatNames()
+	if err != nil {
+		return nil, err
+	}
+
+	var id uint64
+	namesID := map[uint64]string{}
+	for i := range names {
+		x := &names[i]
+
+		if id, err = pid.xstatIDByName(x); err != nil {
+			return nil, err
+		}
+
+		if _, ok := namesID[id]; ok {
+			return nil, os.ErrExist
+		}
+
+		namesID[id] = x.String()
+	}
+
+	return namesID, nil
+}
+
+// XstatGetByID retrieves extended statistics of an Ethernet device.
+//
+// ids is the IDs array given by app to retrieve specific statistics.
+// May be nil to retrieve all available statistics or, if values is
+// nil as well, just the number of available statistics.
+//
+// values is the array to be filled in with requested device
+// statistics. Must not be nil if ids are specified (not nil).
+//
+// Returns:
+//
+// A positive value lower or equal to len(values): success. The return
+// value is the number of entries filled in the stats table.
+//
+// A positive value higher than len(values): success: The given
+// statistics table is too small. The return value corresponds to the
+// size that should be given to succeed. The entries in the table are
+// not valid and shall not be used by the caller.
+//
+// Otherwise, error is returned.
+func (pid Port) XstatGetByID(ids, values []uint64) (int, error) {
+	cids := (*C.uint64_t)(nil)
+	cvalues := cids
+
+	if len(ids) != 0 {
+		cids = (*C.uint64_t)(&ids[0])
+	}
+
+	if len(values) != 0 {
+		cvalues = (*C.uint64_t)(&values[0])
+	}
+
+	rc := C.rte_eth_xstats_get_by_id(C.ushort(pid), cids, cvalues, C.uint(len(values)))
+	if rc < 0 {
+		return 0, errget(rc)
+	}
+
+	return int(rc), nil
 }
 
 // XstatsGet retrieves xstat from eth dev. Returns number of retrieved
