@@ -5,7 +5,49 @@ import (
 	"testing"
 	"time"
 	"unsafe"
+
+	"github.com/yerden/go-dpdk/common"
+	"github.com/yerden/go-dpdk/eal"
 )
+
+var initEAL = common.DoOnce(func() error {
+	_, err := eal.Init([]string{"test",
+		"--lcores", "(0-3)@0",
+		"--vdev", "net_null0",
+		"-d", eal.PmdPath,
+		"-m", "128", "--no-huge", "--no-pci",
+		"--main-lcore", "0"})
+	return err
+})
+
+func assert(t testing.TB, expected bool, args ...interface{}) {
+	if !expected {
+		t.Helper()
+		t.Fatal(args...)
+	}
+}
+
+func TestEthXstats(t *testing.T) {
+	assert(t, initEAL() == nil)
+
+	var names []XstatName
+	var ealErr error
+	namesByID := map[uint64]string{}
+
+	err := eal.ExecOnMain(func(*eal.LcoreCtx) {
+		pid := Port(0)
+		names, ealErr = pid.XstatNames()
+		assert(t, ealErr == nil)
+
+		namesByID, ealErr = pid.XstatNameIDs()
+		assert(t, ealErr == nil)
+	})
+
+	assert(t, err == nil, err)
+
+	assert(t, len(names) > 0)
+	assert(t, len(namesByID) == len(names), namesByID)
+}
 
 // TestEthStats tests that EthStats can be casted to Stats.
 func TestEthStats(t *testing.T) {
