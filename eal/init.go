@@ -24,20 +24,8 @@ import (
 	"github.com/yerden/go-dpdk/common"
 )
 
-// Maximum number of lcores configured during DPDK compile-time.
-const (
-	MaxLcore = C.RTE_MAX_LCORE
-)
-
 const (
 	lcoreJobsBuffer = 32
-)
-
-// The type of process in a linux, multi-process setup.
-const (
-	ProcAuto      int = C.RTE_PROC_AUTO
-	ProcPrimary       = C.RTE_PROC_PRIMARY
-	ProcSecondary     = C.RTE_PROC_SECONDARY
 )
 
 var (
