@@ -5,6 +5,10 @@ package flow
 #include <rte_config.h>
 #include <rte_flow.h>
 
+enum {
+	IPv4_HDR_OFF_DST_VERSION_IHL = offsetof(struct rte_ipv4_hdr, version_ihl),
+};
+
 static const struct rte_flow_item_ipv4 *get_item_ipv4_mask() {
 	return &rte_flow_item_ipv4_mask;
 }
@@ -37,7 +41,8 @@ func (item *ItemIPv4) Reload() {
 }
 
 func cvtIPv4Header(dst *C.struct_rte_ipv4_hdr, src *layers.IPv4) {
-	dst.version_ihl = C.uint8_t(src.Version<<4 + src.IHL)
+	setIPv4HdrVersionIHL(dst, src)
+
 	dst.type_of_service = C.uint8_t(src.TOS)
 	beU16(src.Length, unsafe.Pointer(&dst.total_length))
 	beU16(src.Id, unsafe.Pointer(&dst.packet_id))
@@ -53,6 +58,11 @@ func cvtIPv4Header(dst *C.struct_rte_ipv4_hdr, src *layers.IPv4) {
 	if addr := src.DstIP.To4(); addr != nil {
 		dst.dst_addr = *(*C.rte_be32_t)(unsafe.Pointer(&addr[0]))
 	}
+}
+
+func setIPv4HdrVersionIHL(dst *C.struct_rte_ipv4_hdr, src *layers.IPv4) {
+	p := off(unsafe.Pointer(dst), C.IPv4_HDR_OFF_DST_VERSION_IHL)
+	*(*C.uint8_t)(p) = (C.uchar)(src.Version<<4 + src.IHL)
 }
 
 // Type implements ItemStruct interface.
