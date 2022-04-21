@@ -14,6 +14,18 @@ package ethdev
 #include <rte_errno.h>
 #include <rte_memory.h>
 #include <rte_ethdev.h>
+#include <rte_version.h>
+
+// The max_rx_pkt_len changes occurred in commit: 1bb4a528c41f4af4847bd3d58cc2b2b9f1ec9a27.
+#if RTE_VERSION < RTE_VERSION_NUM(21, 11, 0, 0)
+enum {
+	RX_MODE_LEN_OFF = offsetof(struct rte_eth_rxmode, max_rx_pkt_len),
+};
+#else
+enum {
+	RX_MODE_LEN_OFF = offsetof(struct rte_eth_rxmode, mtu),
+};
+#endif
 
 static void set_tx_reject_tagged(struct rte_eth_txmode *txm) {
 	txm->hw_vlan_reject_tagged = 1;
@@ -105,8 +117,8 @@ type RxMode struct {
 	// The multi-queue packet distribution mode to be used, e.g. RSS.
 	// See MqRx* constants.
 	MqMode uint
-	// Only used if JUMBO_FRAME enabled.
-	MaxRxPktLen uint32
+	// Requested MTU or MaxRxPktLen if JUMBO_FRAME enabled (for releases older than 21.11).
+	MTU uint32
 	// hdr buf size (header_split enabled).
 	SplitHdrSize uint16
 	// Per-port Rx offloads to be set using RxOffload* flags. Only
@@ -349,11 +361,17 @@ func OptRxMode(conf RxMode) Option {
 	return Option{func(c *ethConf) {
 		c.conf.rxmode = C.struct_rte_eth_rxmode{
 			mq_mode:        uint32(conf.MqMode),
-			max_rx_pkt_len: C.uint(conf.MaxRxPktLen),
 			split_hdr_size: C.ushort(conf.SplitHdrSize),
 			offloads:       C.ulong(conf.Offloads),
 		}
+		c.setRxPktLen(conf.MTU)
 	}}
+}
+
+func (c *ethConf) setRxPktLen(n uint32) {
+	rxptr := unsafe.Pointer((*C.struct_rte_eth_rxmode)(&c.conf.rxmode))
+	p := unsafe.Pointer(uintptr(rxptr) + C.RX_MODE_LEN_OFF)
+	*(*C.uint32_t)(p) = (C.uint32_t)(n)
 }
 
 type ethConf struct {
