@@ -37,26 +37,11 @@ import (
 // These zones are identified by a name.
 type Memzone C.struct_rte_memzone
 
-// These parameters are used to request memzones to be taken from
-// specifically sized hugepages.
 const (
-	Page2Mb   uint = C.RTE_MEMZONE_2MB
-	Page1Gb        = C.RTE_MEMZONE_1GB
-	Page16Mb       = C.RTE_MEMZONE_16MB
-	Page16Gb       = C.RTE_MEMZONE_16GB
-	Page256Kb      = C.RTE_MEMZONE_256KB
-	Page256Mb      = C.RTE_MEMZONE_256MB
-	Page512Mb      = C.RTE_MEMZONE_512MB
-	Page4Gb        = C.RTE_MEMZONE_4GB
-
 	// Allow alternative page size to be used if the requested page
 	// size is unavailable. If this flag is not set, the function will
 	// return error on an unavailable size request.
 	PageSizeHintOnly = C.RTE_MEMZONE_SIZE_HINT_ONLY
-
-	// Ensure reserved memzone is IOVA-contiguous. This option should
-	// be used when allocating memory intended for hardware rings etc.
-	PageIovaContig = C.RTE_MEMZONE_IOVA_CONTIG
 )
 
 type conf struct {

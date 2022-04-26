@@ -19,18 +19,6 @@ import (
 	"github.com/yerden/go-dpdk/util"
 )
 
-const (
-	// Crc32SW flag means 'Don't use SSE4.2 intrinsics'.
-	Crc32SW uint8 = C.CRC32_SW
-
-	// Crc32Sse42 means 'Use SSE4.2 intrinsics if available'.
-	Crc32Sse42 uint8 = C.CRC32_SSE42
-
-	// Crc32Sse42X64 means 'Use 64-bit SSE4.2 intrinsic if available
-	// (default)'.
-	Crc32Sse42X64 uint8 = C.CRC32_SSE42_x64
-)
-
 // CrcSetAlg allow or disallow use of SSE4.2 instrinsics for CRC32
 // hash calculation. Specify OR of declared Crc32* flags.
 func CrcSetAlg(alg uint8) {

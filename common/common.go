@@ -20,11 +20,6 @@ import (
 	"syscall"
 )
 
-// SocketIDAny represents selection for any NUMA socket.
-const (
-	SocketIDAny = int(C.SOCKET_ID_ANY)
-)
-
 // Custom RTE induced errors.
 var (
 	ErrNoConfig  = errors.New("Missing rte_config")

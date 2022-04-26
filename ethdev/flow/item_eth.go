@@ -5,12 +5,24 @@ package flow
 #include <rte_config.h>
 #include <rte_ether.h>
 #include <rte_flow.h>
+#include <rte_version.h>
 
+enum {
+	ITEM_ETH_OFF_HDR = offsetof(struct rte_flow_item_eth, hdr),
+};
+
+// Ethernet header fields renamed since commit: 04d43857ea3acbd4db4b28939dc2807932b85e72.
+#if RTE_VERSION < RTE_VERSION_NUM(21, 11, 0, 0)
 enum {
 	ETHER_HDR_OFF_SRC = offsetof(struct rte_ether_hdr, s_addr),
 	ETHER_HDR_OFF_DST = offsetof(struct rte_ether_hdr, d_addr),
-	ITEM_ETH_OFF_HDR = offsetof(struct rte_flow_item_eth, hdr),
 };
+#else
+enum {
+	ETHER_HDR_OFF_SRC = offsetof(struct rte_ether_hdr, src_addr),
+	ETHER_HDR_OFF_DST = offsetof(struct rte_ether_hdr, dst_addr),
+};
+#endif
 
 void set_has_vlan(struct rte_flow_item_eth *item, uint32_t b) {
 	item->has_vlan = b;

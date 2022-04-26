@@ -14,6 +14,18 @@ package ethdev
 #include <rte_errno.h>
 #include <rte_memory.h>
 #include <rte_ethdev.h>
+#include <rte_version.h>
+
+// The max_rx_pkt_len changes occurred in commit: 1bb4a528c41f4af4847bd3d58cc2b2b9f1ec9a27.
+#if RTE_VERSION < RTE_VERSION_NUM(21, 11, 0, 0)
+enum {
+	RX_MODE_LEN_OFF = offsetof(struct rte_eth_rxmode, max_rx_pkt_len),
+};
+#else
+enum {
+	RX_MODE_LEN_OFF = offsetof(struct rte_eth_rxmode, mtu),
+};
+#endif
 
 static void set_tx_reject_tagged(struct rte_eth_txmode *txm) {
 	txm->hw_vlan_reject_tagged = 1;
@@ -68,102 +80,6 @@ import (
 	"github.com/yerden/go-dpdk/mempool"
 )
 
-// Various RX offloads flags.
-const (
-	RxOffloadVlanStrip      uint64 = C.DEV_RX_OFFLOAD_VLAN_STRIP
-	RxOffloadIpv4Cksum             = C.DEV_RX_OFFLOAD_IPV4_CKSUM
-	RxOffloadUDPCksum              = C.DEV_RX_OFFLOAD_UDP_CKSUM
-	RxOffloadTCPCksum              = C.DEV_RX_OFFLOAD_TCP_CKSUM
-	RxOffloadTCPLro                = C.DEV_RX_OFFLOAD_TCP_LRO
-	RxOffloadQinqStrip             = C.DEV_RX_OFFLOAD_QINQ_STRIP
-	RxOffloadOuterIpv4Cksum        = C.DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM
-	RxOffloadMacsecStrip           = C.DEV_RX_OFFLOAD_MACSEC_STRIP
-	RxOffloadHeaderSplit           = C.DEV_RX_OFFLOAD_HEADER_SPLIT
-	RxOffloadVlanFilter            = C.DEV_RX_OFFLOAD_VLAN_FILTER
-	RxOffloadVlanExtend            = C.DEV_RX_OFFLOAD_VLAN_EXTEND
-	RxOffloadJumboFrame            = C.DEV_RX_OFFLOAD_JUMBO_FRAME
-	RxOffloadScatter               = C.DEV_RX_OFFLOAD_SCATTER
-	RxOffloadTimestamp             = C.DEV_RX_OFFLOAD_TIMESTAMP
-	RxOffloadSecurity              = C.DEV_RX_OFFLOAD_SECURITY
-	// RxOffloadKeepCrc        = C.DEV_RX_OFFLOAD_KEEP_CRC
-	// RxOffloadSCTPCksum      = C.DEV_RX_OFFLOAD_SCTP_CKSUM
-	// RxOffloadOuterUDPCksum  = C.DEV_RX_OFFLOAD_OUTER_UDP_CKSUM
-
-	RxOffloadChecksum = (RxOffloadIpv4Cksum |
-		RxOffloadUDPCksum |
-		RxOffloadTCPCksum)
-	RxOffloadVlan = (RxOffloadVlanStrip |
-		RxOffloadVlanFilter |
-		RxOffloadVlanExtend)
-)
-
-// Various TX offloads flags.
-const (
-	TxOffloadVlanInsert     uint64 = C.DEV_TX_OFFLOAD_VLAN_INSERT
-	TxOffloadIpv4Cksum             = C.DEV_TX_OFFLOAD_IPV4_CKSUM
-	TxOffloadUDPCksum              = C.DEV_TX_OFFLOAD_UDP_CKSUM
-	TxOffloadTCPCksum              = C.DEV_TX_OFFLOAD_TCP_CKSUM
-	TxOffloadSCTPCksum             = C.DEV_TX_OFFLOAD_SCTP_CKSUM
-	TxOffloadTCPTso                = C.DEV_TX_OFFLOAD_TCP_TSO
-	TxOffloadUDPTso                = C.DEV_TX_OFFLOAD_UDP_TSO
-	TxOffloadOuterIpv4Cksum        = C.DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM
-	TxOffloadQinqInsert            = C.DEV_TX_OFFLOAD_QINQ_INSERT
-	TxOffloadVxlanTnlTso           = C.DEV_TX_OFFLOAD_VXLAN_TNL_TSO
-	TxOffloadGreTnlTso             = C.DEV_TX_OFFLOAD_GRE_TNL_TSO
-	TxOffloadIpipTnlTso            = C.DEV_TX_OFFLOAD_IPIP_TNL_TSO
-	TxOffloadGeneveTnlTso          = C.DEV_TX_OFFLOAD_GENEVE_TNL_TSO
-	TxOffloadMacsecInsert          = C.DEV_TX_OFFLOAD_MACSEC_INSERT
-	TxOffloadMtLockfree            = C.DEV_TX_OFFLOAD_MT_LOCKFREE
-	TxOffloadMultiSegs             = C.DEV_TX_OFFLOAD_MULTI_SEGS
-	TxOffloadMbufFastFree          = C.DEV_TX_OFFLOAD_MBUF_FAST_FREE
-	TxOffloadSecurity              = C.DEV_TX_OFFLOAD_SECURITY
-	// TxOffloadIpTnlTso       = C.DEV_TX_OFFLOAD_IP_TNL_TSO
-	// TxOffloadOuterUDPCksum  = C.DEV_TX_OFFLOAD_OUTER_UDP_CKSUM
-	// TxOffloadMatchMetadata  = C.DEV_TX_OFFLOAD_MATCH_METADATA
-)
-
-// Device supported speeds bitmap flags.
-const (
-	LinkSpeedAutoneg uint = C.ETH_LINK_SPEED_AUTONEG /**< Autonegotiate (all speeds) */
-	LinkSpeedFixed        = C.ETH_LINK_SPEED_FIXED   /**< Disable autoneg (fixed speed) */
-	LinkSpeed10mHd        = C.ETH_LINK_SPEED_10M_HD  /**<  10 Mbps half-duplex */
-	LinkSpeed10m          = C.ETH_LINK_SPEED_10M     /**<  10 Mbps full-duplex */
-	LinkSpeed100mHd       = C.ETH_LINK_SPEED_100M_HD /**< 100 Mbps half-duplex */
-	LinkSpeed100m         = C.ETH_LINK_SPEED_100M    /**< 100 Mbps full-duplex */
-	LinkSpeed1g           = C.ETH_LINK_SPEED_1G      /**<   1 Gbps */
-	LinkSpeed2_5g         = C.ETH_LINK_SPEED_2_5G    /**< 2.5 Gbps */
-	LinkSpeed5g           = C.ETH_LINK_SPEED_5G      /**<   5 Gbps */
-	LinkSpeed10g          = C.ETH_LINK_SPEED_10G     /**<  10 Gbps */
-	LinkSpeed20g          = C.ETH_LINK_SPEED_20G     /**<  20 Gbps */
-	LinkSpeed25g          = C.ETH_LINK_SPEED_25G     /**<  25 Gbps */
-	LinkSpeed40g          = C.ETH_LINK_SPEED_40G     /**<  40 Gbps */
-	LinkSpeed50g          = C.ETH_LINK_SPEED_50G     /**<  50 Gbps */
-	LinkSpeed56g          = C.ETH_LINK_SPEED_56G     /**<  56 Gbps */
-	LinkSpeed100g         = C.ETH_LINK_SPEED_100G    /**< 100 Gbps */
-)
-
-// A set of values to identify what method is to be used to route
-// packets to multiple queues.
-const (
-	MqRxNone       uint = C.ETH_MQ_RX_NONE         /** None of DCB,RSS or VMDQ mode */
-	MqRxRss             = C.ETH_MQ_RX_RSS          /** For RX side, only RSS is on */
-	MqRxDcb             = C.ETH_MQ_RX_DCB          /** For RX side,only DCB is on. */
-	MqRxDcbRss          = C.ETH_MQ_RX_DCB_RSS      /** Both DCB and RSS enable */
-	MqRxVmdqOnly        = C.ETH_MQ_RX_VMDQ_ONLY    /** Only VMDQ, no RSS nor DCB */
-	MqRxVmdqRss         = C.ETH_MQ_RX_VMDQ_RSS     /** RSS mode with VMDQ */
-	MqRxVmdqDcb         = C.ETH_MQ_RX_VMDQ_DCB     /** Use VMDQ+DCB to route traffic to queues */
-	MqRxVmdqDcbRss      = C.ETH_MQ_RX_VMDQ_DCB_RSS /** Enable both VMDQ and DCB in VMDq */
-)
-
-// A set of values to identify what method is to be used to transmit
-// packets using multi-TCs.
-const (
-	MqTxNone     uint = C.ETH_MQ_TX_NONE      /**< It is in neither DCB nor VT mode. */
-	MqTxDcb           = C.ETH_MQ_TX_DCB       /**< For TX side,only DCB is on. */
-	MqTxVmdqDcb       = C.ETH_MQ_TX_VMDQ_DCB  /**< For TX side,both DCB and VT is on. */
-	MqTxVmdqOnly      = C.ETH_MQ_TX_VMDQ_ONLY /**< Only VT on, no DCB */
-)
-
 // This enum indicates the flow control mode.
 const (
 	// Disable flow control.
@@ -201,8 +117,8 @@ type RxMode struct {
 	// The multi-queue packet distribution mode to be used, e.g. RSS.
 	// See MqRx* constants.
 	MqMode uint
-	// Only used if JUMBO_FRAME enabled.
-	MaxRxPktLen uint32
+	// Requested MTU or MaxRxPktLen if JUMBO_FRAME enabled (for releases older than 21.11).
+	MTU uint32
 	// hdr buf size (header_split enabled).
 	SplitHdrSize uint16
 	// Per-port Rx offloads to be set using RxOffload* flags. Only
@@ -445,11 +361,17 @@ func OptRxMode(conf RxMode) Option {
 	return Option{func(c *ethConf) {
 		c.conf.rxmode = C.struct_rte_eth_rxmode{
 			mq_mode:        uint32(conf.MqMode),
-			max_rx_pkt_len: C.uint(conf.MaxRxPktLen),
 			split_hdr_size: C.ushort(conf.SplitHdrSize),
 			offloads:       C.ulong(conf.Offloads),
 		}
+		c.setRxPktLen(conf.MTU)
 	}}
+}
+
+func (c *ethConf) setRxPktLen(n uint32) {
+	rxptr := unsafe.Pointer((*C.struct_rte_eth_rxmode)(&c.conf.rxmode))
+	p := unsafe.Pointer(uintptr(rxptr) + C.RX_MODE_LEN_OFF)
+	*(*C.uint32_t)(p) = (C.uint32_t)(n)
 }
 
 type ethConf struct {
