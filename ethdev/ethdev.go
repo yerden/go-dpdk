@@ -919,3 +919,9 @@ func (pid Port) FlowCtrlGet(conf *FcConf) error {
 func (pid Port) FlowCtrlSet(conf *FcConf) error {
 	return errget(C.rte_eth_dev_flow_ctrl_set(C.ushort(pid), (*C.struct_rte_eth_fc_conf)(conf)))
 }
+
+type CallbackFunc C.rte_eth_dev_cb_fn
+
+func CallbackRegister(portID uint16, eventType int, fn CallbackFunc, ptr unsafe.Pointer) int {
+	return C.rte_eth_dev_callback_register(C.uint16_t(portID), C.rte_eth_event_type(eventType), fn, ptr)
+}
