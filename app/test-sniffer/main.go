@@ -43,7 +43,7 @@ func main() {
 
 	// stats report
 	go func() {
-		ticker := time.NewTicker(10 * time.Second)
+		ticker := time.NewTicker(*statsInt)
 		defer ticker.Stop()
 
 		qcrEng := eng.WithPrefix("rxq")
