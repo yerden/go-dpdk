@@ -146,6 +146,18 @@ func (m *Mbuf) Data() []byte {
 	return d
 }
 
+// PktLen returns total packet length: sum of all segments.
+func (m *Mbuf) PktLen() uint32 {
+	rteMbuf := mbuf(m)
+	return uint32(rteMbuf.pkt_len)
+}
+
+// Next returns next segment of scattered packet.
+func (m *Mbuf) Next() *Mbuf {
+	rteMbuf := mbuf(m)
+	return (*Mbuf)(rteMbuf.next)
+}
+
 // PrivData sets ptr to point to mbuf's private area. Private data
 // length is set to the priv_size field of an mbuf itself. Although
 // this length may be 0 the private area may still be usable as
