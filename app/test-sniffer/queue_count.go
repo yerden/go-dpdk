@@ -3,10 +3,8 @@ package main
 import (
 	"strconv"
 	"sync"
-	"sync/atomic"
-	"time"
 
-	"github.com/segmentio/stats/v4"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/yerden/go-dpdk/eal"
 	"github.com/yerden/go-dpdk/ethdev"
 	"github.com/yerden/go-dpdk/mbuf"
@@ -14,20 +12,16 @@ import (
 )
 
 type PacketBytes struct {
-	Packets uint64 `metric:"packets" type:"counter"`
-	Bytes   uint64 `metric:"bytes" type:"counter"`
+	Packets prometheus.Counter
+	Bytes   prometheus.Counter
 }
 
 type QueueCounter struct {
-	PortID  string `tag:"index"`
-	Name    string `tag:"name"`
-	QueueID string `tag:"queue"`
-
-	RX PacketBytes `metric:"rx"`
-	TX PacketBytes `metric:"tx"`
+	RX PacketBytes
 }
 
 type QueueCounterReporter struct {
+	reg    prometheus.Registerer
 	mtx    sync.Mutex
 	lcores []*QueueCounter
 }
@@ -44,17 +38,32 @@ func (qcr *QueueCounterReporter) getLcoresCounter(lcore uint) *QueueCounter {
 
 func (qcr *QueueCounterReporter) Register(pid ethdev.Port, qid uint16) *QueueCounter {
 	qcr.mtx.Lock()
+	defer qcr.mtx.Unlock()
 
 	qc := qcr.getLcoresCounter(eal.LcoreID())
 	name, err := pid.Name()
 	if err != nil {
 		panic(util.ErrWrapf(err, "no name for pid=%d", pid))
 	}
-	qc.PortID = strconv.FormatUint(uint64(pid), 10)
-	qc.QueueID = strconv.FormatUint(uint64(qid), 10)
-	qc.Name = name
 
-	qcr.mtx.Unlock()
+	labels := prometheus.Labels{
+		"index": strconv.FormatUint(uint64(pid), 10),
+		"queue": strconv.FormatUint(uint64(qid), 10),
+		"name":  name,
+	}
+	newCounter := func(name string) prometheus.Counter {
+		c := prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace:   statsNamespace,
+			Subsystem:   "rxq",
+			Name:        name,
+			ConstLabels: labels,
+		})
+		qcr.reg.MustRegister(c)
+		return c
+	}
+
+	qc.RX.Packets = newCounter("rx_packets")
+	qc.RX.Bytes = newCounter("rx_bytes")
 
 	return qc
 }
@@ -64,32 +73,6 @@ func (qc *QueueCounter) Incr(pkts []*mbuf.Mbuf) {
 	for i := range pkts {
 		dataLen += uint64(len(pkts[i].Data()))
 	}
-	atomic.AddUint64(&qc.RX.Packets, uint64(len(pkts)))
-	atomic.AddUint64(&qc.RX.Bytes, uint64(dataLen))
-}
-
-func (qcr *QueueCounterReporter) ReportAt(t time.Time, eng *stats.Engine) {
-	data := []QueueCounter{}
-
-	qcr.mtx.Lock()
-
-	for _, qc := range qcr.lcores {
-		if qc == nil {
-			continue
-		}
-
-		var newQC QueueCounter
-		newQC.PortID = qc.PortID
-		newQC.QueueID = qc.QueueID
-		newQC.Name = qc.Name
-
-		newQC.RX.Packets = atomic.SwapUint64(&qc.RX.Packets, 0)
-		newQC.RX.Bytes = atomic.SwapUint64(&qc.RX.Bytes, 0)
-
-		data = append(data, newQC)
-	}
-
-	qcr.mtx.Unlock()
-
-	eng.ReportAt(t, data)
+	qc.RX.Packets.Add(float64(len(pkts)))
+	qc.RX.Bytes.Add(float64(dataLen))
 }
