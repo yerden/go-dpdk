@@ -58,17 +58,20 @@ func newApp(eng *stats.Engine) (*App, error) {
 
 	rssConf := &ethdev.RssConf{
 		Key: bytes.Repeat([]byte{0x6D, 0x5A}, 20),
-		Hf:  C.ETH_RSS_IPV4,
+		Hf:  C.RTE_ETH_RSS_IP,
 	}
 
 	ethdevCfg := &EthdevConfig{
 		Options: []ethdev.Option{
 			ethdev.OptRss(*rssConf),
+			ethdev.OptRxMode(ethdev.RxMode{
+				MqMode: C.RTE_ETH_MQ_RX_RSS,
+			}),
 		},
 		RxQueues: uint16(*rxQueues),
 		OnConfig: []EthdevCallback{
 			EthdevCallbackFunc((ethdev.Port).Start),
-			&RssConfig{rssConf},
+			// &RssConfig{rssConf},
 		},
 		Pooler:        rxqPools,
 		RxDescriptors: uint16(*rxDesc),

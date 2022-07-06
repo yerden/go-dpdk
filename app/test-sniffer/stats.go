@@ -1,12 +1,15 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"time"
 
 	"github.com/segmentio/stats/v4"
 	"github.com/yerden/go-dpdk/ethdev"
 )
+
+var statsInt = flag.Duration("statsInt", 10*time.Second, "Specify interval between collecting statistics")
 
 type portStat struct {
 	pid                ethdev.Port
