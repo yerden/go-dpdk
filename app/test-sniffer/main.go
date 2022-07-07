@@ -7,9 +7,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/segmentio/stats/v4"
-	"github.com/segmentio/stats/v4/prometheus"
-
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/yerden/go-dpdk/eal"
 )
 
@@ -28,9 +27,8 @@ func main() {
 	flag.Var(&fcMode, "flowctrl", "Specify Flow Control mode: none (default), rxpause, txpause, full")
 
 	flag.Parse()
-	statsHandler := prometheus.DefaultHandler
-	eng := stats.NewEngine("dpdk", statsHandler)
-	app, err := NewApp(eng)
+	reg := prometheus.NewRegistry()
+	app, err := NewApp(reg)
 	if err != nil {
 		panic(err)
 	}
@@ -46,10 +44,8 @@ func main() {
 		ticker := time.NewTicker(*statsInt)
 		defer ticker.Stop()
 
-		qcrEng := eng.WithPrefix("rxq")
-		for t := range ticker.C {
-			app.Stats.ReportAt(t)
-			app.QCR.ReportAt(t, qcrEng)
+		for range ticker.C {
+			app.Stats.Report()
 		}
 	}()
 
@@ -66,7 +62,7 @@ func main() {
 	}()
 
 	mux := http.NewServeMux()
-	mux.Handle("/metrics", statsHandler)
+	mux.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
 	srv := &http.Server{
 		Addr:    *metricsEndpoint,
 		Handler: mux,

@@ -10,7 +10,7 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/segmentio/stats/v4"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/yerden/go-dpdk/eal"
 	"github.com/yerden/go-dpdk/ethdev"
 	"github.com/yerden/go-dpdk/mempool"
@@ -36,16 +36,16 @@ type App struct {
 	QCR   *QueueCounterReporter
 }
 
-func NewApp(eng *stats.Engine) (*App, error) {
+func NewApp(reg prometheus.Registerer) (*App, error) {
 	var app *App
 	return app, doOnMain(func() error {
 		var err error
-		app, err = newApp(eng)
+		app, err = newApp(reg)
 		return err
 	})
 }
 
-func newApp(eng *stats.Engine) (*App, error) {
+func newApp(reg prometheus.Registerer) (*App, error) {
 	rxqPools, err := NewMempoolPerPort("mbuf_pool", &CmdMempool{},
 		mempool.OptCacheSize(uint32(*poolCache)),
 		mempool.OptOpsName("lf_stack"),
@@ -95,7 +95,7 @@ func newApp(eng *stats.Engine) (*App, error) {
 		fmt.Println("OK")
 	}
 
-	metrics, err := NewStats(eng, ports)
+	metrics, err := NewStats(reg, ports)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +110,7 @@ func newApp(eng *stats.Engine) (*App, error) {
 		Ports:        ports,
 		Stats:        metrics,
 		Work:         work,
-		QCR:          &QueueCounterReporter{},
+		QCR:          &QueueCounterReporter{reg: reg},
 	}
 
 	return app, nil
