@@ -6,8 +6,6 @@ import (
 	"log"
 	"os"
 
-	"github.com/google/gopacket"
-	"github.com/google/gopacket/layers"
 	"github.com/yerden/go-dpdk/eal"
 	"github.com/yerden/go-dpdk/ethdev"
 	"github.com/yerden/go-dpdk/util"
@@ -108,28 +106,6 @@ func LcoreFunc(pq PortQueue, qcr *QueueCounterReporter) func(*eal.LcoreCtx) {
 		if *dryRun {
 			return
 		}
-
-		// parser
-		var (
-			eth  layers.Ethernet
-			vlan layers.Dot1Q
-			ip4  layers.IPv4
-			ip6  layers.IPv6
-			gtpu layers.GTPv1U
-		)
-
-		var dlc gopacket.DecodingLayerContainer
-		dlc = gopacket.DecodingLayerSparse{}
-		dlc = dlc.Put(&eth)
-		dlc = dlc.Put(&vlan)
-		dlc = dlc.Put(&ip4)
-		dlc = dlc.Put(&ip6)
-		dlc = dlc.Put(&gtpu)
-
-		parser := gopacket.NewDecodingLayerParser(layers.LayerTypeEthernet)
-		parser.SetDecodingLayerContainer(dlc)
-		parser.IgnoreUnsupported = true
-
 		// eal
 		pid := pq.Pid
 		qid := pq.Qid
@@ -140,19 +116,12 @@ func LcoreFunc(pq PortQueue, qcr *QueueCounterReporter) func(*eal.LcoreCtx) {
 
 		buf := src.Buffer()
 
-		decoded := make([]gopacket.LayerType, 10)
-
 		log.Printf("processing pid=%d, qid=%d, lcore=%d\n", pid, qid, eal.LcoreID())
 		for {
 			n := src.Recharge()
 
 			for i := 0; i < n; i++ {
 				data := buf[i].Data()
-
-				if err := parser.DecodeLayers(data, &decoded); err != nil {
-					log.Println("parsing error:", err)
-					continue
-				}
 
 				if *printMetadata {
 					fmt.Printf("packet: %d bytes\n", len(data))
