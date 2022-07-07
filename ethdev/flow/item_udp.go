@@ -14,15 +14,21 @@ import "C"
 import (
 	"runtime"
 	"unsafe"
-
-	"github.com/google/gopacket/layers"
 )
+
+// UDPHeader represents UDP header format.
+type UDPHeader struct {
+	SrcPort  uint16 /* UDP source port. */
+	DstPort  uint16 /* UDP destination port. */
+	Length   uint16 /* UDP datagram length */
+	Checksum uint16 /* UDP datagram checksum */
+}
 
 // ItemUDP matches an UDP header.
 type ItemUDP struct {
 	cPointer
 
-	Header layers.UDP
+	Header UDPHeader
 }
 
 var _ ItemStruct = (*ItemUDP)(nil)
@@ -34,7 +40,7 @@ func (item *ItemUDP) Reload() {
 	runtime.SetFinalizer(item, (*ItemUDP).free)
 }
 
-func cvtUDPHeader(dst *C.struct_rte_udp_hdr, src *layers.UDP) {
+func cvtUDPHeader(dst *C.struct_rte_udp_hdr, src *UDPHeader) {
 	beU16(uint16(src.SrcPort), unsafe.Pointer(&dst.src_port))
 	beU16(uint16(src.DstPort), unsafe.Pointer(&dst.dst_port))
 	beU16(src.Length, unsafe.Pointer(&dst.dgram_len))

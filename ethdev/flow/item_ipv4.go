@@ -18,9 +18,24 @@ import "C"
 import (
 	"runtime"
 	"unsafe"
-
-	"github.com/google/gopacket/layers"
 )
+
+// IPv4 represents a raw IPv4 address.
+type IPv4 [4]byte
+
+// IPv4Header is the IPv4 header raw format.
+type IPv4Header struct {
+	VersionIHL     uint8  /* Version and header length. */
+	ToS            uint8  /* Type of service. */
+	TotalLength    uint16 /* Length of packet. */
+	ID             uint16 /* Packet ID. */
+	FragmentOffset uint16 /* Fragmentation offset. */
+	TTL            uint8  /* Time to live. */
+	Proto          uint8  /* Protocol ID. */
+	Checksum       uint16 /* Header checksum. */
+	SrcAddr        IPv4   /* Source address. */
+	DstAddr        IPv4   /* Destination address. */
+}
 
 // ItemIPv4 matches an IPv4 header.
 //
@@ -28,7 +43,7 @@ import (
 type ItemIPv4 struct {
 	cPointer
 
-	Header layers.IPv4
+	Header IPv4Header
 }
 
 var _ ItemStruct = (*ItemIPv4)(nil)
@@ -40,29 +55,24 @@ func (item *ItemIPv4) Reload() {
 	runtime.SetFinalizer(item, (*ItemIPv4).free)
 }
 
-func cvtIPv4Header(dst *C.struct_rte_ipv4_hdr, src *layers.IPv4) {
+func cvtIPv4Header(dst *C.struct_rte_ipv4_hdr, src *IPv4Header) {
 	setIPv4HdrVersionIHL(dst, src)
 
-	dst.type_of_service = C.uint8_t(src.TOS)
-	beU16(src.Length, unsafe.Pointer(&dst.total_length))
-	beU16(src.Id, unsafe.Pointer(&dst.packet_id))
-	beU16(src.FragOffset, unsafe.Pointer(&dst.fragment_offset))
+	dst.type_of_service = C.uint8_t(src.ToS)
+	beU16(src.TotalLength, unsafe.Pointer(&dst.total_length))
+	beU16(src.ID, unsafe.Pointer(&dst.packet_id))
+	beU16(src.FragmentOffset, unsafe.Pointer(&dst.fragment_offset))
 	dst.time_to_live = C.uint8_t(src.TTL)
-	dst.next_proto_id = C.uint8_t(src.Protocol)
+	dst.next_proto_id = C.uint8_t(src.Proto)
 	beU16(src.Checksum, unsafe.Pointer(&dst.hdr_checksum))
 
-	if addr := src.SrcIP.To4(); addr != nil {
-		dst.src_addr = *(*C.rte_be32_t)(unsafe.Pointer(&addr[0]))
-	}
-
-	if addr := src.DstIP.To4(); addr != nil {
-		dst.dst_addr = *(*C.rte_be32_t)(unsafe.Pointer(&addr[0]))
-	}
+	dst.src_addr = *(*C.rte_be32_t)(unsafe.Pointer(&src.SrcAddr[0]))
+	dst.dst_addr = *(*C.rte_be32_t)(unsafe.Pointer(&src.DstAddr[0]))
 }
 
-func setIPv4HdrVersionIHL(dst *C.struct_rte_ipv4_hdr, src *layers.IPv4) {
+func setIPv4HdrVersionIHL(dst *C.struct_rte_ipv4_hdr, src *IPv4Header) {
 	p := off(unsafe.Pointer(dst), C.IPv4_HDR_OFF_DST_VERSION_IHL)
-	*(*C.uint8_t)(p) = (C.uchar)(src.Version<<4 + src.IHL)
+	*(*C.uint8_t)(p) = (C.uchar)(src.VersionIHL)
 }
 
 // Type implements ItemStruct interface.

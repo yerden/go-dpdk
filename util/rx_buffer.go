@@ -15,10 +15,8 @@ import "C"
 
 import (
 	"reflect"
-	"syscall"
 	"unsafe"
 
-	"github.com/google/gopacket"
 	"github.com/yerden/go-dpdk/common"
 	"github.com/yerden/go-dpdk/ethdev"
 	"github.com/yerden/go-dpdk/mbuf"
@@ -32,8 +30,7 @@ func geterr(n ...interface{}) error {
 	return common.IntToErr(n[0])
 }
 
-// MbufArray implements gopacket.ZeroCopyPacketDataSource interface
-// wrapping port and queue id.
+// MbufArray is a wrapper of port and queue id.
 type MbufArray C.struct_mbuf_array
 
 // NewMbufArray allocates new MbufArray from huge pages memory for
@@ -91,32 +88,4 @@ func (buf *MbufArray) Mbufs() (ret []*mbuf.Mbuf) {
 // ones. Returns number of retrived packets.
 func (buf *MbufArray) Recharge() int {
 	return int(C.mbuf_array_ethdev_reload((*C.struct_mbuf_array)(buf)))
-}
-
-// ZeroCopyReadPacketData implements
-// gopacket.ZeroCopyPacketDataSource interface.
-//
-// If RX queue does not yield any packets, syscall.EAGAIN error is
-// returned.
-//
-// XXX: Please note that timestamp for CaptureInfo is not set by this
-// call.
-func (buf *MbufArray) ZeroCopyReadPacketData() (data []byte, ci gopacket.CaptureInfo, err error) {
-	if buf.n >= buf.length {
-		buf.Recharge()
-	}
-
-	if buf.length == 0 {
-		err = syscall.EAGAIN
-		return
-	}
-
-	opaque := (*C.struct_ethdev_data)(unsafe.Pointer(&buf.opaque))
-	m := buf.cursor()
-	data = m.Data()
-	ci.Length = len(data)
-	ci.CaptureLength = len(data)
-	ci.InterfaceIndex = int(opaque.pid)
-	buf.n++
-	return
 }
