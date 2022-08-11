@@ -130,3 +130,30 @@ func Destroy(port ethdev.Port, flow *Flow, flowErr *Error) error {
 func Flush(port ethdev.Port, flowErr *Error) error {
 	return common.IntToErr(C.rte_flow_flush(C.ushort(port), (*C.struct_rte_flow_error)(flowErr)))
 }
+
+// Isolate restricts ingress traffic to the defined flow rules.
+//
+// Isolated mode guarantees that all ingress traffic comes from
+// defined flow rules only (current and future).
+//
+// Besides making ingress more deterministic, it allows PMDs to safely
+// reuse resources otherwise assigned to handle the remaining traffic,
+// such as global RSS configuration settings, VLAN filters, MAC
+// address entries, legacy filter API rules and so on in order to
+// expand the set of possible flow rule types.
+//
+// Calling this function as soon as possible after device
+// initialization, ideally before the first call to
+// rte_eth_dev_configure(), is recommended to avoid possible failures
+// due to conflicting settings.
+//
+// Once effective, leaving isolated mode may not be possible depending
+// on PMD implementation.
+//
+// port is the identifier of Ethernet device. Specify set to nonzero
+// value to enter isolated mode, otherwise it marks the attempt to
+// leave it. flowErr performs verbose error reporting if not NULL.
+// PMDs initialize this structure in case of error only.
+func Isolate(port ethdev.Port, set int, flowErr *Error) error {
+	return common.IntToErr(C.rte_flow_isolate(C.ushort(port), C.int(set), (*C.struct_rte_flow_error)(flowErr)))
+}
