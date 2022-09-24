@@ -39,6 +39,20 @@ static void set_tx_insert_pvid(struct rte_eth_txmode *txm) {
 	txm->hw_vlan_insert_pvid = 1;
 }
 
+static int go_rte_get_ethdev_ports(uint16_t *ports, int n_ports) {
+	uint16_t pid;
+	int i = 0;
+
+	RTE_ETH_FOREACH_DEV(pid) {
+		if (i >= n_ports) {
+			break;
+		}
+		ports[i++] = pid;
+	}
+
+	return i;
+}
+
 struct go_rte_eth_link {
 	uint32_t link_speed;
 	uint8_t link_duplex;
@@ -251,11 +265,12 @@ func (conf *RssRetaEntry64) Mask() *uint64 {
 // table size can be queried by rte_eth_dev_info_get().
 //
 // Returns:
-//   (0) if successful.
-//   (-ENODEV) if port_id is invalid.
-//   (-ENOTSUP) if hardware doesn't support.
-//   (-EINVAL) if bad parameter.
-//   (-EIO) if device is removed.
+//
+//	(0) if successful.
+//	(-ENODEV) if port_id is invalid.
+//	(-ENOTSUP) if hardware doesn't support.
+//	(-EINVAL) if bad parameter.
+//	(-EIO) if device is removed.
 func (pid Port) RssRetaUpdate(conf []RssRetaEntry64, retaSize uint16) error {
 	p := (*C.struct_rte_eth_rss_reta_entry64)(nil)
 	if len(conf) > 0 {
@@ -270,11 +285,12 @@ func (pid Port) RssRetaUpdate(conf []RssRetaEntry64, retaSize uint16) error {
 // retaSize is a redirection table size. The table size can be queried by rte_eth_dev_info_get().
 //
 // Returns:
-//   (0) if successful.
-//   (-ENODEV) if port_id is invalid.
-//   (-ENOTSUP) if hardware doesn't support.
-//   (-EINVAL) if bad parameter.
-//   (-EIO) if device is removed.
+//
+//	(0) if successful.
+//	(-ENODEV) if port_id is invalid.
+//	(-ENOTSUP) if hardware doesn't support.
+//	(-EINVAL) if bad parameter.
+//	(-EIO) if device is removed.
 func (pid Port) RssRetaQuery(conf []RssRetaEntry64, retaSize uint16) error {
 	p := (*C.struct_rte_eth_rss_reta_entry64)(nil)
 	if len(conf) > 0 {
@@ -525,13 +541,13 @@ func OptSocket(socket int) QueueOption {
 //
 // - -EIO: if device is removed.
 //
-// - -EINVAL: The memory pool pointer is null or the size of network
-//    buffers which can be allocated from this memory pool does not
-//    fit the various buffer sizes allowed by the device controller.
+//   - -EINVAL: The memory pool pointer is null or the size of network
+//     buffers which can be allocated from this memory pool does not
+//     fit the various buffer sizes allowed by the device controller.
 //
-// - -ENOMEM: Unable to allocate the receive ring descriptors or to
-//    allocate network memory buffers from the memory pool when
-//    initializing receive descriptors.
+//   - -ENOMEM: Unable to allocate the receive ring descriptors or to
+//     allocate network memory buffers from the memory pool when
+//     initializing receive descriptors.
 func (pid Port) RxqSetup(qid, nDesc uint16, mp *mempool.Mempool, opts ...QueueOption) error {
 	conf := &qConf{socket: C.SOCKET_ID_ANY}
 	for i := range opts {
@@ -761,29 +777,29 @@ func (info *DevInfo) RetaSize() uint16 {
 //
 // Where lim is defined within the rte_eth_dev_info_get as
 //
-//   const struct rte_eth_desc_lim lim = { .nb_max = UINT16_MAX, .nb_min
-//   = 0, .nb_align = 1, .nb_seg_max = UINT16_MAX, .nb_mtu_seg_max =
-//   UINT16_MAX, };
+//	const struct rte_eth_desc_lim lim = { .nb_max = UINT16_MAX, .nb_min
+//	= 0, .nb_align = 1, .nb_seg_max = UINT16_MAX, .nb_mtu_seg_max =
+//	UINT16_MAX, };
 //
-//   device = dev->device min_mtu = RTE_ETHER_MIN_MTU max_mtu =
-//   UINT16_MAX
+//	device = dev->device min_mtu = RTE_ETHER_MIN_MTU max_mtu =
+//	UINT16_MAX
 //
 // The following fields will be populated if support for
 // dev_infos_get() exists for the device and the rte_eth_dev 'dev' has
 // been populated successfully with a call to it:
 //
-//   driver_name = dev->device->driver->name nb_rx_queues =
-//   dev->data->nb_rx_queues nb_tx_queues = dev->data->nb_tx_queues
-//   dev_flags = &dev->data->dev_flags
+//	driver_name = dev->device->driver->name nb_rx_queues =
+//	dev->data->nb_rx_queues nb_tx_queues = dev->data->nb_tx_queues
+//	dev_flags = &dev->data->dev_flags
 func (pid Port) InfoGet(info *DevInfo) error {
 	return errget(C.rte_eth_dev_info_get(C.ushort(pid), (*C.struct_rte_eth_dev_info)(info)))
 }
 
 // Name get the device name from port id. The device name is specified as below:
 //
-//   * PCIe address (Domain:Bus:Device.Function), for example- 0000:02:00.0
-//   * SoC device name, for example- fsl-gmac0
-//   * vdev dpdk name, for example- net_[pcap0|null0|tun0|tap0]
+//   - PCIe address (Domain:Bus:Device.Function), for example- 0000:02:00.0
+//   - SoC device name, for example- fsl-gmac0
+//   - vdev dpdk name, for example- net_[pcap0|null0|tun0|tap0]
 //
 // (0) if successful.
 // (-ENODEV) if port_id is invalid.
@@ -797,9 +813,9 @@ func (pid Port) Name() (string, error) {
 // GetPortByName gets the port ID from device name. The device name
 // should be specified as below:
 //
-//   * PCIe address (Domain:Bus:Device.Function), for example- 0000:02:00.0
-//   * SoC device name, for example- fsl-gmac0
-//   * vdev dpdk name, for example- net_[pcap0|null0|tun0|tap0]
+//   - PCIe address (Domain:Bus:Device.Function), for example- 0000:02:00.0
+//   - SoC device name, for example- fsl-gmac0
+//   - vdev dpdk name, for example- net_[pcap0|null0|tun0|tap0]
 //
 // (0) if successful.
 // (-ENODEV or -EINVAL) in case of failure.
@@ -833,6 +849,18 @@ func (pid Port) IsValid() bool {
 // non-contiguous ranges of devices.
 func CountAvail() int {
 	return int(C.rte_eth_dev_count_avail())
+}
+
+// ValidPorts returns list of devices valid in EAL.
+func ValidPorts() []Port {
+	avail := CountAvail()
+	if avail == 0 {
+		return nil
+	}
+
+	ports := make([]Port, avail)
+	n := C.go_rte_get_ethdev_ports((*C.uint16_t)(unsafe.Pointer(&ports[0])), C.int(avail))
+	return ports[:n]
 }
 
 // CountTotal gets the total number of ports which are allocated.
@@ -875,10 +903,10 @@ func (link *EthLink) Status() bool {
 //
 // Returns:
 //
-//   (0) if successful.
-//   (-ENOTSUP) if the function is not supported in PMD driver.
-//   (-ENODEV) if port_id invalid.
-//   (-EINVAL) if bad parameter.
+//	(0) if successful.
+//	(-ENOTSUP) if the function is not supported in PMD driver.
+//	(-ENODEV) if port_id invalid.
+//	(-EINVAL) if bad parameter.
 func (pid Port) EthLinkGet() (EthLink, error) {
 	var d EthLink
 	return d, errget(C.go_rte_eth_link_get(C.ushort(pid), (*C.struct_go_rte_eth_link)(&d)))
@@ -890,10 +918,10 @@ func (pid Port) EthLinkGet() (EthLink, error) {
 //
 // Returns:
 //
-//   (0) if successful.
-//   (-ENOTSUP) if the function is not supported in PMD driver.
-//   (-ENODEV) if port_id invalid.
-//   (-EINVAL) if bad parameter.
+//	(0) if successful.
+//	(-ENOTSUP) if the function is not supported in PMD driver.
+//	(-ENODEV) if port_id invalid.
+//	(-EINVAL) if bad parameter.
 func (pid Port) EthLinkGetNowait() (EthLink, error) {
 	var d EthLink
 	return d, errget(C.go_rte_eth_link_get_nowait(C.ushort(pid), (*C.struct_go_rte_eth_link)(&d)))
