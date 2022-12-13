@@ -9,15 +9,16 @@ import "C"
 import (
 	"unsafe"
 
+	"github.com/yerden/go-dpdk/common"
 	"github.com/yerden/go-dpdk/mempool"
 )
 
 // compile time checks
-var _ = []RxFactory{
+var _ = []InParams{
 	&Source{},
 }
 
-var _ = []TxFactory{
+var _ = []OutParams{
 	&Sink{},
 }
 
@@ -35,22 +36,28 @@ type Source struct {
 	BytesPerPacket uint32
 }
 
-// CreateRx implements RxFactory interface.
-func (rd *Source) CreateRx(socket int) (*Rx, error) {
-	rx := &Rx{ops: &C.rte_port_source_ops}
+// InOps implements InParams interface.
+func (rd *Source) InOps() *InOps {
+	return (*InOps)(&C.rte_port_source_ops)
+}
 
+// Transform implements common.Transformer interface.
+func (rd *Source) Transform(alloc common.Allocator) (unsafe.Pointer, func(unsafe.Pointer)) {
 	// port
-	params := &C.struct_rte_port_source_params{
-		mempool:         (*C.struct_rte_mempool)(unsafe.Pointer(rd.Mempool)),
-		n_bytes_per_pkt: C.uint32_t(rd.BytesPerPacket),
-	}
+	var params *C.struct_rte_port_source_params
+	params = (*C.struct_rte_port_source_params)(alloc.Malloc(unsafe.Sizeof(*params)))
+	params.mempool = (*C.struct_rte_mempool)(unsafe.Pointer(rd.Mempool))
+	params.n_bytes_per_pkt = C.uint32_t(rd.BytesPerPacket)
 
 	if rd.Filename != "" {
-		params.file_name = (*C.char)(C.CString(rd.Filename))
-		defer C.free(unsafe.Pointer(params.file_name))
+		params.file_name = (*C.char)(common.CString(alloc, rd.Filename))
 	}
 
-	return rx, rx.doCreate(socket, unsafe.Pointer(params))
+	return unsafe.Pointer(params), func(arg unsafe.Pointer) {
+		params := (*C.struct_rte_port_source_params)(arg)
+		alloc.Free(unsafe.Pointer(params.file_name))
+		alloc.Free(arg)
+	}
 }
 
 // Sink is an output port that drops all packets written to it.
@@ -63,19 +70,24 @@ type Sink struct {
 	MaxPackets uint32
 }
 
-// CreateTx implements TxFactory interface.
-func (wr *Sink) CreateTx(socket int) (*Tx, error) {
-	tx := &Tx{ops: &C.rte_port_sink_ops}
+// OutOps implements OutParams interface.
+func (wr *Sink) OutOps() *OutOps {
+	return (*OutOps)(&C.rte_port_sink_ops)
+}
 
-	// port
-	params := &C.struct_rte_port_sink_params{
-		max_n_pkts: C.uint32_t(wr.MaxPackets),
-	}
+// Transform implements common.Transformer interface.
+func (wr *Sink) Transform(alloc common.Allocator) (unsafe.Pointer, func(unsafe.Pointer)) {
+	var params *C.struct_rte_port_sink_params
+	params = (*C.struct_rte_port_sink_params)(alloc.Malloc(unsafe.Sizeof(*params)))
+	params.max_n_pkts = C.uint32_t(wr.MaxPackets)
 
 	if wr.Filename != "" {
-		params.file_name = (*C.char)(C.CString(wr.Filename))
-		defer C.free(unsafe.Pointer(params.file_name))
+		params.file_name = (*C.char)(common.CString(alloc, wr.Filename))
 	}
 
-	return tx, tx.doCreate(socket, unsafe.Pointer(params))
+	return unsafe.Pointer(params), func(arg unsafe.Pointer) {
+		params := (*C.struct_rte_port_sink_params)(arg)
+		alloc.Free(unsafe.Pointer(params.file_name))
+		alloc.Free(unsafe.Pointer(arg))
+	}
 }
