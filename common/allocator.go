@@ -130,3 +130,19 @@ func CString(a Allocator, s string) *C.char {
 	dst[len(s)] = 0
 	return (*C.char)(p)
 }
+
+// Transformer is an object that can recreate some representation of
+// itself allocating memory from Allocator.
+type Transformer interface {
+	// Transform allocates itself from Allocator and returns pointer
+	// to the allocation along with destructor function. Use should
+	// call destructor upon allocated object to avoid memory leak,
+	// e.g.:
+	//   alloc := &common.StdAlloc{}
+	//   x, dtor := obj.Transform(alloc)
+	//   defer dtor(x)
+	//
+	// Implementations may use Allocator as a hint. If it is nil the
+	// implementation may choose an allocator at its will.
+	Transform(Allocator) (unsafe.Pointer, func(unsafe.Pointer))
+}
