@@ -146,3 +146,14 @@ type Transformer interface {
 	// implementation may choose an allocator at its will.
 	Transform(Allocator) (unsafe.Pointer, func(unsafe.Pointer))
 }
+
+// TransformPOD allocates a copy of an object pointed to by ptr and
+// returns a pointer to the copy and its destructor.
+func TransformPOD(a Allocator, ptr interface{}) (unsafe.Pointer, func(unsafe.Pointer)) {
+	v := reflect.ValueOf(ptr)
+	t := v.Type().Elem()
+	p := a.Malloc(t.Size())
+	newPtr := reflect.NewAt(t, p)
+	reflect.Indirect(newPtr).Set(v.Elem())
+	return p, a.Free
+}
