@@ -1,6 +1,8 @@
 package port
 
 /*
+#include <stdlib.h>
+
 #include <rte_config.h>
 #include <rte_port.h>
 #include <rte_port_ethdev.h>
@@ -9,16 +11,14 @@ import "C"
 
 import (
 	"unsafe"
+
+	"github.com/yerden/go-dpdk/common"
 )
 
-// compile time checks
-var _ = []RxFactory{
-	&EthdevRx{},
-}
-
-var _ = []TxFactory{
-	&EthdevTx{},
-}
+var (
+	_ InParams  = (*EthdevRx)(nil)
+	_ OutParams = (*EthdevTx)(nil)
+)
 
 // EthdevRx is an input port built on top of pre-initialized NIC
 // RX queue.
@@ -27,19 +27,19 @@ type EthdevRx struct {
 	PortID, QueueID uint16
 }
 
-// CreateRx implements RxFactory interface.
-func (rd *EthdevRx) CreateRx(socket int) (*Rx, error) {
-	rx := &Rx{
-		ops: &C.rte_port_ethdev_reader_ops,
-	}
+var _ InParams = (*EthdevRx)(nil)
 
-	// port
-	params := &C.struct_rte_port_ethdev_reader_params{
-		port_id:  C.uint16_t(rd.PortID),
-		queue_id: C.uint16_t(rd.QueueID),
-	}
+// InOps implements InParams interface.
+func (p *EthdevRx) InOps() *InOps {
+	return (*InOps)(&C.rte_port_ethdev_reader_ops)
+}
 
-	return rx, rx.doCreate(socket, unsafe.Pointer(params))
+// Transform implements common.Transformer interface.
+func (p *EthdevRx) Transform(alloc common.Allocator) (unsafe.Pointer, func(unsafe.Pointer)) {
+	return common.TransformPOD(alloc, &C.struct_rte_port_ethdev_reader_params{
+		port_id:  C.uint16_t(p.PortID),
+		queue_id: C.uint16_t(p.QueueID),
+	})
 }
 
 // EthdevTx is an output port built on top of pre-initialized NIC
@@ -59,29 +59,20 @@ type EthdevTx struct {
 	Retries uint32
 }
 
-// CreateTx implements TxFactory interface.
-func (wr *EthdevTx) CreateTx(socket int) (*Tx, error) {
-	tx := &Tx{}
-
-	// port
-	var params unsafe.Pointer
-
-	if wr.NoDrop {
-		tx.ops = &C.rte_port_ethdev_writer_nodrop_ops
-		params = unsafe.Pointer(&C.struct_rte_port_ethdev_writer_nodrop_params{
-			port_id:     C.uint16_t(wr.PortID),
-			queue_id:    C.uint16_t(wr.QueueID),
-			tx_burst_sz: C.uint32_t(wr.TxBurstSize),
-			n_retries:   C.uint32_t(wr.Retries),
-		})
-	} else {
-		tx.ops = &C.rte_port_ethdev_writer_ops
-		params = unsafe.Pointer(&C.struct_rte_port_ethdev_writer_params{
-			port_id:     C.uint16_t(wr.PortID),
-			queue_id:    C.uint16_t(wr.QueueID),
-			tx_burst_sz: C.uint32_t(wr.TxBurstSize),
-		})
+// OutOps implements OutParams interface.
+func (p *EthdevTx) OutOps() *OutOps {
+	if !p.NoDrop {
+		return (*OutOps)(&C.rte_port_ethdev_writer_ops)
 	}
+	return (*OutOps)(&C.rte_port_ethdev_writer_nodrop_ops)
+}
 
-	return tx, tx.doCreate(socket, params)
+// Transform implements common.Transformer interface.
+func (p *EthdevTx) Transform(alloc common.Allocator) (unsafe.Pointer, func(unsafe.Pointer)) {
+	return common.TransformPOD(alloc, &C.struct_rte_port_ethdev_writer_nodrop_params{
+		port_id:     C.uint16_t(p.PortID),
+		queue_id:    C.uint16_t(p.QueueID),
+		tx_burst_sz: C.uint32_t(p.TxBurstSize),
+		n_retries:   C.uint32_t(p.Retries),
+	})
 }

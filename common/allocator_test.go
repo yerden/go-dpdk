@@ -73,3 +73,19 @@ func TestAllocatorSessionCalloc2(t *testing.T) {
 	assert(p[1] == 456)
 	assert(sh.Data == uintptr(unsafe.Pointer(ptr)))
 }
+
+func TestTransformPOD(t *testing.T) {
+	assert := Assert(t, true)
+
+	type myType struct {
+		X, Y int
+	}
+
+	x := &myType{1, 2}
+	alloc := &StdAlloc{}
+	ptr, dtor := TransformPOD(alloc, x)
+	defer dtor(ptr)
+
+	y := (*myType)(ptr)
+	assert(*x == *y)
+}

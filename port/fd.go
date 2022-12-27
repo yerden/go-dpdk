@@ -11,6 +11,7 @@ import "C"
 import (
 	"unsafe"
 
+	"github.com/yerden/go-dpdk/common"
 	"github.com/yerden/go-dpdk/mempool"
 )
 
@@ -27,20 +28,18 @@ type FdRx struct {
 	MTU uint32
 }
 
-// CreateRx implements RxFactory interface.
-func (rd *FdRx) CreateRx(socket int) (*Rx, error) {
-	rx := &Rx{
-		ops: &C.rte_port_fd_reader_ops,
-	}
+// InOps implements InParams interface.
+func (rd *FdRx) InOps() *InOps {
+	return (*InOps)(&C.rte_port_fd_reader_ops)
+}
 
-	// port
-	params := &C.struct_rte_port_fd_reader_params{
+// Transform implements common.Transformer interface.
+func (rd *FdRx) Transform(alloc common.Allocator) (unsafe.Pointer, func(unsafe.Pointer)) {
+	return common.TransformPOD(alloc, &C.struct_rte_port_fd_reader_params{
 		fd:      C.int(rd.Fd),
 		mtu:     C.uint32_t(rd.MTU),
 		mempool: (*C.struct_rte_mempool)(unsafe.Pointer(rd.Mempool)),
-	}
-
-	return rx, rx.doCreate(socket, unsafe.Pointer(params))
+	})
 }
 
 // FdTx is an output port built on top of valid non-blocking file
@@ -57,23 +56,19 @@ type FdTx struct {
 	Retries uint32
 }
 
-// CreateTx implements TxFactory interface.
-func (wr *FdTx) CreateTx(socket int) (*Tx, error) {
-	tx := &Tx{}
-
-	var params unsafe.Pointer
+// OutOps implements OutParams interface.
+func (wr *FdTx) OutOps() *OutOps {
 	if wr.NoDrop {
-		tx.ops = &C.rte_port_fd_writer_nodrop_ops
-		params = unsafe.Pointer(&C.struct_rte_port_fd_writer_nodrop_params{
-			fd:        C.int(wr.Fd),
-			n_retries: C.uint32_t(wr.Retries),
-		})
-	} else {
-		tx.ops = &C.rte_port_fd_writer_ops
-		params = unsafe.Pointer(&C.struct_rte_port_fd_writer_params{
-			fd: C.int(wr.Fd),
-		})
+		return (*OutOps)(&C.rte_port_fd_writer_nodrop_ops)
 	}
 
-	return tx, tx.doCreate(socket, params)
+	return (*OutOps)(&C.rte_port_fd_writer_ops)
+}
+
+// Transform implements common.Transformer interface.
+func (wr *FdTx) Transform(alloc common.Allocator) (unsafe.Pointer, func(unsafe.Pointer)) {
+	return common.TransformPOD(alloc, &C.struct_rte_port_fd_writer_nodrop_params{
+		fd:        C.int(wr.Fd),
+		n_retries: C.uint32_t(wr.Retries),
+	})
 }

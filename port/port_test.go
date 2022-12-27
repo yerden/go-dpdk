@@ -16,7 +16,6 @@ var initEAL = common.DoOnce(func() error {
 	if err == nil {
 		_, err = eal.Init([]string{"test",
 			"-c", common.NewMap(&set).String(),
-			"-d", eal.PmdPath,
 			"-m", "128",
 			"--no-huge",
 			"--no-pci",
@@ -27,8 +26,6 @@ var initEAL = common.DoOnce(func() error {
 
 func TestPortRingRx(t *testing.T) {
 	assert := common.Assert(t, true)
-	m := common.NewAllocatorSession(&common.StdAlloc{})
-	defer m.Flush()
 
 	// Initialize EAL on all cores
 	assert(initEAL() == nil)
@@ -40,11 +37,16 @@ func TestPortRingRx(t *testing.T) {
 
 		confRx := &RingRx{Ring: r, Multi: true}
 
-		rx, err := confRx.CreateRx(-1)
-		assert(err == nil)
-		assert(rx != nil)
+		ops := confRx.InOps()
+		assert(ops != nil)
 
-		err = rx.Free()
+		arg, dtor := confRx.Transform(alloc)
+		defer dtor(arg)
+
+		in := CreateIn(-1, confRx)
+		assert(in != nil)
+
+		err = in.Free(ops)
 		assert(err == nil, err)
 	})
 	assert(err == nil, err)
@@ -52,8 +54,6 @@ func TestPortRingRx(t *testing.T) {
 
 func TestPortRingTx(t *testing.T) {
 	assert := common.Assert(t, true)
-	m := common.NewAllocatorSession(&common.StdAlloc{})
-	defer m.Flush()
 
 	// Initialize EAL on all cores
 	assert(initEAL() == nil)
@@ -65,11 +65,11 @@ func TestPortRingTx(t *testing.T) {
 
 		confTx := &RingTx{Ring: r, Multi: true, NoDrop: false, TxBurstSize: 64}
 
-		tx, err := confTx.CreateTx(-1)
-		assert(err == nil)
+		ops := confTx.OutOps()
+		tx := CreateOut(-1, confTx)
 		assert(tx != nil)
 
-		err = tx.Free()
+		err = tx.Free(ops)
 		assert(err == nil, err)
 	})
 	assert(err == nil, err)
@@ -87,18 +87,16 @@ func TestPortRingCreateRx(t *testing.T) {
 		defer r.Free()
 
 		confRx := &RingRx{Ring: r, Multi: true}
-		rx, err := confRx.CreateRx(-1)
-		assert(err == nil, err)
+		ops := confRx.InOps()
+		rx := CreateIn(-1, confRx)
 		assert(rx != nil)
-		assert(rx.Free() == nil)
+		assert(rx.Free(ops) == nil)
 	})
 	assert(err == nil, err)
 }
 
 func TestPortRingCreateTx(t *testing.T) {
 	assert := common.Assert(t, true)
-	m := common.NewAllocatorSession(&common.StdAlloc{})
-	defer m.Flush()
 
 	// Initialize EAL on all cores
 	assert(initEAL() == nil)
@@ -109,10 +107,10 @@ func TestPortRingCreateTx(t *testing.T) {
 		defer r.Free()
 
 		confTx := &RingTx{Ring: r, Multi: true, NoDrop: false, TxBurstSize: 64}
-		tx, err := confTx.CreateTx(-1)
-		assert(err == nil, err)
+		ops := confTx.OutOps()
+		tx := CreateOut(-1, confTx)
 		assert(tx != nil, tx)
-		assert(tx.Free() == nil)
+		assert(tx.Free(ops) == nil)
 	})
 	assert(err == nil, err)
 }

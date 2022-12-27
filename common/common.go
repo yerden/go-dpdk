@@ -26,6 +26,11 @@ var (
 	ErrSecondary = errors.New("Operation not allowed in secondary processes")
 )
 
+// IntErr returns errno as error.
+func IntErr(n int64) error {
+	return errno(n)
+}
+
 func errno(n int64) error {
 	if n == 0 {
 		return nil

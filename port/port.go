@@ -4,145 +4,111 @@ package port
 #include <rte_config.h>
 #include <rte_port.h>
 
-struct rx_port {
-	struct rte_port_in_ops *ops;
-	void *port;
-};
-
-struct tx_port {
-	struct rte_port_out_ops *ops;
-	void *port;
-};
-
-void *go_rd_create(struct rte_port_in_ops *ops, void *params, int socket_id)
+static void *
+go_in_create(struct rte_port_in_ops *ops, void *arg, int socket)
 {
-	return ops->f_create(params, socket_id);
+	return ops->f_create(arg, socket);
 }
 
-int go_rd_rx(struct rx_port *rx, struct rte_mbuf **pkts, uint32_t n_pkts)
+static int
+go_in_free(struct rte_port_in_ops *ops, void *port)
 {
-	struct rte_port_in_ops *ops  = rx->ops;
-	return ops->f_rx(rx->port, pkts, n_pkts);
+	return ops->f_free(port);
 }
 
-int go_rd_free(struct rx_port *rx)
+static void *
+go_out_create(struct rte_port_out_ops *ops, void *arg, int socket)
 {
-	struct rte_port_in_ops *ops  = rx->ops;
-	return ops->f_free(rx->port);
+	return ops->f_create(arg, socket);
 }
 
-void *go_wr_create(struct rte_port_out_ops *ops, void *params, int socket_id)
+static int
+go_out_free(struct rte_port_out_ops *ops, void *port)
 {
-	return ops->f_create(params, socket_id);
+	return ops->f_free(port);
 }
 
-int go_wr_tx(struct tx_port *tx, struct rte_mbuf *pkt)
-{
-	struct rte_port_out_ops *ops  = tx->ops;
-	return ops->f_tx(tx->port, pkt);
-}
-
-int go_wr_tx_bulk(struct tx_port *tx, struct rte_mbuf **pkts, uint64_t pkts_mask)
-{
-	struct rte_port_out_ops *ops  = tx->ops;
-	return ops->f_tx_bulk(tx->port, pkts, pkts_mask);
-}
-
-int go_wr_free(struct tx_port *tx)
-{
-	struct rte_port_out_ops *ops  = tx->ops;
-	return ops->f_free(tx->port);
-}
 */
 import "C"
-
 import (
-	"errors"
 	"unsafe"
 
 	"github.com/yerden/go-dpdk/common"
-	"github.com/yerden/go-dpdk/mbuf"
 )
 
-var (
-	// ErrPortCreate signifies error while attempting to call
-	// ops->f_create.
-	ErrPortCreate = errors.New("port not created")
+type (
+	// InOps is the function table which implements input port.
+	InOps C.struct_rte_port_in_ops
+
+	// In is the instantiated input port.
+	In [0]byte
 )
 
-// Rx describes input port interface defining the input port
-// operation.
-type Rx C.struct_rx_port
+type (
+	// OutOps is the function table which implements output port.
+	OutOps C.struct_rte_port_out_ops
 
-// Tx describes output port interface defining the output port
-// operation.
-type Tx C.struct_tx_port
+	// Out is the instantiated output port.
+	Out [0]byte
+)
 
-// RxFactory is used to create new Rx port.
-type RxFactory interface {
-	// CreateRx creates new port instance.
-	CreateRx(socket int) (*Rx, error)
+// InParams describes the input port interface.
+type InParams interface {
+	// Returns allocated opaque structure along with its destructor.
+	// Since InParams describes Go implementation of the port
+	// configuration this member allocates its C counterpart as stated
+	// in DPDK rte_port.
+	common.Transformer
+
+	// Returns pointer to associated rte_port_in_ops.
+	InOps() *InOps
 }
 
-// TxFactory is used to create new Tx port.
-type TxFactory interface {
-	// CreateTx creates new port instance.
-	CreateTx(socket int) (*Tx, error)
+// OutParams describes configuration and behaviour of output port.
+type OutParams interface {
+	// Returns allocated opaque structure argument along with its
+	// destructor. It is used with ops function table.
+	common.Transformer
+
+	// Returns pointer to associated rte_port_out_ops.
+	OutOps() *OutOps
 }
 
-func err(n ...interface{}) error {
-	if len(n) == 0 {
-		return common.RteErrno()
-	}
+var alloc = &common.StdAlloc{}
 
-	return common.IntToErr(n[0])
+// CreateIn creates input port for specified socket and configuration.
+//
+// It may return nil in case of an error.
+func CreateIn(socket int, params InParams) *In {
+	ops := (*C.struct_rte_port_in_ops)(params.InOps())
+
+	arg, dtor := params.Transform(alloc)
+	defer dtor(arg)
+
+	return (*In)(C.go_in_create(ops, arg, C.int(socket)))
 }
 
-// doCreate is a helper to implement RxFactory.
-func (rx *Rx) doCreate(socket int, arg unsafe.Pointer) error {
-	rx.port = C.go_rd_create(rx.ops, arg, C.int(socket))
-	if rx.port == nil {
-		return ErrPortCreate
-	}
-
-	return nil
+// Free destroys created input port.
+func (port *In) Free(inOps *InOps) error {
+	ops := (*C.struct_rte_port_in_ops)(inOps)
+	return common.IntErr(int64(C.go_in_free(ops, unsafe.Pointer(port))))
 }
 
-// Rx receives packets into specified array. pkts must have length > 0.
-func (rx *Rx) Rx(pkts []*mbuf.Mbuf) int {
-	return int(C.go_rd_rx((*C.struct_rx_port)(rx),
-		(**C.struct_rte_mbuf)(unsafe.Pointer(&pkts[0])), C.uint32_t(len(pkts))))
+// CreateOut creates output port for specified socket and
+// configuration.
+//
+// It may return nil in case of an error.
+func CreateOut(socket int, params OutParams) *Out {
+	ops := (*C.struct_rte_port_out_ops)(params.OutOps())
+
+	arg, dtor := params.Transform(alloc)
+	defer dtor(arg)
+
+	return (*Out)(C.go_out_create(ops, arg, C.int(socket)))
 }
 
-// Free releases all memory allocated when creating port instance.
-func (rx *Rx) Free() error {
-	return err(C.go_rd_free((*C.struct_rx_port)(rx)))
-}
-
-// doCreate is a helper to implement TxFactory.
-func (tx *Tx) doCreate(socket int, arg unsafe.Pointer) error {
-	tx.port = C.go_wr_create(tx.ops, arg, C.int(socket))
-	if tx.port == nil {
-		return ErrPortCreate
-	}
-
-	return nil
-}
-
-// Tx submits given packet via port instance.
-func (tx *Tx) Tx(pkt *mbuf.Mbuf) int {
-	return int(C.go_wr_tx((*C.struct_tx_port)(tx),
-		(*C.struct_rte_mbuf)(unsafe.Pointer(pkt))))
-}
-
-// TxBulk submits given packets via port instance according to specified mask.
-// if n-th bit of a mask is set, n-th mbuf from pkts is considered valid.
-func (tx *Tx) TxBulk(pkts []*mbuf.Mbuf, mask uint64) int {
-	return int(C.go_wr_tx_bulk((*C.struct_tx_port)(tx),
-		(**C.struct_rte_mbuf)(unsafe.Pointer(&pkts[0])), C.uint64_t(mask)))
-}
-
-// Free releases all memory allocated when creating port instance.
-func (tx *Tx) Free() error {
-	return err(C.go_wr_free((*C.struct_tx_port)(tx)))
+// Free destroys created output port.
+func (port *Out) Free(outOps *OutOps) error {
+	ops := (*C.struct_rte_port_out_ops)(outOps)
+	return common.IntErr(int64(C.go_out_free(ops, unsafe.Pointer(port))))
 }
