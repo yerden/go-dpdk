@@ -31,6 +31,7 @@ func TestPortRingRx(t *testing.T) {
 			2048,
 		)
 		assert(err == nil, err)
+		defer mp.Free()
 
 		pSource1, err := pl.PortInCreate(&PortInParams{
 			Params: &port.Source{
@@ -123,7 +124,8 @@ func TestPipelineStub(t *testing.T) {
 		assert(err == nil, err)
 
 		entry := NewTableEntry(0)
-		entry.SetAction(2) // C.RTE_PIPELINE_ACTION_PORT_META
+		entry.SetAction(ActionPortMeta)
+
 		defaultEntry, err := pl.TableDefaultEntryAdd(tStub, entry)
 		assert(err == nil, err)
 		assert(*defaultEntry == *entry)
