@@ -2,6 +2,7 @@ package pipeline
 
 import (
 	"testing"
+	"unsafe"
 
 	"github.com/yerden/go-dpdk/common"
 	"github.com/yerden/go-dpdk/eal"
@@ -70,6 +71,12 @@ func TestPortRingRx(t *testing.T) {
 		dfltEntry, err := pl.TableDefaultEntryAdd(table1, entry)
 		assert(err == nil, err)
 		assert(*dfltEntry == *entry)
+
+		var e *TableEntry
+		_, err = pl.TableEntryAdd(table1,
+			unsafe.Pointer(&table.ArrayKey{Pos: 0}),
+			entry, &e)
+		assert(err == nil, err)
 
 		assert(nil == pl.Check())
 		assert(nil == pl.Disable(pSource1))
