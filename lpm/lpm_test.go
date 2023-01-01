@@ -5,28 +5,10 @@ import (
 	"syscall"
 	"testing"
 
-	"golang.org/x/sys/unix"
-
 	"github.com/yerden/go-dpdk/common"
 	"github.com/yerden/go-dpdk/eal"
 	"github.com/yerden/go-dpdk/lpm"
 )
-
-var initEAL = common.DoOnce(func() error {
-	var set unix.CPUSet
-	err := unix.SchedGetaffinity(0, &set)
-	s := common.NewMap(&set).String()
-	if err == nil {
-		_, err = eal.Init([]string{"test",
-			"-c", s,
-			"-m", "128",
-			"--no-huge",
-			"--no-pci",
-			"--legacy-mem",
-			"--main-lcore", "0"})
-	}
-	return err
-})
 
 func mustParseCIDR(s string) net.IPNet {
 	_, x, err := net.ParseCIDR(s)
@@ -54,8 +36,7 @@ func TestLpmCreate(t *testing.T) {
 	assert := common.Assert(t, true)
 
 	// Initialize EAL on all cores
-	err := initEAL()
-	assert(err == nil, err)
+	eal.InitOnceSafe("test", 4)
 
 	var myaddr *lpm.LPM
 	var e error
@@ -64,7 +45,7 @@ func TestLpmCreate(t *testing.T) {
 		NumberTbl8s: 1 << 8,
 	}
 	// create and test mempool on main lcore
-	err = eal.ExecOnMain(func(ctx *eal.LcoreCtx) {
+	err := eal.ExecOnMain(func(ctx *eal.LcoreCtx) {
 		myaddr, e = lpm.Create("test_lpm", -1, cfg)
 	})
 	assert(err == nil, err)
@@ -122,8 +103,7 @@ func TestLpm6Create(t *testing.T) {
 	assert := common.Assert(t, true)
 
 	// Initialize EAL on all cores
-	err := initEAL()
-	assert(err == nil, err)
+	eal.InitOnceSafe("test", 4)
 
 	var myaddr *lpm.LPM6
 	var e error
@@ -132,7 +112,7 @@ func TestLpm6Create(t *testing.T) {
 		NumberTbl8s: 1 << 8,
 	}
 	// create and test mempool on main lcore
-	err = eal.ExecOnMain(func(ctx *eal.LcoreCtx) {
+	err := eal.ExecOnMain(func(ctx *eal.LcoreCtx) {
 		myaddr, e = lpm.Create6("test_lpm6", -1, cfg)
 	})
 	assert(err == nil, err)

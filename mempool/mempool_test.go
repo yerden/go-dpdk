@@ -8,27 +8,11 @@ import (
 	"unsafe"
 
 	"github.com/yerden/go-dpdk/mbuf"
-	"golang.org/x/sys/unix"
 
 	"github.com/yerden/go-dpdk/common"
 	"github.com/yerden/go-dpdk/eal"
 	"github.com/yerden/go-dpdk/mempool"
 )
-
-var initEAL = common.DoOnce(func() error {
-	var set unix.CPUSet
-	err := unix.SchedGetaffinity(0, &set)
-	if err == nil {
-		_, err = eal.Init([]string{"test",
-			"-c", common.NewMap(&set).String(),
-			"-d", eal.PmdPath,
-			"-m", "128",
-			"--no-huge",
-			"--no-pci",
-			"--main-lcore", "0"})
-	}
-	return err
-})
 
 func assert(t testing.TB, expected bool, args ...interface{}) {
 	if !expected {
@@ -39,7 +23,8 @@ func assert(t testing.TB, expected bool, args ...interface{}) {
 
 func doOnMain(t *testing.T, fn func(p *mempool.Mempool, data []byte)) {
 	// Initialize EAL on all cores
-	assert(t, initEAL() == nil)
+
+	eal.InitOnceSafe("test", 4)
 
 	data := []byte("hello from Mbuf")
 	// create and test mempool on main lcore
@@ -65,7 +50,7 @@ func TestMempoolCreateErr(t *testing.T) {
 	assert := common.Assert(t, true)
 
 	// Initialize EAL on all cores
-	assert(initEAL() == nil)
+	eal.InitOnceSafe("test", 4)
 
 	// create and test mempool on main lcore
 	err := eal.ExecOnMain(func(ctx *eal.LcoreCtx) {
@@ -88,7 +73,7 @@ func TestMempoolCreate(t *testing.T) {
 	assert := common.Assert(t, false)
 
 	// Initialize EAL on all cores
-	assert(initEAL() == nil)
+	eal.InitOnceSafe("test", 4)
 
 	// create and test mempool on main lcore
 	err := eal.ExecOnMain(func(ctx *eal.LcoreCtx) {
@@ -348,7 +333,8 @@ func TestAllocResetAppend(t *testing.T) {
 }
 
 func BenchmarkAllocFromChannel(b *testing.B) {
-	initEAL()
+	eal.InitOnceSafe("test", 4)
+
 	n := uint32(10240)
 	ch := make(chan *mbuf.Mbuf, n)
 	data := []byte("Some data for test")
@@ -380,7 +366,8 @@ func BenchmarkAllocFromChannel(b *testing.B) {
 }
 
 func BenchmarkAllocFromMempool(b *testing.B) {
-	initEAL()
+	eal.InitOnceSafe("test", 4)
+
 	n := uint32(10240)
 	data := []byte("Some data for test")
 	cArr := &common.CStruct{}

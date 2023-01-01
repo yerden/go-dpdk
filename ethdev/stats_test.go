@@ -6,19 +6,8 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/yerden/go-dpdk/common"
 	"github.com/yerden/go-dpdk/eal"
 )
-
-var initEAL = common.DoOnce(func() error {
-	_, err := eal.Init([]string{"test",
-		"--lcores", "(0-3)@0",
-		"--vdev", "net_null0",
-		"-d", eal.PmdPath,
-		"-m", "128", "--no-huge", "--no-pci",
-		"--main-lcore", "0"})
-	return err
-})
 
 func assert(t testing.TB, expected bool, args ...interface{}) {
 	if !expected {
@@ -28,7 +17,7 @@ func assert(t testing.TB, expected bool, args ...interface{}) {
 }
 
 func TestEthXstats(t *testing.T) {
-	assert(t, initEAL() == nil)
+	eal.InitOnceSafe("test", 4)
 
 	var names []XstatName
 	var ealErr error
