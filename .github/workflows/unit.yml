@@ -1,0 +1,17 @@
+name: unit-testing
+
+on:
+  push:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: nedrey/dpdk-rockylinux8:v21.11-go1.19-snf
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v3
+      -
+        name: Unit Tests
+        run: |
+          go test ./...

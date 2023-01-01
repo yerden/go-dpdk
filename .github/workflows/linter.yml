@@ -1,0 +1,19 @@
+name: linter
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: nedrey/dpdk-rockylinux8:v21.11-go1.19-snf
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v3
+      -
+        name: Linter
+        run: |
+          golangci-lint run --timeout 5m --issues-exit-code 0
+
