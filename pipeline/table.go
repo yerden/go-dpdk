@@ -50,10 +50,17 @@ type Action uint32
 
 // Reserved actions.
 const (
-	ActionDrop     Action = C.RTE_PIPELINE_ACTION_DROP
-	ActionPort     Action = C.RTE_PIPELINE_ACTION_PORT
+	// Drop packet.
+	ActionDrop Action = C.RTE_PIPELINE_ACTION_DROP
+
+	// Send to port specified in TableEntry.
+	ActionPort Action = C.RTE_PIPELINE_ACTION_PORT
+
+	// Send to port specified in packet metadata.
 	ActionPortMeta Action = C.RTE_PIPELINE_ACTION_PORT_META
-	ActionTable    Action = C.RTE_PIPELINE_ACTION_TABLE
+
+	// Send to table specified in TableEntry.
+	ActionTable Action = C.RTE_PIPELINE_ACTION_TABLE
 )
 
 // SetAction sets configured action in the entry.

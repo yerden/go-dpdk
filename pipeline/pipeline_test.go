@@ -2,6 +2,7 @@ package pipeline
 
 import (
 	"testing"
+	"unsafe"
 
 	"github.com/yerden/go-dpdk/common"
 	"github.com/yerden/go-dpdk/eal"
@@ -31,6 +32,7 @@ func TestPortRingRx(t *testing.T) {
 			2048,
 		)
 		assert(err == nil, err)
+		defer mp.Free()
 
 		pSource1, err := pl.PortInCreate(&PortInParams{
 			Params: &port.Source{
@@ -69,6 +71,12 @@ func TestPortRingRx(t *testing.T) {
 		dfltEntry, err := pl.TableDefaultEntryAdd(table1, entry)
 		assert(err == nil, err)
 		assert(*dfltEntry == *entry)
+
+		var e *TableEntry
+		_, err = pl.TableEntryAdd(table1,
+			unsafe.Pointer(&table.ArrayKey{Pos: 0}),
+			entry, &e)
+		assert(err == nil, err)
 
 		assert(nil == pl.Check())
 		assert(nil == pl.Disable(pSource1))
@@ -123,7 +131,8 @@ func TestPipelineStub(t *testing.T) {
 		assert(err == nil, err)
 
 		entry := NewTableEntry(0)
-		entry.SetAction(2) // C.RTE_PIPELINE_ACTION_PORT_META
+		entry.SetAction(ActionPortMeta)
+
 		defaultEntry, err := pl.TableDefaultEntryAdd(tStub, entry)
 		assert(err == nil, err)
 		assert(*defaultEntry == *entry)

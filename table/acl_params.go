@@ -2,11 +2,6 @@ package table
 
 /*
 #include <rte_table_acl.h>
-
-enum {
-	ACL_FIELD_DIM_64 = sizeof(struct rte_acl_field) / sizeof(uint64_t),
-};
-
 */
 import "C"
 
@@ -15,7 +10,7 @@ import (
 )
 
 // ACLField describes a field to match.
-type ACLField [C.ACL_FIELD_DIM_64]uint64
+type ACLField [C.sizeof_struct_rte_acl_field / 8]uint64
 type cACLField C.struct_rte_acl_field
 
 // NewACLField8 returns ACLField with 8-bit value and range mask.
