@@ -3,31 +3,15 @@ package table
 import (
 	"testing"
 
-	"golang.org/x/sys/unix"
-
 	"github.com/yerden/go-dpdk/common"
 	"github.com/yerden/go-dpdk/eal"
 )
-
-var initEAL = common.DoOnce(func() error {
-	var set unix.CPUSet
-	err := unix.SchedGetaffinity(0, &set)
-	if err == nil {
-		_, err = eal.Init([]string{"test",
-			"-c", common.NewMap(&set).String(),
-			"-m", "128",
-			"--no-huge",
-			"--no-pci",
-			"--main-lcore", "0"})
-	}
-	return err
-})
 
 func TestTableHash(t *testing.T) {
 	assert := common.Assert(t, true)
 
 	// Initialize EAL on all cores
-	assert(initEAL() == nil)
+	eal.InitOnceSafe("test", 4)
 
 	err := eal.ExecOnMain(func(*eal.LcoreCtx) {
 		hash := &HashParams{

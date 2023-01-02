@@ -4,32 +4,16 @@ import (
 	"syscall"
 	"testing"
 
-	"golang.org/x/sys/unix"
-
 	"github.com/yerden/go-dpdk/common"
 	"github.com/yerden/go-dpdk/eal"
 	"github.com/yerden/go-dpdk/memzone"
 )
 
-var initEAL = common.DoOnce(func() error {
-	var set unix.CPUSet
-	err := unix.SchedGetaffinity(0, &set)
-	if err == nil {
-		_, err = eal.Init([]string{"test",
-			"-c", common.NewMap(&set).String(),
-			"-m", "128",
-			"--no-huge",
-			"--no-pci",
-			"--main-lcore", "0"})
-	}
-	return err
-})
-
 func TestMemzoneCreateErr(t *testing.T) {
 	assert := common.Assert(t, true)
 
 	// Initialize EAL on all cores
-	assert(initEAL() == nil)
+	eal.InitOnceSafe("test", 4)
 
 	var mz *memzone.Memzone
 	var err error
@@ -55,7 +39,7 @@ func TestMemzoneCreate(t *testing.T) {
 	assert := common.Assert(t, true)
 
 	// Initialize EAL on all cores
-	assert(initEAL() == nil)
+	eal.InitOnceSafe("test", 4)
 
 	// create and test mempool on main lcore
 	err := eal.ExecOnMain(func(ctx *eal.LcoreCtx) {
@@ -84,7 +68,7 @@ func TestMemzoneWriteTo(t *testing.T) {
 	assert := common.Assert(t, true)
 
 	// Initialize EAL on all cores
-	assert(initEAL() == nil)
+	eal.InitOnceSafe("test", 4)
 
 	// create and test mempool on main lcore
 	err := eal.ExecOnMain(func(ctx *eal.LcoreCtx) {
@@ -109,7 +93,7 @@ func TestMemzoneAligned(t *testing.T) {
 	assert := common.Assert(t, true)
 
 	// Initialize EAL on all cores
-	assert(initEAL() == nil)
+	eal.InitOnceSafe("test", 4)
 
 	// create and test mempool on main lcore
 	err := eal.ExecOnMain(func(ctx *eal.LcoreCtx) {
