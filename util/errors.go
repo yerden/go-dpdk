@@ -12,7 +12,7 @@ type ErrWithMessage struct {
 }
 
 func (e *ErrWithMessage) Error() string {
-	return fmt.Sprintf("%v: %v", string(e.B.Bytes()), e.Err)
+	return fmt.Sprintf("%v: %v", e.B.String(), e.Err)
 }
 
 func (e *ErrWithMessage) Unwrap() error {

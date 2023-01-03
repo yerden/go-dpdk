@@ -122,7 +122,7 @@ func TestMempoolCreate(t *testing.T) {
 	assert(err == nil, err)
 
 	doOnMain(t, func(p *mempool.Mempool, data []byte) {
-		p, err = mempool.CreateMbufPool("test_mbuf_pool_err",
+		_, err = mempool.CreateMbufPool("test_mbuf_pool_err",
 			10240, // elements count
 			2048,  // size of element
 			mempool.OptSocket(int(eal.SocketID())),
@@ -230,8 +230,7 @@ func TestMbufMethods(t *testing.T) {
 		defer myMbuf.PktMbufFree()
 
 		// allocate a bulk of mbufs and append the data to them
-		var mbufArr []*mbuf.Mbuf
-		mbufArr = make([]*mbuf.Mbuf, 4)
+		mbufArr := make([]*mbuf.Mbuf, 4)
 		err = mbuf.PktMbufAllocBulk(p, mbufArr)
 		assert(t, err == syscall.Errno(0))
 		for _, m := range mbufArr {

@@ -13,6 +13,11 @@ jobs:
         name: Checkout
         uses: actions/checkout@v3
       -
+        name: Linter Mandatory
+        run: |
+          # don't check unit tests and sample apps
+          golangci-lint run --timeout 5m --skip-files=".*_test.go" --skip-dirs="^app"
+      -
         name: Linter
         run: |
           golangci-lint run --timeout 5m --issues-exit-code 0

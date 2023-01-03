@@ -146,13 +146,6 @@ func TestRingNewErr(t *testing.T) {
 	assert(r == nil && err == syscall.EINVAL)
 }
 
-func min(x, y int) int {
-	if x < y {
-		return x
-	}
-	return y
-}
-
 func benchmarkRingUintptr(b *testing.B, burst int) {
 	var wg sync.WaitGroup
 	assert := common.Assert(b, true)

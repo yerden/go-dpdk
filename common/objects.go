@@ -4,13 +4,6 @@ import (
 	"sync"
 )
 
-// global map of objects
-var (
-	registry = &objTable{
-		hash: make(map[ObjectID]interface{}),
-	}
-)
-
 // ObjectID is the ID of some opaque object stored in Registry.
 type ObjectID uint64
 
