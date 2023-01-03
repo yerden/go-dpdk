@@ -16,10 +16,10 @@ func TestEALInit(t *testing.T) {
 	var set unix.CPUSet
 	assert(unix.SchedGetaffinity(0, &set) == nil)
 
-	n, err := Init([]string{"test", "--some-invalid-option"})
+	_, err := Init([]string{"test", "--some-invalid-option"})
 	assert(err != nil)
 
-	n, err = Init([]string{"test",
+	n, err := Init([]string{"test",
 		"-c", common.NewMap(&set).String(),
 		"-m", "128",
 		"--no-huge",
