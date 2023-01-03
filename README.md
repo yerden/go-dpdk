@@ -1,5 +1,5 @@
 # Go bindings for DPDK framework.
-[![Documentation](https://godoc.org/github.com/yerden/go-dpdk?status.svg)](http://godoc.org/github.com/yerden/go-dpdk) [![Go Report Card](https://goreportcard.com/badge/github.com/yerden/go-dpdk)](https://goreportcard.com/report/github.com/yerden/go-dpdk) [![Build Status](https://travis-ci.com/yerden/go-dpdk.svg?branch=master)](https://travis-ci.com/yerden/go-dpdk)
+[![Documentation](https://godoc.org/github.com/yerden/go-dpdk?status.svg)](http://godoc.org/github.com/yerden/go-dpdk) [![Go Report Card](https://goreportcard.com/badge/github.com/yerden/go-dpdk)](https://goreportcard.com/report/github.com/yerden/go-dpdk) [![Build Status](https://github.com/yerden/go-dpdk/actions/workflows/unit.yml/badge.svg)](https://github.com/yerden/go-dpdk/actions/workflows/unit.yml)
 
 # Building apps
 
