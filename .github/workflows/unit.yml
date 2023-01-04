@@ -3,6 +3,10 @@ name: unit-testing
 on:
   push:
 
+env:
+  TERM: "xterm"
+  FORCE_COLOR: "1"
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -13,6 +17,7 @@ jobs:
         uses: actions/checkout@v3
       -
         name: Unit Tests
-        shell: 'script -q -e -c "bash {0}"'
+        # shell: 'script -q -e -c "bash {0}"'
         run: |
+          ls -l --color=always
           go test ./...
