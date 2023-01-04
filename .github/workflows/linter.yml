@@ -4,6 +4,10 @@ on:
   pull_request:
     types: [opened, reopened, synchronize, ready_for_review]
 
+env:
+  TERM: "xterm"
+  FORCE_COLOR: "1"
+
 jobs:
   build:
     runs-on: ubuntu-latest
