@@ -20,9 +20,9 @@ jobs:
         name: Linter Mandatory
         run: |
           # don't check unit tests and sample apps
-          golangci-lint run --timeout 5m --skip-files=".*_test.go" --skip-dirs="^app"
+          golangci-lint run --color=always --timeout 5m --skip-files=".*_test.go" --skip-dirs="^app"
       -
         name: Linter
         run: |
-          golangci-lint run --timeout 5m --issues-exit-code 0
+          golangci-lint run --color=always --timeout 5m --issues-exit-code 0
 
