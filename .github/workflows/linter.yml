@@ -18,11 +18,13 @@ jobs:
         uses: actions/checkout@v3
       -
         name: Linter Mandatory
+        shell: 'script -q -e -c "bash {0}"'
         run: |
           # don't check unit tests and sample apps
-          golangci-lint run --color=always --timeout 5m --skip-files=".*_test.go" --skip-dirs="^app"
+          golangci-lint run --timeout 5m --skip-files=".*_test.go" --skip-dirs="^app"
       -
         name: Linter
+        shell: 'script -q -e -c "bash {0}"'
         run: |
-          golangci-lint run --color=always --timeout 5m --issues-exit-code 0
+          golangci-lint run --timeout 5m --issues-exit-code 0
 
