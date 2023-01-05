@@ -68,15 +68,23 @@ func TestPortRingRx(t *testing.T) {
 		entry.SetAction(ActionPort)
 		entry.SetPortID(pSink1)
 
+		// add default entry
 		dfltEntry, err := pl.TableDefaultEntryAdd(table1, entry)
 		assert(err == nil, err)
 		assert(*dfltEntry == *entry)
+
+		// remove default entry
+		err = pl.TableDefaultEntryDelete(table1, entry)
+		assert(err == nil, err)
+		assert(entry.GetAction() == ActionPort)
+		assert(entry.GetPortID() == pSink1)
 
 		var e *TableEntry
 		_, err = pl.TableEntryAdd(table1,
 			unsafe.Pointer(&table.ArrayKey{Pos: 0}),
 			entry, &e)
 		assert(err == nil, err)
+		assert(*e == *entry)
 
 		assert(nil == pl.Check())
 		assert(nil == pl.Disable(pSource1))

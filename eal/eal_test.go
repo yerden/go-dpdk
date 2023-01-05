@@ -39,6 +39,11 @@ func TestEALInit(t *testing.T) {
 		}(id))
 	}
 
+	ExecOnMain(func(*LcoreCtx) {
+		assert(HasPCI() == false)
+		assert(HasHugePages() == false)
+	})
+
 	var myset unix.CPUSet
 	for i := 0; i < set.Count(); i++ {
 		myset.Set(int(<-ch))
