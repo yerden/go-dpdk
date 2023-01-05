@@ -18,4 +18,18 @@ jobs:
       -
         name: Unit Tests
         run: |
-          go test ./...
+          go test -coverprofile=coverage.out -covermode=atomic ./...
+      -
+        name: Generate Coverage Report
+        run: |
+          gocover-cobertura < coverage.out > coverage.xml
+      -
+        name: Save Coverage Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-report
+          path: ./coverage.*
+          retention-days: 14
+      -
+        name: Upload Coverage Report
+        uses: codecov/codecov-action@v3
