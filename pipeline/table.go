@@ -69,8 +69,8 @@ func (entry *TableEntry) SetAction(code Action) {
 }
 
 // GetAction returns configured action in the entry.
-func (entry *TableEntry) GetAction() (code uint32) {
-	return entry.action
+func (entry *TableEntry) GetAction() (code Action) {
+	return Action(entry.action)
 }
 
 // SetPortID sets configured output port ID (meta-data for "Send
