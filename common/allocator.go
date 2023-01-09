@@ -96,7 +96,9 @@ func allocArray(a Allocator, ptr interface{}, nmemb int64) unsafe.Pointer {
 	// hence twice Elem
 	v := reflect.ValueOf(ptr)
 	t := v.Type().Elem().Elem()
-	p := a.Malloc(t.Size() * uintptr(nmemb))
+	sz := t.Size() * uintptr(nmemb)
+	p := a.Malloc(sz)
+	Memset(p, 0, sz)
 	reflect.Indirect(v).Set(reflect.NewAt(t, p))
 	return p
 }
