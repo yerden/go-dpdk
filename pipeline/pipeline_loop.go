@@ -56,16 +56,12 @@ func (pl *Pipeline) RunLoop(flush uint32, c Controller) error {
 
 	params := &C.struct_lcore_arg{}
 
-	{
+	if c != nil {
 		arg, dtor := c.Transform(alloc)
 		defer dtor(arg)
 		params.ops_arg = arg
-	}
-
-	ops := c.Ops()
-
-	params.ops = C.struct_pipeline_ops{
-		f_ctrl: (C.pipeline_op_ctrl)(ops.Ctrl),
+		ops := c.Ops()
+		params.ops.f_ctrl = (C.pipeline_op_ctrl)(ops.Ctrl)
 	}
 
 	params.p = (*C.struct_rte_pipeline)(pl)

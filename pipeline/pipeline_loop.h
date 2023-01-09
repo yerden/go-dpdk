@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include <rte_pipeline.h>
 
-
 /**
  * Test if the pipeline should be stopped.
  *
@@ -49,6 +48,9 @@ static int run_pipeline_loop(void *arg)
 			continue;
 
 		rte_pipeline_flush(p);
+
+		if (NULL == ops->f_ctrl)
+			continue;
 
 		if ((rc = ops->f_ctrl(ctx->ops_arg, p)) > 0) {
 			/* pipeline is signalled to stop */
