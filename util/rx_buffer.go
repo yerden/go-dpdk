@@ -85,7 +85,7 @@ func (buf *MbufArray) Mbufs() (ret []*mbuf.Mbuf) {
 }
 
 // Recharge releases previously retrieved packets and retrieve new
-// ones. Returns number of retrived packets.
+// ones. Returns number of retrieved packets.
 func (buf *MbufArray) Recharge() int {
 	return int(C.mbuf_array_ethdev_reload((*C.struct_mbuf_array)(buf)))
 }
