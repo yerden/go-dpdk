@@ -41,3 +41,11 @@ func (cs *CStruct) Bytes() (dst []byte) {
 	sh.Cap = cs.Len
 	return
 }
+
+// Memset initializes memory pointed by p and with length n.
+func Memset(p unsafe.Pointer, init byte, n uintptr) {
+	b := unsafe.Slice((*byte)(p), n)
+	for i := range b {
+		b[i] = init
+	}
+}
