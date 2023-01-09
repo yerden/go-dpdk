@@ -48,6 +48,12 @@ type FdTx struct {
 	// File descriptor.
 	Fd uintptr
 
+	// Recommended write burst size. The actual burst size can be
+	// bigger or smaller than this value.
+	//
+	// Should be power of 2.
+	BurstSize uint32
+
 	// If NoDrop set writer makes Retries attempts to write packets to
 	// ring.
 	NoDrop bool
@@ -68,7 +74,8 @@ func (wr *FdTx) OutOps() *OutOps {
 // Transform implements common.Transformer interface.
 func (wr *FdTx) Transform(alloc common.Allocator) (unsafe.Pointer, func(unsafe.Pointer)) {
 	return common.TransformPOD(alloc, &C.struct_rte_port_fd_writer_nodrop_params{
-		fd:        C.int(wr.Fd),
-		n_retries: C.uint32_t(wr.Retries),
+		fd:          C.int(wr.Fd),
+		tx_burst_sz: C.uint32_t(wr.BurstSize),
+		n_retries:   C.uint32_t(wr.Retries),
 	})
 }
