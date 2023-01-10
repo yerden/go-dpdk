@@ -42,6 +42,11 @@ type LPMParams struct {
 	Offset uint32
 }
 
+// Ops implements Params interface.
+func (p *LPMParams) Ops() *Ops {
+	return p.TableOps
+}
+
 // Transform implements common.Transformer interface.
 func (p *LPMParams) Transform(alloc common.Allocator) (unsafe.Pointer, func(unsafe.Pointer)) {
 	switch p.TableOps {
@@ -74,6 +79,7 @@ func (p *LPMParams) tformTo6(alloc common.Allocator) (unsafe.Pointer, func(unsaf
 	var params *C.struct_rte_table_lpm_ipv6_params
 	params = (*C.struct_rte_table_lpm_ipv6_params)(alloc.Malloc(unsafe.Sizeof(*params)))
 	params.name = (*C.char)(common.CString(alloc, p.Name))
+	params.number_tbl8s = C.uint32_t(p.NumTBL8)
 	params.n_rules = C.uint32_t(p.Rules)
 	params.entry_unique_size = C.uint32_t(p.EntryUniqueSize)
 	params.offset = C.uint32_t(p.Offset)
