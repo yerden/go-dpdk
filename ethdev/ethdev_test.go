@@ -68,6 +68,9 @@ func TestMACAddr(t *testing.T) {
 	var a MACAddr
 	err := pid.MACAddrGet(&a)
 	assert(t, err == nil, err)
+
+	hwAddr := a.HardwareAddr()
+	assert(t, hwAddr.String() != "")
 }
 
 func TestRssHashConfGet(t *testing.T) {
@@ -107,4 +110,18 @@ func TestPortName(t *testing.T) {
 
 	_, err = GetPortByName("some_name")
 	assert(t, err == syscall.ENODEV)
+}
+
+func TestRssHashUpdate(t *testing.T) {
+	eal.InitOnceSafe("test", 4)
+
+	pid := Port(0)
+
+	conf := &RssConf{
+		Key: make([]byte, 40),
+		Hf:  0,
+	}
+
+	err := pid.RssHashUpdate(conf)
+	assert(t, err == nil)
 }
