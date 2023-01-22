@@ -10,11 +10,11 @@ package ethdev
 #include <net/if.h>
 
 #include <rte_config.h>
-#include <rte_ring.h>
 #include <rte_errno.h>
 #include <rte_memory.h>
 #include <rte_ethdev.h>
 #include <rte_version.h>
+#include <rte_eth_ring.h>
 
 // The max_rx_pkt_len changes occurred in commit: 1bb4a528c41f4af4847bd3d58cc2b2b9f1ec9a27.
 #if RTE_VERSION < RTE_VERSION_NUM(21, 11, 0, 0)
@@ -92,6 +92,7 @@ import (
 
 	"github.com/yerden/go-dpdk/common"
 	"github.com/yerden/go-dpdk/mempool"
+	"github.com/yerden/go-dpdk/ring"
 )
 
 // This enum indicates the flow control mode.
@@ -946,4 +947,31 @@ func (pid Port) FlowCtrlGet(conf *FcConf) error {
 // FlowCtrlSet configures the Ethernet link flow control for Ethernet device.
 func (pid Port) FlowCtrlSet(conf *FcConf) error {
 	return errget(C.rte_eth_dev_flow_ctrl_set(C.ushort(pid), (*C.struct_rte_eth_fc_conf)(conf)))
+}
+
+func fromRings(rings []*ring.Ring) (p **C.struct_rte_ring, n C.uint) {
+	if n = C.uint(len(rings)); n > 0 {
+		p = (**C.struct_rte_ring)(unsafe.Pointer(&rings[0]))
+	}
+	return
+}
+
+// FromRings creates new ethdev port from a set of rings. rxqs and
+// txqs represent RX and TX queues, socket is the NUMA node, name is
+// to be given to the new port.
+func FromRings(name string, rxqs, txqs []*ring.Ring, socket int) (Port, error) {
+	rxq, nrx := fromRings(rxqs)
+	txq, ntx := fromRings(txqs)
+	cname := C.CString(name)
+	defer C.free(unsafe.Pointer(cname))
+	rc := C.rte_eth_from_rings(cname, rxq, nrx, txq, ntx, C.uint(socket))
+	n, err := common.IntOrErr(rc)
+	return Port(n), err
+}
+
+// FromRing creates new ethdev port from a ring.
+func FromRing(r *ring.Ring) (Port, error) {
+	rc := C.rte_eth_from_ring((*C.struct_rte_ring)(unsafe.Pointer(r)))
+	n, err := common.IntOrErr(rc)
+	return Port(n), err
 }
