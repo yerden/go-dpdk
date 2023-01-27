@@ -77,8 +77,8 @@ func (m *Mbuf) RawFree() {
 
 // PktMbufClone clones the mbuf using supplied mempool as the buffer
 // source. NOTE: NULL may return if allocation fails.
-func (m *Mbuf) PktMbufClone(p *mempool.Mempool) {
-	C.rte_pktmbuf_clone(mbuf(m), mp(p))
+func (m *Mbuf) PktMbufClone(p *mempool.Mempool) *Mbuf {
+	return (*Mbuf)(C.rte_pktmbuf_clone(mbuf(m), mp(p)))
 }
 
 // PktMbufAlloc allocate an uninitialized mbuf from mempool p.
