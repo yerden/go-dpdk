@@ -6,6 +6,7 @@ package eal
 #include <rte_lcore.h>
 */
 import "C"
+import "unsafe"
 
 const (
 	// PmdPath is the default location of shared objects to load by
@@ -130,4 +131,14 @@ func LcoreCount() uint {
 // is executed.
 func GetMainLcore() uint {
 	return uint(C.rte_get_main_lcore())
+}
+
+// PrimaryProcAlive checks if a primary process is currently alive.
+func PrimaryProcAlive(path string) bool {
+	var s *C.char
+	if path != "" {
+		s = C.CString(path)
+		defer C.free(unsafe.Pointer(s))
+	}
+	return C.rte_eal_primary_proc_alive(s) != 0
 }
