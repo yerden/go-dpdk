@@ -38,6 +38,10 @@ func doOnMain(t *testing.T, fn func(p *mempool.Mempool, data []byte)) {
 			mempool.OptOpsName("stack"),
 			mempool.OptPrivateDataSize(64), // for each Mbuf
 		)
+		assert(t, mp.IsFull())
+		assert(t, !mp.IsEmpty())
+		assert(t, mp.AvailCount() == int(n))
+		assert(t, mp.InUseCount() == 0)
 		assert(t, err == nil, err)
 		assert(t, mp != nil)
 		defer mp.Free()
