@@ -25,7 +25,8 @@ func main() {
 		func(cmd, params string, d *telemetry.Data) int {
 			d.StartArray(telemetry.StringVal)
 			memzone.Walk(func(mz *memzone.Memzone) {
-				if name := strings.TrimPrefix(mz.Name(), "RG_"); name != mz.Name() {
+				name := strings.TrimPrefix(mz.Name(), "RG_")
+				if _, err := ring.Lookup(name); err == nil {
 					d.AddArrayString(name)
 				}
 			})
