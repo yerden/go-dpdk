@@ -5,7 +5,7 @@ package telemetry
 #include <rte_telemetry.h>
 
 extern int telemetryHandler(char *name, char *params, struct rte_tel_data *d);
-telemetry_cb telemetry_handler_cb = (telemetry_cb)telemetryHandler;
+//static telemetry_cb telemetry_handler_cb = (telemetry_cb)telemetryHandler;
 
 */
 import "C"
@@ -132,5 +132,9 @@ func RegisterCmd(cmd, help string, h Handler) int {
 	cHelp := C.CString(help)
 	defer C.free(unsafe.Pointer(cHelp))
 
-	return int(C.rte_telemetry_register_cmd(cCmd, C.telemetry_handler_cb, cHelp))
+	return int(C.rte_telemetry_register_cmd(cCmd, (C.telemetry_cb)(C.telemetryHandler), cHelp))
+}
+
+func DataAlloc() *Data {
+	return (*Data)(C.rte_tel_data_alloc())
 }
