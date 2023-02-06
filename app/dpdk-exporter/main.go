@@ -48,8 +48,9 @@ func main() {
 	var metrics *Metrics
 	if err := eal.ExecOnMain(func(lc *eal.LcoreCtx) {
 		var err error
-		metrics, err = NewMetrics()
-		log.Panicf("init metrics collecting: %v", err)
+		if metrics, err = NewMetrics(); err != nil {
+			log.Panicf("init metrics collecting: %v", err)
+		}
 	}); err != nil {
 		log.Panicf("exec on main lcore: %v", err)
 	}

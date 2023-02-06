@@ -7,6 +7,7 @@ import (
 	"context"
 	"log"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -226,7 +227,10 @@ func NewLinkMetrics(labelNames []string) *LinkMetrics {
 
 func (m *LinkMetrics) Collect(port ethdev.Port, labels prometheus.Labels) error {
 	link, err := port.EthLinkGet()
-	if err != nil {
+	if err == syscall.ENOTSUP {
+		// simply not exporting
+		return nil
+	} else if err != nil {
 		return err
 	}
 

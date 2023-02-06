@@ -10,6 +10,7 @@ package mempool
 #include <rte_mempool.h>
 
 extern void goObjectCb(struct rte_mempool *mp, void *opaque, void *obj, unsigned idx);
+extern void mpWalkCb(struct rte_mempool *, void *);
 */
 import "C"
 
@@ -18,6 +19,10 @@ import (
 	"unsafe"
 
 	"github.com/yerden/go-dpdk/common"
+)
+
+var (
+	callbacks = common.NewRegistryArray()
 )
 
 // Factory returns new mempool per each invocation of NewMempool.
@@ -223,14 +228,10 @@ func (mp *Mempool) Free() {
 	C.rte_mempool_free((*C.struct_rte_mempool)(mp))
 }
 
-var (
-	mpCb = common.NewRegistryArray()
-)
-
 //export goObjectCb
 func goObjectCb(mp *C.struct_rte_mempool, opaque, obj unsafe.Pointer, objIdx C.uint) {
 	cb := *(*common.ObjectID)(opaque)
-	fn := mpCb.Read(cb).(func([]byte))
+	fn := callbacks.Read(cb).(func([]byte))
 	var b []byte
 	sh := (*reflect.SliceHeader)(unsafe.Pointer(&b))
 	sh.Data = uintptr(obj)
@@ -259,8 +260,8 @@ func (mp *Mempool) objIterC(fn, opaque unsafe.Pointer) uint32 {
 //
 // Returns number of objects iterated.
 func (mp *Mempool) ObjIter(fn func([]byte)) uint32 {
-	cb := mpCb.Create(fn)
-	defer mpCb.Delete(cb)
+	cb := callbacks.Create(fn)
+	defer callbacks.Delete(cb)
 
 	return mp.objIterC(C.goObjectCb, unsafe.Pointer(&cb))
 }
@@ -308,6 +309,39 @@ func Lookup(name string) (*Mempool, error) {
 		return nil, err()
 	}
 	return mp, nil
+}
+
+// AvailCount returns the number of entries in the mempool.
+//
+// When cache is enabled, this function has to browse the length of
+// all lcores, so it should not be used in a data path, but only for
+// debug purposes. User-owned mempool caches are not accounted for.
+func (mp *Mempool) AvailCount() int {
+	return int(C.rte_mempool_avail_count((*C.struct_rte_mempool)(mp)))
+}
+
+// InUseCount returns the number of elements which have been allocated
+// from the mempool.
+//
+// When cache is enabled, this function has to browse the length of
+// all lcores, so it should not be used in a data path, but only for
+// debug purposes.
+func (mp *Mempool) InUseCount() int {
+	return int(C.rte_mempool_in_use_count((*C.struct_rte_mempool)(mp)))
+}
+
+//export mpWalkCb
+func mpWalkCb(mp *C.struct_rte_mempool, arg unsafe.Pointer) {
+	cb := *(*common.ObjectID)(arg)
+	fn := callbacks.Read(cb).(func(*Mempool))
+	fn((*Mempool)(mp))
+}
+
+// Walk list of all mempools.
+func Walk(fn func(mp *Mempool)) {
+	cb := callbacks.Create(fn)
+	C.rte_mempool_walk((*[0]byte)(C.mpWalkCb), unsafe.Pointer(&cb))
+	callbacks.Delete(cb)
 }
 
 // GenericPut puts object back into mempool with optional cache.
