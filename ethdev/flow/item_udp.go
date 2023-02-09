@@ -4,16 +4,14 @@ package flow
 #include <stdint.h>
 #include <rte_config.h>
 #include <rte_flow.h>
-
-static const struct rte_flow_item_udp *get_item_udp_mask() {
-	return &rte_flow_item_udp_mask;
-}
+#include <rte_udp.h>
 
 */
 import "C"
 import (
-	"runtime"
 	"unsafe"
+
+	"github.com/yerden/go-dpdk/common"
 )
 
 // UDPHeader represents UDP header format.
@@ -24,35 +22,29 @@ type UDPHeader struct {
 	Checksum uint16 /* UDP datagram checksum */
 }
 
+const _ uintptr = unsafe.Sizeof(UDPHeader{}) - C.sizeof_struct_rte_udp_hdr
+const _ uintptr = C.sizeof_struct_rte_udp_hdr - unsafe.Sizeof(UDPHeader{})
+
 // ItemUDP matches an UDP header.
 type ItemUDP struct {
-	cPointer
-
 	Header UDPHeader
 }
 
-var _ ItemStruct = (*ItemUDP)(nil)
+var _ ItemValue = (*ItemUDP)(nil)
 
-// Reload implements ItemStruct interface.
-func (item *ItemUDP) Reload() {
-	cptr := (*C.struct_rte_flow_item_udp)(item.createOrRet(C.sizeof_struct_rte_flow_item_udp))
-	cvtUDPHeader(&cptr.hdr, &item.Header)
-	runtime.SetFinalizer(item, (*ItemUDP).free)
+// Transform implements Action interface.
+func (item *ItemUDP) Transform(alloc common.Allocator) (unsafe.Pointer, func(unsafe.Pointer)) {
+	ptr := &C.struct_rte_flow_item_udp{}
+	ptr.hdr = *(*C.struct_rte_udp_hdr)(unsafe.Pointer(&item.Header))
+	return common.TransformPOD(alloc, ptr)
 }
 
-func cvtUDPHeader(dst *C.struct_rte_udp_hdr, src *UDPHeader) {
-	beU16(uint16(src.SrcPort), unsafe.Pointer(&dst.src_port))
-	beU16(uint16(src.DstPort), unsafe.Pointer(&dst.dst_port))
-	beU16(src.Length, unsafe.Pointer(&dst.dgram_len))
-	beU16(src.Checksum, unsafe.Pointer(&dst.dgram_cksum))
-}
-
-// Type implements ItemStruct interface.
-func (item *ItemUDP) Type() ItemType {
+// ItemType implements ItemValue interface.
+func (item *ItemUDP) ItemType() ItemType {
 	return ItemTypeUDP
 }
 
-// Mask implements ItemStruct interface.
-func (item *ItemUDP) Mask() unsafe.Pointer {
-	return unsafe.Pointer(C.get_item_udp_mask())
+// DefaultMask implements ItemStruct interface.
+func (item *ItemUDP) DefaultMask() unsafe.Pointer {
+	return unsafe.Pointer(&C.rte_flow_item_udp_mask)
 }

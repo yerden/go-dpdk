@@ -7,8 +7,9 @@ package flow
 */
 import "C"
 import (
-	"runtime"
 	"unsafe"
+
+	"github.com/yerden/go-dpdk/common"
 )
 
 var _ Action = (*ActionRSS)(nil)
@@ -34,61 +35,43 @@ type ActionRSS struct {
 	Key    []byte
 	Level  uint32
 	Types  uint64
-
-	cptr *C.struct_rte_flow_action_rss
 }
 
-func (action *ActionRSS) free() {
-	cptr := action.cptr
-	C.free(unsafe.Pointer(cptr.key))
-	C.free(unsafe.Pointer(cptr.queue))
-	C.free(unsafe.Pointer(cptr))
-}
-
-// Reload implements Action interface.
-func (action *ActionRSS) Reload() {
-	// allocate if needed
-	cptr := action.cptr
-	if cptr == nil {
-		cptr = (*C.struct_rte_flow_action_rss)(C.malloc(C.sizeof_struct_rte_flow_action_rss))
-		*cptr = C.struct_rte_flow_action_rss{}
-		action.cptr = cptr
-	}
+// Transform implements Action interface.
+func (action *ActionRSS) Transform(alloc common.Allocator) (unsafe.Pointer, func(unsafe.Pointer)) {
+	cptr := (*C.struct_rte_flow_action_rss)(alloc.Malloc(C.sizeof_struct_rte_flow_action_rss))
+	*cptr = C.struct_rte_flow_action_rss{}
 
 	// set queues
 	if len(action.Queues) > 0 {
-		sz := C.size_t(len(action.Queues)) * C.size_t(unsafe.Sizeof(action.Queues[0]))
-		cQueues := C.malloc(sz)
-		C.memcpy(cQueues, unsafe.Pointer(&action.Queues[0]), sz)
-		C.free(unsafe.Pointer(cptr.queue))
+		var x *C.uint16_t
+		common.CallocT(alloc, &x, len(action.Queues))
+		queues := unsafe.Slice(x, len(action.Queues))
+		for i := range queues {
+			queues[i] = C.uint16_t(action.Queues[i])
+		}
 		cptr.queue_num = C.uint32_t(len(action.Queues))
-		cptr.queue = (*C.uint16_t)(cQueues)
 	}
 
 	// set key
 	if len(action.Key) > 0 {
-		sz := C.size_t(len(action.Key))
-		cKey := C.malloc(sz)
-		C.memcpy(cKey, unsafe.Pointer(&action.Key[0]), sz)
-		C.free(unsafe.Pointer(cptr.key))
 		cptr.key_len = C.uint32_t(len(action.Key))
-		cptr.key = (*C.uint8_t)(cKey)
+		cptr.key = (*C.uchar)(common.CBytes(alloc, action.Key))
 	}
 
 	cptr.level = C.uint32_t(action.Level)
 	cptr.types = C.uint64_t(action.Types)
 	cptr._func = uint32(action.Func)
 
-	runtime.SetFinalizer(action, nil)
-	runtime.SetFinalizer(action, (*ActionRSS).free)
+	return unsafe.Pointer(cptr), func(p unsafe.Pointer) {
+		cptr = (*C.struct_rte_flow_action_rss)(p)
+		alloc.Free(unsafe.Pointer(cptr.key))
+		alloc.Free(unsafe.Pointer(cptr.queue))
+		alloc.Free(p)
+	}
 }
 
-// Pointer implements Action interface.
-func (action *ActionRSS) Pointer() unsafe.Pointer {
-	return unsafe.Pointer(action.cptr)
-}
-
-// Type implements Action interface.
-func (action *ActionRSS) Type() ActionType {
+// ActionType implements Action interface.
+func (action *ActionRSS) ActionType() ActionType {
 	return ActionTypeRss
 }

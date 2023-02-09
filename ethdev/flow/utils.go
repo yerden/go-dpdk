@@ -33,25 +33,3 @@ func beU32(n uint32, p unsafe.Pointer) {
 	sh.Cap = sh.Len
 	binary.BigEndian.PutUint32(d, n)
 }
-
-type cPointer struct {
-	cptr unsafe.Pointer
-}
-
-func (p *cPointer) free() {
-	C.free(p.cptr)
-}
-
-// Pointer is the blanket implementation of ItemStruct/Action.
-func (p *cPointer) Pointer() unsafe.Pointer {
-	return p.cptr
-}
-
-func (p *cPointer) createOrRet(n C.ulong) unsafe.Pointer {
-	if p.cptr == nil {
-		p.cptr = C.malloc(n)
-		C.memset(p.cptr, 0, n)
-	}
-
-	return p.cptr
-}
