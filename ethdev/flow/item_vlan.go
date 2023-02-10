@@ -49,7 +49,7 @@ func (item *ItemVlan) Transform(alloc common.Allocator) (unsafe.Pointer, func(un
 		C.set_has_more_vlan(cptr, 0)
 	}
 
-	hdr := (*C.struct_rte_vlan_hdr)(off(unsafe.Pointer(cptr), C.ITEM_VLAN_OFF_HDR))
+	hdr := (*C.struct_rte_vlan_hdr)(unsafe.Add(unsafe.Pointer(cptr), C.ITEM_VLAN_OFF_HDR))
 	hdr.vlan_tci = C.ushort(item.TCI)
 	hdr.eth_proto = C.ushort(item.InnerType)
 	return common.TransformPOD(alloc, cptr)
