@@ -111,8 +111,7 @@ func (m *Mbuf) PktMbufAppend(data []byte) error {
 		return ErrNullData
 	}
 
-	sh := (*reflect.SliceHeader)(unsafe.Pointer(&ptr))
-	copy((*(*[]byte)(unsafe.Pointer(sh)))[:], data)
+	copy(unsafe.Slice((*byte)(unsafe.Pointer(ptr)), len(data)), data)
 	return nil
 }
 
