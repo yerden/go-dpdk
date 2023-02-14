@@ -38,7 +38,6 @@ import "C"
 import (
 	"errors"
 	"reflect"
-	"syscall"
 	"unsafe"
 
 	"github.com/yerden/go-dpdk/common"
@@ -91,7 +90,7 @@ func PktMbufAlloc(p *mempool.Mempool) *Mbuf {
 // PktMbufAllocBulk allocate a bulk of mbufs.
 func PktMbufAllocBulk(p *mempool.Mempool, ms []*Mbuf) error {
 	e := C.rte_pktmbuf_alloc_bulk(mp(p), mbufs(ms), C.uint(len(ms)))
-	return syscall.Errno(e)
+	return common.IntErr(int64(e))
 }
 
 // PktMbufPrivSize get the application private size of mbufs
