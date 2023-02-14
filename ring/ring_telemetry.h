@@ -8,8 +8,8 @@
 static inline const char *
 trim_prefix(const char *s, const char *pre)
 {
-	int ret = !strncmp(s, pre, strlen(pre));
-	return s + ret * strlen(pre);
+	int len = strlen(pre);
+	return s + len * !strncmp(s, pre, len);
 }
 
 static void
@@ -47,7 +47,6 @@ ring_info(
 	if (r == NULL)
 		return -ENOENT;
 
-	rte_tel_data_start_dict(d);
 	rte_tel_data_start_dict(d);
 	rte_tel_data_add_dict_string(d, "ring_name", name);
 	rte_tel_data_add_dict_string(d, "ring_mz_name", r->memzone->name);
