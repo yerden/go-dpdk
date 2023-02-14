@@ -236,7 +236,7 @@ func TestMbufMethods(t *testing.T) {
 		// allocate a bulk of mbufs and append the data to them
 		mbufArr := make([]*mbuf.Mbuf, 4)
 		err = mbuf.PktMbufAllocBulk(p, mbufArr)
-		assert(t, err == syscall.Errno(0))
+		assert(t, err == nil, err)
 		for _, m := range mbufArr {
 			m.PktMbufAppend(data)
 			assert(t, bytes.Equal(m.Data(), data))
@@ -251,7 +251,7 @@ func TestMbufMethods(t *testing.T) {
 		// allocation to the empty array
 		var mbufArrEmpty []*mbuf.Mbuf
 		err = mbuf.PktMbufAllocBulk(p, mbufArrEmpty)
-		assert(t, err == syscall.Errno(0))
+		assert(t, err == nil, err)
 		assert(t, len(mbufArrEmpty) == 0)
 	})
 }
