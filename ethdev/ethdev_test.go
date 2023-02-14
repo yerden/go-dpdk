@@ -1,6 +1,7 @@
 package ethdev
 
 import (
+	"bytes"
 	"syscall"
 	"testing"
 
@@ -24,6 +25,10 @@ func TestRssHashConfGet(t *testing.T) {
 
 	var c RssConf
 	err := pid.RssHashConfGet(&c)
+	assert(t, err == nil, err)
+
+	c.Key = bytes.Repeat([]byte{0x6d, 0x5a}, 20)
+	err = pid.RssHashUpdate(&c)
 	assert(t, err == nil, err)
 }
 

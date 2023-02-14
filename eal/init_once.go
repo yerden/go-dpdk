@@ -1,9 +1,20 @@
 package eal
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"sync"
 )
+
+func makeRandomString() string {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		panic(err)
+	}
+
+	return hex.EncodeToString(b)
+}
 
 // SafeEALArgs returns safe parameters to be used for testing
 // purposes. Specify cmdname as the binary name in argv[0] and number
@@ -12,6 +23,7 @@ func SafeEALArgs(cmdname string, lcores int) []string {
 	return []string{
 		cmdname,
 		"--lcores", fmt.Sprintf("(0-%d)@0", lcores-1),
+		"--file-prefix", "_" + makeRandomString(),
 		"--vdev", "net_null0",
 		"-m", "128",
 		"--no-huge",

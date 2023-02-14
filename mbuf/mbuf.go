@@ -38,7 +38,6 @@ import "C"
 import (
 	"errors"
 	"reflect"
-	"syscall"
 	"unsafe"
 
 	"github.com/yerden/go-dpdk/common"
@@ -91,7 +90,7 @@ func PktMbufAlloc(p *mempool.Mempool) *Mbuf {
 // PktMbufAllocBulk allocate a bulk of mbufs.
 func PktMbufAllocBulk(p *mempool.Mempool, ms []*Mbuf) error {
 	e := C.rte_pktmbuf_alloc_bulk(mp(p), mbufs(ms), C.uint(len(ms)))
-	return syscall.Errno(e)
+	return common.IntErr(int64(e))
 }
 
 // PktMbufPrivSize get the application private size of mbufs
@@ -113,6 +112,22 @@ func (m *Mbuf) PktMbufAppend(data []byte) error {
 
 	copy(unsafe.Slice((*byte)(unsafe.Pointer(ptr)), len(data)), data)
 	return nil
+}
+
+// RefCntUpdate adds given value to an mbuf's refcnt and returns its
+// new value.
+func (m *Mbuf) RefCntUpdate(v int16) uint16 {
+	return uint16(C.rte_mbuf_refcnt_update(mbuf(m), C.int16_t(v)))
+}
+
+// RefCntRead reads the value of an mbuf's refcnt.
+func (m *Mbuf) RefCntRead() uint16 {
+	return uint16(C.rte_mbuf_refcnt_read(mbuf(m)))
+}
+
+// RefCntSet sets an mbuf's refcnt to the defined value.
+func (m *Mbuf) RefCntSet(v uint16) {
+	C.rte_mbuf_refcnt_set(mbuf(m), C.uint16_t(v))
 }
 
 // PktMbufReset reset the fields of a packet mbuf to their default values.
