@@ -115,6 +115,22 @@ func (m *Mbuf) PktMbufAppend(data []byte) error {
 	return nil
 }
 
+// RefCntUpdate adds given value to an mbuf's refcnt and returns its
+// new value.
+func (m *Mbuf) RefCntUpdate(v int16) uint16 {
+	return uint16(C.rte_mbuf_refcnt_update(mbuf(m), C.int16_t(v)))
+}
+
+// RefCntRead reads the value of an mbuf's refcnt.
+func (m *Mbuf) RefCntRead() uint16 {
+	return uint16(C.rte_mbuf_refcnt_read(mbuf(m)))
+}
+
+// RefCntSet sets an mbuf's refcnt to the defined value.
+func (m *Mbuf) RefCntSet(v uint16) {
+	C.rte_mbuf_refcnt_set(mbuf(m), C.uint16_t(v))
+}
+
 // PktMbufReset reset the fields of a packet mbuf to their default values.
 func (m *Mbuf) PktMbufReset() {
 	C.rte_pktmbuf_reset(mbuf(m))
