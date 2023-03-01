@@ -22,6 +22,12 @@ func argsElem(r *Ring, objtable unsafe.Pointer, esize uintptr, n int) (*C.struct
 	return (*C.struct_rte_ring)(r), C.uint(esize), C.uintptr_t(uintptr(unsafe.Pointer(objtable))), C.uint(n)
 }
 
+func argsSliceElem(r *Ring, obj []unsafe.Pointer) (*C.struct_rte_ring,
+	C.uint, C.uintptr_t, C.uint) {
+	x, p, n := args(r, obj)
+	return x, C.uint(ptrSize), p, n
+}
+
 func ret(out C.struct_compound_int) (rc, n uint32) {
 	return uint32(out.rc), uint32(out.n)
 }

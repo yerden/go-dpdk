@@ -8,15 +8,6 @@ struct compound_int {
 
 typedef void * ptr_t;
 
-#define GO_RING_FUNC(func)                                 \
-static struct compound_int func(struct rte_ring *r,        \
-    uintptr_t objs, unsigned int n) {                      \
-  struct compound_int out;                                 \
-  void **obj_table = (typeof(obj_table))objs;              \
-  out.rc = rte_ring_ ## func(r, obj_table, n, &out.n);     \
-  return out;                                              \
-}
-
 #define GO_RING_FUNC_ELEM(func)                            \
 static struct compound_int func ## _elem(                  \
     struct rte_ring *r, unsigned int esize,                \
@@ -29,7 +20,6 @@ static struct compound_int func ## _elem(                  \
 }
 
 #define GO_RING_OP(func)                                   \
-	GO_RING_FUNC(func)                                     \
 	GO_RING_FUNC_ELEM(func)
 
 // wrap dequeue API
