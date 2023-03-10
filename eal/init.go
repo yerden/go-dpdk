@@ -183,6 +183,8 @@ func panicCatcher(fn func(*LcoreCtx), ctx *LcoreCtx) (err error) {
 // to run as lcore_function_t
 //export lcoreFuncListener
 func lcoreFuncListener(arg unsafe.Pointer) C.int {
+	runtime.LockOSThread()
+
 	id := uint(C.rte_lcore_id())
 	ctx := goEAL.lcores[id]
 
