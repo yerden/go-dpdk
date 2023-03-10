@@ -12,4 +12,5 @@ export CGO_LDFLAGS_ALLOW=".*"
 ```
 
 # Caveats
-Only dynamic linking is viable at this point.
+* Only dynamic linking is viable at this point.
+* If you isolate CPU cores with `isolcpus` kernel parameter then `GOMAXPROCS` should be manually specified to reflect the actual number of logical cores in CPU mask. E.g. if `isolcpus=12-95` on a 96-core machine then default value for `GOMAXPROCS` would be 12 but it should be at least 84.
