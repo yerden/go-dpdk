@@ -3,6 +3,7 @@ package mbuf
 /*
 #include <stdint.h>
 #include <rte_config.h>
+#include <rte_version.h>
 #include <rte_mbuf.h>
 
 char *reset_and_append(struct rte_mbuf *mbuf, void *ptr, size_t len)
@@ -26,6 +27,18 @@ struct rte_mbuf *alloc_reset_and_append(struct rte_mempool *mp, void *ptr, size_
 		return NULL;
 	rte_memcpy(data, ptr, len);
 	return mbuf;
+}
+
+static inline void
+free_bulk(struct rte_mbuf **pkts, unsigned int count)
+{
+#if RTE_VERSION < RTE_VERSION_NUM(21, 11, 0, 0)
+	unsigned int i;
+	for (i = 0; i < count; i++)
+		rte_pktmbuf_free(pkts[i]);
+#else
+	rte_pktmbuf_free_bulk(pkts, count);
+#endif
 }
 
 enum {
@@ -91,6 +104,11 @@ func PktMbufAlloc(p *mempool.Mempool) *Mbuf {
 func PktMbufAllocBulk(p *mempool.Mempool, ms []*Mbuf) error {
 	e := C.rte_pktmbuf_alloc_bulk(mp(p), mbufs(ms), C.uint(len(ms)))
 	return common.IntErr(int64(e))
+}
+
+// PktMbufReset frees a bulk of packet mbufs back into their original mempools.
+func PktMbufFreeBulk(ms []*Mbuf) {
+	C.free_bulk(mbufs(ms), C.uint(len(ms)))
 }
 
 // PktMbufPrivSize get the application private size of mbufs
