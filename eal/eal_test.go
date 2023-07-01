@@ -58,6 +58,8 @@ func TestEALInit(t *testing.T) {
 	assert(myset == set)
 
 	// test panic
+	PanicAsErr = true
+
 	for _, id := range Lcores() {
 		err := ExecOnLcore(id, func(ctx *LcoreCtx) {
 			panic("emit panic")
