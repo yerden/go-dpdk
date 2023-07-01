@@ -28,6 +28,15 @@ const (
 	lcoreJobsBuffer = 32
 )
 
+// PanicAsErr controls whether logical core should recover from panic
+// occurred in Go code. If true then panic will lead to an error sent
+// through the job channel. If false (as default) panic will crash the
+// process.
+//
+// Please set this before running logical cores functions to prevent
+// race condition.
+var PanicAsErr = false
+
 var (
 	// goEAL is the storage for all EAL lcore threads configuration.
 	goEAL = &ealConfig{make(map[uint]*LcoreCtx)}
@@ -195,7 +204,12 @@ func lcoreFuncListener(arg unsafe.Pointer) C.int {
 
 	// run loop
 	for job := range ctx.ch {
-		err := panicCatcher(job.fn, ctx)
+		var err error
+		if PanicAsErr {
+			err = panicCatcher(job.fn, ctx)
+		} else {
+			job.fn(ctx)
+		}
 		if job.ret != nil {
 			job.ret <- err
 		}
