@@ -77,6 +77,7 @@ func TestContext(t *testing.T) {
 			},
 		},
 	})
+	assert(t, err == nil, err)
 
 	err = ctx.Build(cfg)
 	assert(t, err == nil, err)
