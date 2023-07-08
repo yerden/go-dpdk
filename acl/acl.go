@@ -1,3 +1,6 @@
+/*
+Package acl wraps DPDK ACL classified library.
+*/
 package acl
 
 /*
@@ -27,16 +30,29 @@ import (
 	"github.com/yerden/go-dpdk/common"
 )
 
+// Type of the field.
 const (
 	FieldTypeMask    uint8 = C.RTE_ACL_FIELD_TYPE_MASK
 	FieldTypeBitmask uint8 = C.RTE_ACL_FIELD_TYPE_BITMASK
 	FieldTypeRange   uint8 = C.RTE_ACL_FIELD_TYPE_RANGE
 )
 
+// RuleSize returns amount of memory occupied by a rule with numDefs
+// fields.
 func RuleSize(numDefs int) uint32 {
 	return uint32(C.get_rule_size(C.int(numDefs)))
 }
 
+// FieldDef is an ACL Field definition.
+//
+// Each field in the ACL rule has an associate definition.  It defines
+// the type of field, its size, its offset in the input buffer, the
+// field index, and the input index.  For performance reasons, the
+// inner loop of the search function is unrolled to process four input
+// bytes at a time. This requires the input to be grouped into sets of
+// 4 consecutive bytes. The loop processes the first input byte as
+// part of the setup and then subsequent bytes must be in groups of 4
+// consecutive bytes.
 type FieldDef struct {
 	Type, Size uint8
 	FieldIndex uint8
@@ -44,12 +60,15 @@ type FieldDef struct {
 	Offset     uint32
 }
 
+// Config is an ACL build configuration. Defines the fields of an ACL
+// trie and number of categories to build with.
 type Config struct {
 	Categories uint32
 	Defs       []FieldDef
 	MaxSize    int
 }
 
+// Field defines the value of a field for a rule.
 type Field struct {
 	// a 1,2,4, or 8 byte value of the field.
 	Value any
@@ -84,12 +103,14 @@ func (f *Field) field() C.struct_rte_acl_field {
 	return ret
 }
 
+// RuleData contains miscellaneous data for ACL rule.
 type RuleData struct {
 	CategoryMask uint32
 	Priority     int32
 	Userdata     uint32
 }
 
+// Param contains parameters used when creating the ACL context.
 type Param struct {
 	Name       string
 	SocketID   int
@@ -97,13 +118,18 @@ type Param struct {
 	MaxRuleNum uint32
 }
 
+// Rule contains a rule to store in ACL content.
 type Rule struct {
 	Data   RuleData
 	Fields []Field
 }
 
+// Context is an ACL context containing rules and optimized built trie
+// to search.
 type Context C.struct_rte_acl_ctx
 
+// Create new Context using specified params. Returns new instance of
+// Context and an error.
 func Create(p *Param) (*Context, error) {
 	params := C.struct_rte_acl_param{}
 	params.name = C.CString(p.Name)
@@ -120,26 +146,37 @@ func Create(p *Param) (*Context, error) {
 	return nil, common.RteErrno()
 }
 
+// Free de-allocates all memory used by ACL context.
 func (ctx *Context) Free() {
 	C.rte_acl_free((*C.struct_rte_acl_ctx)(ctx))
 }
 
+// Reset deletes all rules from the ACL context and destroy all
+// internal run-time structures. This function is not multi-thread
+// safe.
 func (ctx *Context) Reset() {
 	C.rte_acl_reset((*C.struct_rte_acl_ctx)(ctx))
 }
 
+// Dump an ACL context structure to the console.
 func (ctx *Context) Dump() {
 	C.rte_acl_dump((*C.struct_rte_acl_ctx)(ctx))
 }
 
+// ListDump dumps all ACL context structures to the console.
 func ListDump() {
 	C.rte_acl_list_dump()
 }
 
+// ResetRules delete all rules from the ACL context. This function is
+// not multi-thread safe. Note that internal run-time structures are
+// not affected.
 func (ctx *Context) ResetRules() {
 	C.rte_acl_reset_rules((*C.struct_rte_acl_ctx)(ctx))
 }
 
+// FindExisting finds an existing ACL context object and return a
+// pointer to it.
 func FindExisting(name string) (*Context, error) {
 	cname := C.CString(name)
 	defer C.free(unsafe.Pointer(cname))
@@ -151,6 +188,17 @@ func FindExisting(name string) (*Context, error) {
 	return nil, common.RteErrno()
 }
 
+// Classify performs search for a matching ACL rule for each input
+// data buffer. Each input data buffer can have up to *categories*
+// matches.  That implies that results array should be big enough to
+// hold (categories * len(data)) elements.  Also categories parameter
+// should be either one or multiple of RTE_ACL_RESULTS_MULTIPLIER and
+// can't be bigger than RTE_ACL_MAX_CATEGORIES.  If more than one rule
+// is applicable for given input buffer and given category, then rule
+// with highest priority will be returned as a match.  Note, that it
+// is a caller's responsibility to ensure that input parameters are
+// valid and point to correct memory locations.
+//
 // data must be an array of buffers NOT allocated in Go.
 func (ctx *Context) Classify(data []unsafe.Pointer, categories uint32, results []uint32) error {
 	return common.IntErr(int64(C.rte_acl_classify(
@@ -161,6 +209,8 @@ func (ctx *Context) Classify(data []unsafe.Pointer, categories uint32, results [
 		C.uint32_t(categories))))
 }
 
+// Build analyzes set of rules and build required internal run-time
+// structures. This function is not multi-thread safe.
 func (ctx *Context) Build(cfg *Config) error {
 	c := C.struct_rte_acl_config{}
 	c.num_categories = C.uint32_t(cfg.Categories)
@@ -187,6 +237,8 @@ func (ctx *Context) Build(cfg *Config) error {
 	return common.IntErr(int64(C.rte_acl_build((*C.struct_rte_acl_ctx)(ctx), &c)))
 }
 
+// AddRules adds rules to an existing ACL context. This function is
+// not multi-thread safe.
 func (ctx *Context) AddRules(input []Rule) error {
 	fieldsNum := len(input[0].Fields)
 	ruleSize := RuleSize(fieldsNum)
