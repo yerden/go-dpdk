@@ -79,6 +79,18 @@ func TestContext(t *testing.T) {
 	})
 	assert(t, err == nil, err)
 
+	err = ctx.AddRules([]Rule{
+		{
+			Data: RuleData{CategoryMask: 3, Priority: 1, Userdata: 1},
+			Fields: []Field{
+				{uint8(17), uint8(0xff)},
+				{uint32(0x01020304), uint8(24)},
+				{uint32(0), uint8(0)},
+			},
+		},
+	})
+	assert(t, err == nil, err)
+
 	err = ctx.Build(cfg)
 	assert(t, err == nil, err)
 
