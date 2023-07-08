@@ -1,7 +1,6 @@
 package acl
 
 import (
-	"fmt"
 	"syscall"
 	"testing"
 
@@ -51,7 +50,6 @@ func TestContext(t *testing.T) {
 		SocketID:   -1,
 	}
 
-	fmt.Println("rule size=", p.RuleSize)
 	ctx, err := Create(p)
 	assert(t, err == nil, err)
 	assert(t, ctx != nil)
@@ -75,12 +73,7 @@ func TestContext(t *testing.T) {
 				{uint32(0), uint8(0)},
 				{uint32(0), uint8(0)},
 			},
-		},
-	})
-	assert(t, err == nil, err)
-
-	err = ctx.AddRules([]Rule{
-		{
+		}, {
 			Data: RuleData{CategoryMask: 3, Priority: 1, Userdata: 1},
 			Fields: []Field{
 				{uint8(17), uint8(0xff)},
@@ -95,6 +88,8 @@ func TestContext(t *testing.T) {
 	assert(t, err == nil, err)
 
 	ListDump()
+
+	ctx.ResetRules()
 
 	ctx.Free()
 }

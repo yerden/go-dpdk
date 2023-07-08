@@ -6,13 +6,6 @@ package acl
 /*
 #include <rte_acl.h>
 
-enum {
-	FIELD_OFF_U8  = offsetof(union rte_acl_field_types, u8),
-	FIELD_OFF_U16 = offsetof(union rte_acl_field_types, u16),
-	FIELD_OFF_U32 = offsetof(union rte_acl_field_types, u32),
-	FIELD_OFF_U64 = offsetof(union rte_acl_field_types, u64),
-};
-
 RTE_ACL_RULE_DEF(sample_rule, 1);
 
 static inline size_t
