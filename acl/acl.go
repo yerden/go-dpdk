@@ -73,26 +73,25 @@ type Field struct {
 	MaskRange any
 }
 
-func setValue(data *[8]byte, v any) {
+func setUint(data unsafe.Pointer, v any) {
 	switch v := v.(type) {
 	case uint8:
-		*(*uint8)(unsafe.Pointer(data)) = v
+		*(*uint8)(data) = v
 	case uint16:
-		*(*uint16)(unsafe.Pointer(data)) = v
+		*(*uint16)(data) = v
 	case uint32:
-		*(*uint32)(unsafe.Pointer(data)) = v
+		*(*uint32)(data) = v
 	case uint64:
-		*(*uint64)(unsafe.Pointer(data)) = v
+		*(*uint64)(data) = v
 	default:
-		panic("invalid type of field value")
+		panic("invalid type for value")
 	}
-
 }
 
 func (f *Field) field() C.struct_rte_acl_field {
 	ret := C.struct_rte_acl_field{}
-	setValue(&ret.value, f.Value)
-	setValue(&ret.mask_range, f.MaskRange)
+	setUint(unsafe.Pointer(&ret.value), f.Value)
+	setUint(unsafe.Pointer(&ret.mask_range), f.MaskRange)
 	return ret
 }
 
@@ -193,7 +192,7 @@ func FindExisting(name string) (*Context, error) {
 // valid and point to correct memory locations.
 //
 // data must be an array of buffers NOT allocated in Go.
-func (ctx *Context) Classify(data []unsafe.Pointer, categories uint32, results []uint32) error {
+func (ctx *Context) Classify(data []unsafe.Pointer, results []uint32, categories uint32) error {
 	return common.IntErr(int64(C.rte_acl_classify(
 		(*C.struct_rte_acl_ctx)(ctx),
 		(**C.uint8_t)(unsafe.Pointer(&data[0])),
