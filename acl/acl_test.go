@@ -25,6 +25,109 @@ func createSlices(alloc common.Allocator, size, n int) [][]byte {
 	return ret
 }
 
+func ExampleCreate() {
+	defs := []FieldDef{
+		// number of field definitions
+		// see Build method
+	}
+
+	ctx, err := Create(&Param{
+		Name: "my_acl_context",
+
+		// we must specify an exact amount of memory required to
+		// contain a rule given the number of field definitions.
+		RuleSize: RuleSize(len(defs)),
+
+		// maximum number of rules in a context
+		MaxRuleNum: 64,
+
+		SocketID: -1,
+	})
+	if err != nil {
+		// handle error
+	}
+
+	_ = ctx // ACL context
+}
+
+func ExampleContext_AddRules() {
+	var ctx *Context
+
+	err := ctx.AddRules([]Rule{
+		{
+			// rule #1
+			Data: RuleData{CategoryMask: 3, Priority: 1, Userdata: 1},
+			Fields: []Field{
+				// 1 byte field with value 1 and bitmask 0xff
+				{uint8(1), uint8(0xff)},
+
+				// 1 byte field with value 2 and bitmask 0xff
+				{uint8(2), uint8(0xff)},
+
+				// 1 byte field with value 3 and bitmask 0xff
+				{uint8(3), uint8(0xff)},
+
+				// 2 byte field with value 0x0102 and '/8' mask.
+				{uint16(0x0102), uint8(8)},
+			},
+		},
+	})
+
+	if err != nil {
+		// handle error
+	}
+}
+
+func ExampleContext_Build() {
+	defs := []FieldDef{
+		{
+			Type:       FieldTypeBitmask,
+			Size:       1, // mandatory one byte field
+			Offset:     0, // at the buffer's top
+			FieldIndex: 0, // index of the field
+			InputIndex: 0, // group of four (4) consecutive bytes.
+		}, {
+			Type:       FieldTypeBitmask,
+			Size:       1,
+			Offset:     1,
+			FieldIndex: 1,
+			InputIndex: 1, // N.B. same group for these three fields
+		}, {
+			Type:       FieldTypeBitmask,
+			Size:       1,
+			Offset:     2,
+			FieldIndex: 2,
+			InputIndex: 1,
+		}, {
+			Type:       FieldTypeMask,
+			Size:       2,
+			Offset:     3,
+			FieldIndex: 3,
+			InputIndex: 1,
+		},
+	}
+
+	cfg := &Config{
+		// Number of categories
+		Categories: 2,
+
+		// Size of internal data structures in ACL context.
+		// 0 is the default which doesn't impose a hard limit.
+		MaxSize: 0x800000,
+
+		// Specify fields definitions which define a valid rule for
+		// ACL context.
+		Defs: defs,
+	}
+
+	// assume we have a context.
+	var ctx *Context
+
+	if err := ctx.Build(cfg); err != nil {
+		// handle error
+	}
+}
+
 func initBuffer(buf, data []byte) unsafe.Pointer {
 	copy(buf, data)
 	return unsafe.Pointer(&buf[0])
