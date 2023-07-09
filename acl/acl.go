@@ -1,5 +1,5 @@
 /*
-Package acl wraps DPDK ACL classified library.
+Package acl wraps DPDK ACL packet classification library.
 */
 package acl
 
@@ -110,7 +110,7 @@ type Param struct {
 	MaxRuleNum uint32
 }
 
-// Rule contains a rule to store in ACL content.
+// Rule contains a rule to store in ACL context.
 type Rule struct {
 	Data   RuleData
 	Fields []Field
@@ -143,7 +143,7 @@ func (ctx *Context) Free() {
 	C.rte_acl_free((*C.struct_rte_acl_ctx)(ctx))
 }
 
-// Reset deletes all rules from the ACL context and destroy all
+// Reset deletes all rules from the ACL context and destroys all
 // internal run-time structures. This function is not multi-thread
 // safe.
 func (ctx *Context) Reset() {
@@ -167,7 +167,7 @@ func (ctx *Context) ResetRules() {
 	C.rte_acl_reset_rules((*C.struct_rte_acl_ctx)(ctx))
 }
 
-// FindExisting finds an existing ACL context object and return a
+// FindExisting finds an existing ACL context object and returns a
 // pointer to it.
 func FindExisting(name string) (*Context, error) {
 	cname := C.CString(name)
