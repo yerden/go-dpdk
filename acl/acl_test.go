@@ -25,6 +25,11 @@ func createSlices(alloc common.Allocator, size, n int) [][]byte {
 	return ret
 }
 
+func initBuffer(buf, data []byte) unsafe.Pointer {
+	copy(buf, data)
+	return unsafe.Pointer(&buf[0])
+}
+
 func TestContext(t *testing.T) {
 	eal.InitOnceSafe("test", 4)
 
@@ -135,17 +140,16 @@ func TestContext(t *testing.T) {
 	defer alloc.Flush()
 
 	inputData := createSlices(alloc, 5, 10)
-	copy(inputData[0], []byte{1, 2, 3, 1, 0}) // rule #1
-	copy(inputData[1], []byte{5, 6, 7, 2, 0}) // rule #2
-	copy(inputData[2], []byte{5, 6, 7, 2, 9}) // rule #2
-	copy(inputData[3], []byte{5, 6, 7, 1, 0}) // mismatch
 	results := make([]uint32, 10)
 
 	err = ctx.Classify([]unsafe.Pointer{
-		unsafe.Pointer(&inputData[0][0]),
-		unsafe.Pointer(&inputData[1][0]),
-		unsafe.Pointer(&inputData[2][0]),
-		unsafe.Pointer(&inputData[3][0]),
+		initBuffer(inputData[0], []byte{1, 2, 3, 1, 0}),  // rule #1
+		initBuffer(inputData[1], []byte{5, 6, 7, 2, 0}),  // rule #2
+		initBuffer(inputData[2], []byte{5, 6, 7, 2, 9}),  // rule #2
+		initBuffer(inputData[3], []byte{5, 6, 7, 1, 0}),  // mismatch
+		initBuffer(inputData[4], []byte{1, 3, 3, 1, 0}),  // mismatch
+		initBuffer(inputData[5], []byte{1, 2, 3, 2, 0}),  // mismatch
+		initBuffer(inputData[6], []byte{1, 2, 3, 1, 10}), // rule #1
 	}, results, 1)
 	assert(t, err == nil, err)
 
@@ -153,10 +157,11 @@ func TestContext(t *testing.T) {
 	assert(t, results[1] == 2, results) // rule #2 matches
 	assert(t, results[2] == 2, results) // rule #2 matches
 	assert(t, results[3] == 0, results) // no rule matches
+	assert(t, results[4] == 0, results) // no rule matches
+	assert(t, results[5] == 0, results) // no rule matches
+	assert(t, results[6] == 1, results) // rule #1 matches
 
 	ListDump()
-
 	ctx.ResetRules()
-
 	ctx.Free()
 }
