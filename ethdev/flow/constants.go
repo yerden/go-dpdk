@@ -55,36 +55,6 @@ const (
 	/**
 	 * [META]
 	 *
-	 * Matches traffic originating from (ingress) or going to (egress)
-	 * the physical function of the current device.
-	 *
-	 * No associated specification structure.
-	 */
-	ItemTypePf ItemType = C.RTE_FLOW_ITEM_TYPE_PF
-
-	/**
-	 * [META]
-	 *
-	 * Matches traffic originating from (ingress) or going to (egress) a
-	 * given virtual function of the current device.
-	 *
-	 * See struct rte_flow_item_vf.
-	 */
-	ItemTypeVf ItemType = C.RTE_FLOW_ITEM_TYPE_VF
-
-	/**
-	 * [META]
-	 *
-	 * Matches traffic originating from (ingress) or going to (egress) a
-	 * physical port of the underlying device.
-	 *
-	 * See struct rte_flow_item_phy_port.
-	 */
-	ItemTypePhyPort ItemType = C.RTE_FLOW_ITEM_TYPE_PHY_PORT
-
-	/**
-	 * [META]
-	 *
 	 * Matches traffic originating from (ingress) or going to (egress) a
 	 * given DPDK port ID.
 	 *
@@ -427,14 +397,6 @@ const (
 	ActionTypeVf ActionType = C.RTE_FLOW_ACTION_TYPE_VF
 
 	/**
-	 * Directs packets to a given physical port index of the underlying
-	 * device.
-	 *
-	 * See struct rte_flow_action_phy_port.
-	 */
-	ActionTypePhyPort ActionType = C.RTE_FLOW_ACTION_TYPE_PHY_PORT
-
-	/**
 	 * Directs matching traffic to a given DPDK port ID.
 	 *
 	 * See struct rte_flow_action_port_id.
@@ -458,54 +420,12 @@ const (
 	ActionTypeSecurity ActionType = C.RTE_FLOW_ACTION_TYPE_SECURITY
 
 	/**
-	 * Implements OFPAT_SET_MPLS_TTL ("MPLS TTL") as defined by the
-	 * OpenFlow Switch Specification.
-	 *
-	 * See struct rte_flow_action_of_set_mpls_ttl.
-	 */
-	ActionTypeOfSetMplsTTL ActionType = C.RTE_FLOW_ACTION_TYPE_OF_SET_MPLS_TTL
-
-	/**
-	 * Implements OFPAT_DEC_MPLS_TTL ("decrement MPLS TTL") as defined
-	 * by the OpenFlow Switch Specification.
-	 *
-	 * No associated configuration structure.
-	 */
-	ActionTypeOfDecMplsTTL ActionType = C.RTE_FLOW_ACTION_TYPE_OF_DEC_MPLS_TTL
-
-	/**
-	 * Implements OFPAT_SET_NW_TTL ("IP TTL") as defined by the OpenFlow
-	 * Switch Specification.
-	 *
-	 * See struct rte_flow_action_of_set_nw_ttl.
-	 */
-	ActionTypeOfSetNwTTL ActionType = C.RTE_FLOW_ACTION_TYPE_OF_SET_NW_TTL
-
-	/**
 	 * Implements OFPAT_DEC_NW_TTL ("decrement IP TTL") as defined by
 	 * the OpenFlow Switch Specification.
 	 *
 	 * No associated configuration structure.
 	 */
 	ActionTypeOfDecNwTTL ActionType = C.RTE_FLOW_ACTION_TYPE_OF_DEC_NW_TTL
-
-	/**
-	 * Implements OFPAT_COPY_TTL_OUT ("copy TTL "outwards" -- from
-	 * next-to-outermost to outermost") as defined by the OpenFlow
-	 * Switch Specification.
-	 *
-	 * No associated configuration structure.
-	 */
-	ActionTypeOfCopyTTLOut ActionType = C.RTE_FLOW_ACTION_TYPE_OF_COPY_TTL_OUT
-
-	/**
-	 * Implements OFPAT_COPY_TTL_IN ("copy TTL "inwards" -- from
-	 * outermost to next-to-outermost") as defined by the OpenFlow
-	 * Switch Specification.
-	 *
-	 * No associated configuration structure.
-	 */
-	ActionTypeOfCopyTTLIn ActionType = C.RTE_FLOW_ACTION_TYPE_OF_COPY_TTL_IN
 
 	/**
 	 * Implements OFPAT_POP_VLAN ("pop the outer VLAN tag") as defined
