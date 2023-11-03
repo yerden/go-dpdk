@@ -16,6 +16,15 @@ package ethdev
 #include <rte_ethdev.h>
 #include <rte_version.h>
 
+void set_split_hdr_size_compat(struct rte_eth_rxmode *m, uint16_t v)
+{
+#if RTE_VERSION < RTE_VERSION_NUM(22, 11, 0, 0)
+	m->split_hdr_size = v;
+#else
+	printf("split_hdr_size removed from rte_eth_rxmode as of v22.11\n");
+#endif
+}
+
 // The max_rx_pkt_len changes occurred in commit: 1bb4a528c41f4af4847bd3d58cc2b2b9f1ec9a27.
 #if RTE_VERSION < RTE_VERSION_NUM(21, 11, 0, 0)
 enum {
@@ -376,9 +385,11 @@ func OptLinkSpeeds(speeds uint) Option {
 func OptRxMode(conf RxMode) Option {
 	return Option{func(c *ethConf) {
 		c.conf.rxmode = C.struct_rte_eth_rxmode{
-			mq_mode:        uint32(conf.MqMode),
-			split_hdr_size: C.ushort(conf.SplitHdrSize),
-			offloads:       C.ulong(conf.Offloads),
+			mq_mode:  uint32(conf.MqMode),
+			offloads: C.ulong(conf.Offloads),
+		}
+		if conf.SplitHdrSize != 0 {
+			C.set_split_hdr_size_compat(&c.conf.rxmode, C.ushort(conf.SplitHdrSize))
 		}
 		c.setRxPktLen(conf.MTU)
 	}}
