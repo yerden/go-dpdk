@@ -61,3 +61,18 @@ func TestPortName(t *testing.T) {
 	_, err = GetPortByName("some_name")
 	assert(t, err == syscall.ENODEV)
 }
+
+func TestOptRxMode(t *testing.T) {
+	opt := OptRxMode(RxMode{
+		MqMode:       1,
+		MTU:          2,
+		SplitHdrSize: 3,
+		Offloads:     4,
+	})
+	cfg := &ethConf{}
+	opt.f(cfg)
+
+	assert(t, cfg.conf.rxmode.mq_mode == 1)
+	assert(t, cfg.conf.rxmode.mtu == 2)
+	assert(t, cfg.conf.rxmode.offloads == 4)
+}
