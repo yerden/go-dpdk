@@ -9,8 +9,13 @@ env:
 
 jobs:
   build:
+    strategy:
+      matrix:
+        env_image:
+          - nedrey/dpdk-rockylinux8:v21.11-go1.19-snf
+          - nedrey/dpdk-rockylinux8:v22.11.3-go1.21.3-snf
     runs-on: ubuntu-latest
-    container: nedrey/dpdk-rockylinux8:v21.11-go1.19-snf
+    container: ${{ matrix.env_image }}
     steps:
       -
         name: Checkout
