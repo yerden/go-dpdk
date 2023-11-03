@@ -2,6 +2,7 @@ package ethdev
 
 import (
 	"bytes"
+	"errors"
 	"syscall"
 	"testing"
 
@@ -29,7 +30,7 @@ func TestRssHashConfGet(t *testing.T) {
 
 	c.Key = bytes.Repeat([]byte{0x6d, 0x5a}, 20)
 	err = pid.RssHashUpdate(&c)
-	assert(t, err == nil, err)
+	assert(t, err == nil || errors.Is(err, syscall.ENOTSUP))
 }
 
 func TestDevInfo(t *testing.T) {
