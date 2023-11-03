@@ -106,13 +106,13 @@ import (
 // This enum indicates the flow control mode.
 const (
 	// Disable flow control.
-	FcNone uint32 = C.RTE_FC_NONE
+	FcNone uint32 = C.RTE_ETH_FC_NONE
 	// RX pause frame, enable flowctrl on TX side.
-	FcRxPause uint32 = C.RTE_FC_RX_PAUSE
+	FcRxPause uint32 = C.RTE_ETH_FC_RX_PAUSE
 	// TX pause frame, enable flowctrl on RX side.
-	FcTxPause uint32 = C.RTE_FC_TX_PAUSE
+	FcTxPause uint32 = C.RTE_ETH_FC_TX_PAUSE
 	// Enable flow control on both side.
-	FcFull uint32 = C.RTE_FC_FULL
+	FcFull uint32 = C.RTE_ETH_FC_FULL
 )
 
 // Option represents device option which is then used by
