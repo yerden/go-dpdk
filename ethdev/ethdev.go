@@ -48,6 +48,22 @@ static void set_tx_insert_pvid(struct rte_eth_txmode *txm) {
 	txm->hw_vlan_insert_pvid = 1;
 }
 
+// set flag to interrupt configuration:
+// 0 - lsc
+// 1 - rxq
+// 2 - rmv
+static void set_intr_conf_flag(struct rte_eth_intr_conf *intr, int *flag) {
+	intr->lsc = flag[0];
+	intr->rxq = flag[1];
+	intr->rmv = flag[2];
+}
+
+static void get_intr_conf_flag(struct rte_eth_intr_conf *intr, int *flag) {
+	flag[0] = intr->lsc;
+	flag[1] = intr->rxq;
+	flag[2] = intr->rmv;
+}
+
 static int go_rte_get_ethdev_ports(uint16_t *ports, int n_ports) {
 	uint16_t pid;
 	int i = 0;
@@ -439,6 +455,35 @@ func OptTxMode(conf TxMode) Option {
 func OptLoopbackMode(mode uint32) Option {
 	return Option{func(c *ethConf) {
 		c.conf.lpbk_mode = C.uint(mode)
+	}}
+}
+
+func boolToInt(flag bool) C.int {
+	if flag {
+		return 1
+	}
+	return 0
+}
+
+// IntrConf is used to enable/disable interrupts.
+type IntrConf struct {
+	LSC, RXQ, RMV bool
+}
+
+func readIntrConf(intr *C.struct_rte_eth_intr_conf) (flags [3]C.int) {
+	C.get_intr_conf_flag(intr, &flags[0])
+	return
+}
+
+// OptIntrConf is used to specify interrupt configuration.
+func OptIntrConf(intr IntrConf) Option {
+	return Option{func(c *ethConf) {
+		input := [3]C.int{
+			boolToInt(intr.LSC),
+			boolToInt(intr.RXQ),
+			boolToInt(intr.RMV),
+		}
+		C.set_intr_conf_flag(&c.conf.intr_conf, &input[0])
 	}}
 }
 
