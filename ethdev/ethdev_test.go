@@ -76,3 +76,53 @@ func TestOptRxMode(t *testing.T) {
 	assert(t, cfg.conf.rxmode.mtu == 2)
 	assert(t, cfg.conf.rxmode.offloads == 4)
 }
+
+func TestOptIntrConf(t *testing.T) {
+	opt := OptIntrConf(IntrConf{})
+
+	cfg := &ethConf{}
+	opt.f(cfg)
+
+	flags := readIntrConf(&cfg.conf.intr_conf)
+	assert(t, flags[0] == 0)
+	assert(t, flags[1] == 0)
+	assert(t, flags[2] == 0)
+
+	opt = OptIntrConf(IntrConf{
+		LSC: true,
+	})
+
+	cfg = &ethConf{}
+	opt.f(cfg)
+
+	flags = readIntrConf(&cfg.conf.intr_conf)
+	assert(t, flags[0] == 1)
+	assert(t, flags[1] == 0)
+	assert(t, flags[2] == 0)
+
+	opt = OptIntrConf(IntrConf{
+		LSC: true,
+		RXQ: true,
+	})
+
+	cfg = &ethConf{}
+	opt.f(cfg)
+
+	flags = readIntrConf(&cfg.conf.intr_conf)
+	assert(t, flags[0] == 1)
+	assert(t, flags[1] == 1)
+	assert(t, flags[2] == 0)
+
+	opt = OptIntrConf(IntrConf{
+		RXQ: true,
+		RMV: true,
+	})
+
+	cfg = &ethConf{}
+	opt.f(cfg)
+
+	flags = readIntrConf(&cfg.conf.intr_conf)
+	assert(t, flags[0] == 0)
+	assert(t, flags[1] == 1)
+	assert(t, flags[2] == 1)
+}
