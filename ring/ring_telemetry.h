@@ -5,6 +5,13 @@
 #include <rte_telemetry.h>
 #include <rte_ring.h>
 
+#include <rte_version.h>
+#if RTE_VERSION < RTE_VERSION_NUM(23, 3, 0, 0)
+#define tel_data_add_dict_uint rte_tel_data_add_dict_u64
+#else
+#define tel_data_add_dict_uint rte_tel_data_add_dict_uint
+#endif
+
 static inline const char *
 trim_prefix(const char *s, const char *pre)
 {
@@ -54,9 +61,9 @@ ring_info(
 	rte_tel_data_add_dict_int(d, "ring_is_sp", rte_ring_is_prod_single(r));
 	rte_tel_data_add_dict_int(d, "ring_prod_sync_type", rte_ring_get_prod_sync_type(r));
 	rte_tel_data_add_dict_int(d, "ring_cons_sync_type", rte_ring_get_cons_sync_type(r));
-	rte_tel_data_add_dict_u64(d, "ring_size", rte_ring_get_size(r));
-	rte_tel_data_add_dict_u64(d, "ring_count", rte_ring_count(r));
-	rte_tel_data_add_dict_u64(d, "ring_capacity", rte_ring_get_capacity(r));
+	tel_data_add_dict_uint(d, "ring_size", rte_ring_get_size(r));
+	tel_data_add_dict_uint(d, "ring_count", rte_ring_count(r));
+	tel_data_add_dict_uint(d, "ring_capacity", rte_ring_get_capacity(r));
 
 	return 0;
 }
