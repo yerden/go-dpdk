@@ -7,8 +7,8 @@ Starting from DPDK 21.05, `pkg-config` becomes the only official way to build DP
 
 Go compiler may fail to accept some C compiler flags. You can fix it by submitting those flags to environment:
 ```
-export CGO_CFLAGS_ALLOW=".*"
-export CGO_LDFLAGS_ALLOW=".*"
+export CGO_CFLAGS_ALLOW="-mrtm"
+export CGO_LDFLAGS_ALLOW="-Wl,--(?:no-)?whole-archive"
 ```
 
 # Caveats
