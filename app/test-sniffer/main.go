@@ -10,6 +10,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/yerden/go-dpdk/eal"
+	"github.com/yerden/go-dpdk/ethdev"
 )
 
 var metricsEndpoint = flag.String("metrics", ":10010", "Specify listen address for Prometheus endpoint")
@@ -28,6 +29,7 @@ func main() {
 
 	flag.Parse()
 	reg := prometheus.NewRegistry()
+	ethdev.RegisterTelemetryLSC("/ethdev/lsc")
 	app, err := NewApp(reg)
 	if err != nil {
 		panic(err)

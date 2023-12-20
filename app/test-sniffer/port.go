@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"syscall"
 
@@ -44,7 +45,21 @@ func ifaceName(pid ethdev.Port) string {
 
 // Configure must be called on main lcore to configure ethdev.Port.
 func (conf *EthdevConfig) Configure(pid ethdev.Port) error {
-	if err := pid.DevConfigure(conf.RxQueues, 0, conf.Options...); err != nil {
+	var info ethdev.DevInfo
+	if err := pid.InfoGet(&info); err != nil {
+		return err
+	}
+
+	opts := conf.Options
+	lscOpt := ethdev.OptIntrConf(ethdev.IntrConf{LSC: true})
+	if info.DevFlags().IsIntrLSC() {
+		opts = append(conf.Options, lscOpt)
+		pid.RegisterCallbackLSC()
+	} else {
+		fmt.Printf("port %d doesn't support LSC interrupt\n", pid)
+	}
+
+	if err := pid.DevConfigure(conf.RxQueues, 0, opts...); err != nil {
 		return err
 	}
 

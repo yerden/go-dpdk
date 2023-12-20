@@ -824,6 +824,19 @@ func (info *DevInfo) RetaSize() uint16 {
 	return uint16(info.reta_size)
 }
 
+// DevFlags represent the value of dev_flags member of rte_eth_dev_info struct.
+type DevFlags uint32
+
+// DevFlags acquires device capability flags from DevInfo.
+func (info *DevInfo) DevFlags() DevFlags {
+	return DevFlags(*(*uint32)(info.dev_flags))
+}
+
+// IsIntrLSC tells if the device supports link status change interrupt.
+func (f DevFlags) IsIntrLSC() bool {
+	return f&C.RTE_ETH_DEV_INTR_LSC != 0
+}
+
 // InfoGet retrieves the contextual information of an Ethernet device.
 //
 // As part of this function, a number of of fields in dev_info will be

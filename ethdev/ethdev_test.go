@@ -126,3 +126,23 @@ func TestOptIntrConf(t *testing.T) {
 	assert(t, flags[1] == 1)
 	assert(t, flags[2] == 1)
 }
+
+func TestLSC(t *testing.T) {
+	eal.InitOnceSafe("test", 4)
+
+	pid := Port(0)
+
+	// net_null0, no support for LSC
+	var info DevInfo
+	err := pid.InfoGet(&info)
+	assert(t, err == nil, err)
+	assert(t, info.DevFlags().IsIntrLSC() == false)
+
+	err = pid.RegisterCallbackLSC()
+	assert(t, err == nil, err)
+
+	err = pid.UnregisterCallbackLSC()
+	assert(t, err == nil, err)
+
+	RegisterTelemetryLSC("/ethdev/lsc")
+}
