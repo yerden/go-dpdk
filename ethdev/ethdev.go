@@ -807,6 +807,11 @@ func (pid Port) SocketID() int {
 // device, etc...
 type DevInfo C.struct_rte_eth_dev_info
 
+// MaxRxBufSize returns minimum Rx buffer size per descriptor supported by HW.
+func (info *DevInfo) MaxRxBufSize() uint32 {
+	return uint32(info.max_rx_bufsize)
+}
+
 // DriverName returns driver_name as a Go string.
 func (info *DevInfo) DriverName() string {
 	return C.GoString((*C.struct_rte_eth_dev_info)(info).driver_name)
