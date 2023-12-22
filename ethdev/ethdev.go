@@ -916,6 +916,51 @@ func (info *DevInfo) NbTxQueues() uint16 {
 	return uint16(info.nb_tx_queues)
 }
 
+// MinMTU returns minimum MTU allowed.
+func (info *DevInfo) MinMTU() uint16 {
+	return uint16(info.min_mtu)
+}
+
+// MaxMTU returns maximum MTU allowed.
+func (info *DevInfo) MaxMTU() uint16 {
+	return uint16(info.max_mtu)
+}
+
+// MaxRxPktLen returns maximum configurable length of Rx pkt.
+func (info *DevInfo) MaxRxPktLen() uint32 {
+	return uint32(info.max_rx_pktlen)
+}
+
+// MinRxBufSize returns minimum Rx buffer size per descriptor supported by HW.
+func (info *DevInfo) MinRxBufSize() uint32 {
+	return uint32(info.min_rx_bufsize)
+}
+
+// MaxRxBufSize returns maximum Rx buffer size per descriptor supported by HW.
+// The value is not enforced, information only to application to optimize mbuf
+// size. Its value is UINT32_MAX when not specified by the driver.
+func (info *DevInfo) MaxRxBufSize() uint32 {
+	return uint32(info.max_rx_bufsize)
+}
+
+// MaxRxQueues returns maximum number of Rx queues.
+func (info *DevInfo) MaxRxQueues() uint16 {
+	return uint16(info.max_rx_queues)
+}
+
+// MaxTxQueues returns maximum number of Tx queues.
+func (info *DevInfo) MaxTxQueues() uint16 {
+	return uint16(info.max_tx_queues)
+}
+
+// MaxRxMempools returns maximum number of Rx mempools supported per Rx queue.
+//
+// Value greater than 0 means that the driver supports Rx queue mempools
+// specification via rx_conf->rx_mempools.
+func (info *DevInfo) MaxRxMempools() uint16 {
+	return uint16(info.max_rx_mempools)
+}
+
 // IsValid checks if port_id of device is attached.
 func (pid Port) IsValid() bool {
 	return C.rte_eth_dev_is_valid_port(C.ushort(pid)) != 0
