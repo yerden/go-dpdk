@@ -936,12 +936,14 @@ func (info *DevInfo) MinRxBufSize() uint32 {
 	return uint32(info.min_rx_bufsize)
 }
 
+// available from DPDK v23.11 https://doc.dpdk.org/guides/rel_notes/release_23_11.html
+//
 // MaxRxBufSize returns maximum Rx buffer size per descriptor supported by HW.
 // The value is not enforced, information only to application to optimize mbuf
 // size. Its value is UINT32_MAX when not specified by the driver.
-func (info *DevInfo) MaxRxBufSize() uint32 {
-	return uint32(info.max_rx_bufsize)
-}
+// func (info *DevInfo) MaxRxBufSize() uint32 {
+// 	return uint32(info.max_rx_bufsize)
+// }
 
 // MaxRxQueues returns maximum number of Rx queues.
 func (info *DevInfo) MaxRxQueues() uint16 {
@@ -953,13 +955,15 @@ func (info *DevInfo) MaxTxQueues() uint16 {
 	return uint16(info.max_tx_queues)
 }
 
+// available from DPDK v22.11 https://doc.dpdk.org/api-22.11/structrte__eth__dev__info.html#a977df447c171065d6b6a9bded521e0f9
+//
 // MaxRxMempools returns maximum number of Rx mempools supported per Rx queue.
 //
 // Value greater than 0 means that the driver supports Rx queue mempools
 // specification via rx_conf->rx_mempools.
-func (info *DevInfo) MaxRxMempools() uint16 {
-	return uint16(info.max_rx_mempools)
-}
+// func (info *DevInfo) MaxRxMempools() uint16 {
+// 	return uint16(info.max_rx_mempools)
+// }
 
 // IsValid checks if port_id of device is attached.
 func (pid Port) IsValid() bool {
