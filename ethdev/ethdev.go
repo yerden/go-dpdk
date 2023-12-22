@@ -766,6 +766,17 @@ func (pid Port) PromiscDisable() error {
 	return errget(C.rte_eth_promiscuous_disable(C.ushort(pid)))
 }
 
+// GetMTU retrieves the MTU of an Ethernet device.
+func (pid Port) GetMTU() (uint16, error) {
+	var mtu C.ushort
+	return uint16(mtu), errget(C.rte_eth_dev_get_mtu(C.ushort(pid), &mtu))
+}
+
+// SetMTU changes the MTU of an Ethernet device.
+func (pid Port) SetMTU(mtu uint16) error {
+	return errget(C.rte_eth_dev_set_mtu(C.ushort(pid), C.ushort(mtu)))
+}
+
 // SetLinkUp set link status to 'up' an Ethernet device.
 //
 // Set device link up will re-enable the device rx/tx
