@@ -3,6 +3,7 @@ package ethdev
 import (
 	"bytes"
 	"errors"
+	"math"
 	"syscall"
 	"testing"
 
@@ -43,6 +44,33 @@ func TestDevInfo(t *testing.T) {
 	assert(t, err == nil, err)
 
 	assert(t, c.DriverName() == "net_null", c.DriverName())
+	assert(t, c.DevFlags() == 64, c.DevFlags())
+	assert(t, c.InterfaceName() == "", c.InterfaceName())
+	assert(t, c.MaxMTU() == math.MaxUint16, c.MaxMTU())
+	assert(t, c.MinMTU() == 46, c.MinMTU())
+	assert(t, c.MaxRxPktLen() == math.MaxUint32, c.MaxRxPktLen())
+	assert(t, c.MaxRxQueues() == 1024, c.MaxRxQueues())
+	assert(t, c.MaxTxQueues() == 1024, c.MaxTxQueues())
+	assert(t, c.MinRxBufSize() == 0, c.MinRxBufSize())
+	assert(t, c.NbRxQueues() == 1, c.NbRxQueues())
+	assert(t, c.NbTxQueues() == 1, c.NbTxQueues())
+	assert(t, c.RetaSize() == 128, c.RetaSize())
+}
+
+func TestMTU(t *testing.T) {
+	eal.InitOnceSafe("test", 4)
+
+	pid := Port(0)
+
+	mtu, err := pid.GetMTU()
+	assert(t, mtu == 1500, mtu)
+	assert(t, err == nil, err)
+
+	err = pid.DevConfigure(1, 1)
+	assert(t, err == nil, err)
+
+	err = pid.SetMTU(math.MaxUint16)
+	assert(t, err == nil, err)
 }
 
 func TestPortName(t *testing.T) {
