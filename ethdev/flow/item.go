@@ -6,39 +6,26 @@ package flow
 #include <rte_flow.h>
 */
 import "C"
-import "unsafe"
+import (
+	"unsafe"
+
+	"github.com/yerden/go-dpdk/common"
+)
 
 // ItemType represents rte_flow_item type.
 type ItemType uint32
 
-// Reload implements ItemStruct interface.
-func (t ItemType) Reload() {}
+// ItemValue should be implemented to specify in Item.
+type ItemValue interface {
+	common.Transformer
 
-// Pointer implements ItemStruct interface.
-func (t ItemType) Pointer() unsafe.Pointer { return nil }
-
-// Type implements ItemStruct interface.
-func (t ItemType) Type() ItemType { return t }
-
-// Mask implements ItemStruct interface.
-func (t ItemType) Mask() unsafe.Pointer { return nil }
-
-// ItemStruct should be implemented to specify in Item.
-type ItemStruct interface {
-	// Pointer returns a valid C pointer to underlying struct.
-	Pointer() unsafe.Pointer
-
-	// Reload is used to apply changes so that the underlying struct
-	// reflects the up-to-date configuration.
-	Reload()
-
-	// Type returns implemented rte_flow_item_* struct.
-	Type() ItemType
+	// ItemType returns implemented rte_flow_item_* struct.
+	ItemType() ItemType
 
 	// Mask returns pointer to rte_flow_item_*_mask variables. They
 	// should not be changed by user so Mask returns pointer to C
 	// struct.
-	Mask() unsafe.Pointer
+	DefaultMask() unsafe.Pointer
 }
 
 // Item is the matching pattern item definition.
@@ -77,5 +64,5 @@ type ItemStruct interface {
 // Go: you may also specify ItemType as a Spec field if you don't want
 // to specify any pattern for the item.
 type Item struct {
-	Spec, Last, Mask ItemStruct
+	Spec, Last, Mask ItemValue
 }
