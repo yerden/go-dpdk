@@ -2,28 +2,22 @@ package lpm
 
 import (
 	"encoding/binary"
-	"net"
+	"net/netip"
 )
 
-func cvtIPv4(addr net.IP) (ip uint32) {
-	if addr = addr.To4(); addr == nil {
-		panic("not an IPv4 address")
-	}
-	return binary.BigEndian.Uint32(addr[:])
+func cvtIPv4(addr netip.Addr) (ip uint32) {
+	a4 := addr.As4()
+	return binary.BigEndian.Uint32(a4[:])
 }
 
-func cvtIPv4Net(ipp net.IPNet) (ip uint32, prefix uint8) {
-	addr := ipp.IP.Mask(ipp.Mask)
-	ones, _ := ipp.Mask.Size()
-	return cvtIPv4(addr), uint8(ones)
+func cvtIPv4Net(prefix netip.Prefix) (ip uint32, bits uint8) {
+	return cvtIPv4(prefix.Masked().Addr()), uint8(prefix.Bits())
 }
 
-func cvtIPv6Net(ipp net.IPNet) (ip [16]byte, prefix uint8) {
-	addr := ipp.IP.Mask(ipp.Mask)
-	ones, _ := ipp.Mask.Size()
-	if len(addr) <= 4 {
+func cvtIPv6Net(prefix netip.Prefix) (ip [16]byte, bits uint8) {
+	addr := prefix.Masked().Addr()
+	if !addr.Is6() || addr.Is4In6() {
 		panic("not an IPv6 address")
 	}
-	copy(ip[:], addr.To16())
-	return ip, uint8(ones)
+	return addr.As16(), uint8(prefix.Bits())
 }

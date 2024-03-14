@@ -8,7 +8,7 @@ package lpm
 import "C"
 
 import (
-	"net"
+	"net/netip"
 	"unsafe"
 
 	"github.com/yerden/go-dpdk/common"
@@ -31,12 +31,13 @@ type Config6 struct {
 // containing the configuration.
 //
 // Returns handle to LPM6 object on success, and errno value:
-//   E_RTE_NO_CONFIG - function could not get pointer to rte_config structure
-//   E_RTE_SECONDARY - function was called from a secondary process instance
-//   EINVAL - invalid parameter passed to function
-//   ENOSPC - the maximum number of memzones has already been allocated
-//   EEXIST - a memzone with the same name already exists
-//   ENOMEM - no appropriate memory area found in which to create memzone
+//
+//	E_RTE_NO_CONFIG - function could not get pointer to rte_config structure
+//	E_RTE_SECONDARY - function was called from a secondary process instance
+//	EINVAL - invalid parameter passed to function
+//	ENOSPC - the maximum number of memzones has already been allocated
+//	EEXIST - a memzone with the same name already exists
+//	ENOMEM - no appropriate memory area found in which to create memzone
 func Create6(name string, socket int, cfg *Config6) (*LPM6, error) {
 	s := C.CString(name)
 	defer C.free(unsafe.Pointer(s))
@@ -62,23 +63,24 @@ func (r *LPM6) Free() {
 //
 // ip/prefix is an IP address/subnet to add, nextHop is a value
 // associated with added IP subnet. Panics if ip is not IPv6.
-func (r *LPM6) Add(ipnet net.IPNet, nextHop uint32) error {
+func (r *LPM6) Add(ipnet netip.Prefix, nextHop uint32) error {
 	b, prefix := cvtIPv6Net(ipnet)
 	rc := C.rte_lpm6_add((*C.struct_rte_lpm6)(r), (*C.uint8_t)(&b[0]), C.uint8_t(prefix), C.uint32_t(nextHop))
 	return common.IntToErr(rc)
 }
 
 // Delete a rule from LPM6 object. Panics if ip is not IPv6.
-func (r *LPM6) Delete(ipnet net.IPNet) error {
+func (r *LPM6) Delete(ipnet netip.Prefix) error {
 	b, prefix := cvtIPv6Net(ipnet)
 	rc := C.rte_lpm6_delete((*C.struct_rte_lpm6)(r), (*C.uint8_t)(&b[0]), C.uint8_t(prefix))
 	return common.IntToErr(rc)
 }
 
 // Lookup an IP in LPM6 object. Panics if ip is not IPv6.
-func (r *LPM6) Lookup(ip net.IP) (uint32, error) {
+func (r *LPM6) Lookup(ip netip.Addr) (uint32, error) {
 	var res uint32
-	rc := C.rte_lpm6_lookup((*C.struct_rte_lpm6)(r), (*C.uint8_t)(&ip[0]), (*C.uint32_t)(&res))
+	ip16 := ip.As16()
+	rc := C.rte_lpm6_lookup((*C.struct_rte_lpm6)(r), (*C.uint8_t)(&ip16[0]), (*C.uint32_t)(&res))
 	return res, common.IntToErr(rc)
 }
 
@@ -89,7 +91,7 @@ func (r *LPM6) DeleteAll() {
 
 // IsRulePresent checks if a rule present in the LPM6 and returns
 // nextHop if it is. Panics if ip is not IPv6.
-func (r *LPM6) IsRulePresent(ipnet net.IPNet, nextHop *uint32) (bool, error) {
+func (r *LPM6) IsRulePresent(ipnet netip.Prefix, nextHop *uint32) (bool, error) {
 	b, prefix := cvtIPv6Net(ipnet)
 	rc := C.rte_lpm6_is_rule_present((*C.struct_rte_lpm6)(r), (*C.uint8_t)(&b[0]), C.uint8_t(prefix), (*C.uint32_t)(nextHop))
 	n, err := common.IntOrErr(rc)
