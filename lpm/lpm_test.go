@@ -1,7 +1,7 @@
 package lpm_test
 
 import (
-	"net"
+	"net/netip"
 	"syscall"
 	"testing"
 
@@ -9,21 +9,6 @@ import (
 	"github.com/yerden/go-dpdk/eal"
 	"github.com/yerden/go-dpdk/lpm"
 )
-
-func mustParseCIDR(s string) net.IPNet {
-	_, x, err := net.ParseCIDR(s)
-	if err != nil {
-		panic(err)
-	}
-	return *x
-}
-
-func mustParseIP(s string) net.IP {
-	if x := net.ParseIP(s); x != nil {
-		return x
-	}
-	panic(s)
-}
 
 var cidrs = []string{
 	"192.168.0.1/24",
@@ -66,7 +51,7 @@ func TestLpmCreate(t *testing.T) {
 	// populate LPM object with IPv4
 	err = eal.ExecOnMain(func(ctx *eal.LcoreCtx) {
 		for _, s := range cidrs {
-			if ipnet := mustParseCIDR(s); ipnet.IP.To4() != nil {
+			if ipnet := netip.MustParsePrefix(s); ipnet.Addr().Is4() {
 				if e = myaddr.Add(ipnet, 1); e != nil {
 					return
 				}
@@ -79,13 +64,13 @@ func TestLpmCreate(t *testing.T) {
 	// test lookup
 	var hop uint32
 	err = eal.ExecOnMain(func(ctx *eal.LcoreCtx) {
-		if hop, e = myaddr.Lookup(net.IPv4(10, 0, 0, 0)); e != nil {
+		if hop, e = myaddr.Lookup(netip.AddrFrom4([4]byte{10, 0, 0, 0})); e != nil {
 			return
 		}
-		if hop, e = myaddr.Lookup(net.IPv4(10, 1, 0, 0)); e != nil {
+		if hop, e = myaddr.Lookup(netip.AddrFrom4([4]byte{10, 1, 0, 0})); e != nil {
 			return
 		}
-		if hop, e = myaddr.Lookup(net.IPv4(10, 2, 0, 0)); e != nil {
+		if hop, e = myaddr.Lookup(netip.AddrFrom4([4]byte{10, 2, 0, 0})); e != nil {
 			return
 		}
 	})
@@ -94,7 +79,7 @@ func TestLpmCreate(t *testing.T) {
 
 	// test lookup
 	err = eal.ExecOnMain(func(ctx *eal.LcoreCtx) {
-		hop, e = myaddr.Lookup(net.IPv4(11, 0, 0, 0))
+		hop, e = myaddr.Lookup(netip.AddrFrom4([4]byte{11, 0, 0, 0}))
 	})
 	assert(err == nil && e == syscall.ENOENT, err, e)
 }
@@ -133,7 +118,7 @@ func TestLpm6Create(t *testing.T) {
 	// populate LPM object with IPv6
 	err = eal.ExecOnMain(func(ctx *eal.LcoreCtx) {
 		for _, s := range cidrs {
-			if ipnet := mustParseCIDR(s); len(ipnet.IP) == 16 {
+			if ipnet := netip.MustParsePrefix(s); ipnet.Addr().Is6() {
 				if e = myaddr.Add(ipnet, 1); e != nil {
 					return
 				}
@@ -146,13 +131,13 @@ func TestLpm6Create(t *testing.T) {
 	// test lookup
 	var hop uint32
 	err = eal.ExecOnMain(func(ctx *eal.LcoreCtx) {
-		if hop, e = myaddr.Lookup(mustParseIP("2001:db8:a0b:12f0::1")); e != nil {
+		if hop, e = myaddr.Lookup(netip.MustParseAddr("2001:db8:a0b:12f0::1")); e != nil {
 			return
 		}
-		if hop, e = myaddr.Lookup(mustParseIP("2001:db8:a0b:12f0::2")); e != nil {
+		if hop, e = myaddr.Lookup(netip.MustParseAddr("2001:db8:a0b:12f0::2")); e != nil {
 			return
 		}
-		if hop, e = myaddr.Lookup(mustParseIP("2001:db8:a0b:12f0:0a0a::2")); e != nil {
+		if hop, e = myaddr.Lookup(netip.MustParseAddr("2001:db8:a0b:12f0:0a0a::2")); e != nil {
 			return
 		}
 	})
@@ -161,7 +146,7 @@ func TestLpm6Create(t *testing.T) {
 
 	// test lookup
 	err = eal.ExecOnMain(func(ctx *eal.LcoreCtx) {
-		hop, e = myaddr.Lookup(mustParseIP("2001:db9:a0b:12f0:0a0a::2"))
+		hop, e = myaddr.Lookup(netip.MustParseAddr("2001:db9:a0b:12f0:0a0a::2"))
 	})
 	assert(err == nil && e == syscall.ENOENT, err, e)
 }
