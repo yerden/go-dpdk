@@ -19,6 +19,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"time"
 	"unsafe"
 
 	"github.com/yerden/go-dpdk/common"
@@ -37,10 +38,8 @@ const (
 // race condition.
 var PanicAsErr = false
 
-var (
-	// goEAL is the storage for all EAL lcore threads configuration.
-	goEAL = &ealConfig{make(map[uint]*LcoreCtx)}
-)
+// goEAL is the storage for all EAL lcore threads configuration.
+var goEAL = &ealConfig{make(map[uint]*LcoreCtx)}
 
 type lcoreJob struct {
 	fn  func(*LcoreCtx)
@@ -190,6 +189,7 @@ func panicCatcher(fn func(*LcoreCtx), ctx *LcoreCtx) (err error) {
 }
 
 // to run as lcore_function_t
+//
 //export lcoreFuncListener
 func lcoreFuncListener(arg unsafe.Pointer) C.int {
 	runtime.LockOSThread()
@@ -286,6 +286,7 @@ func Init(args []string) (n int, err error) {
 			return
 		}
 
+		time.Sleep(time.Second * 10)
 		// we're about to launch lcore functions so we add worker
 		// lcores to WaitGroup
 		wg.Add(int(LcoreCount() - 1))
