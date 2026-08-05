@@ -28,20 +28,15 @@ void set_has_vlan(struct rte_flow_item_eth *item, uint32_t b) {
 	item->has_vlan = b;
 }
 
-static const struct rte_flow_item_eth *get_item_eth_mask() {
-	return &rte_flow_item_eth_mask;
-}
-
 */
 import "C"
 import (
-	"net"
-	"reflect"
-	"runtime"
 	"unsafe"
+
+	"github.com/yerden/go-dpdk/common"
 )
 
-var _ ItemStruct = (*ItemEth)(nil)
+var _ ItemValue = (*ItemEth)(nil)
 
 // ItemEth matches an Ethernet header.
 //
@@ -59,54 +54,34 @@ var _ ItemStruct = (*ItemEth)(nil)
 // possible to leave the two fields unused. If this is the case, both
 // tagged and untagged packets will match the pattern.
 type ItemEth struct {
-	cPointer
 	HasVlan   bool
-	Src, Dst  net.HardwareAddr
+	Src, Dst  [6]byte
 	EtherType uint16
 }
 
-// Reload implements ItemStruct interface.
-func (item *ItemEth) Reload() {
-	cptr := (*C.struct_rte_flow_item_eth)(item.createOrRet(C.sizeof_struct_rte_flow_item_eth))
-
-	var u uint32
-	if item.HasVlan {
-		u = 1
+func boolU32(b bool) (x C.uint32_t) {
+	if b {
+		x = 1
 	}
-	C.set_has_vlan(cptr, C.uint32_t(u))
-
-	hdr := (*C.struct_rte_ether_hdr)(off(unsafe.Pointer(cptr), C.ITEM_ETH_OFF_HDR))
-
-	if len(item.Src) > 0 {
-		p := off(unsafe.Pointer(hdr), C.ETHER_HDR_OFF_SRC)
-		setAddr((*C.struct_rte_ether_addr)(p), item.Src)
-	}
-
-	if len(item.Dst) > 0 {
-		p := off(unsafe.Pointer(hdr), C.ETHER_HDR_OFF_DST)
-		setAddr((*C.struct_rte_ether_addr)(p), item.Dst)
-	}
-
-	beU16(item.EtherType, unsafe.Pointer(&hdr.ether_type))
-
-	runtime.SetFinalizer(item, (*ItemEth).free)
+	return
 }
 
-func setAddr(p *C.struct_rte_ether_addr, addr net.HardwareAddr) {
-	var hwaddr []byte
-	sh := (*reflect.SliceHeader)(unsafe.Pointer(&hwaddr))
-	sh.Data = uintptr(unsafe.Pointer(&p.addr_bytes[0]))
-	sh.Len = len(p.addr_bytes)
-	sh.Cap = sh.Len
-	copy(hwaddr, addr)
+// Transform implements Action interface.
+func (item *ItemEth) Transform(alloc common.Allocator) (unsafe.Pointer, func(unsafe.Pointer)) {
+	cptr := &C.struct_rte_flow_item_eth{}
+	hdr := (*C.struct_rte_ether_addr)(unsafe.Add(unsafe.Pointer(cptr), C.ITEM_ETH_OFF_HDR))
+	*(*[6]byte)(unsafe.Add(unsafe.Pointer(hdr), C.ETHER_HDR_OFF_SRC)) = item.Src
+	*(*[6]byte)(unsafe.Add(unsafe.Pointer(hdr), C.ETHER_HDR_OFF_DST)) = item.Dst
+	C.set_has_vlan(cptr, boolU32(item.HasVlan))
+	return common.TransformPOD(alloc, cptr)
 }
 
-// Type implements ItemStruct interface.
-func (item *ItemEth) Type() ItemType {
+// ItemType implements ItemValue interface.
+func (item *ItemEth) ItemType() ItemType {
 	return ItemTypeEth
 }
 
-// Mask implements ItemStruct interface.
-func (item *ItemEth) Mask() unsafe.Pointer {
-	return unsafe.Pointer(C.get_item_eth_mask())
+// DefaultMask implements ItemStruct interface.
+func (item *ItemEth) DefaultMask() unsafe.Pointer {
+	return unsafe.Pointer(&C.rte_flow_item_eth_mask)
 }

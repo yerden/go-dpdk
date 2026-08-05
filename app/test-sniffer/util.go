@@ -57,9 +57,9 @@ func rssEthVlanIPv4(pid ethdev.Port, conf *ethdev.RssConf) (*flow.Flow, error) {
 	attr := &flow.Attr{Ingress: true}
 
 	pattern := []flow.Item{
-		{Spec: flow.ItemTypeEth},  // Ethernet
-		{Spec: flow.ItemTypeVlan}, // VLAN
-		{Spec: flow.ItemTypeIPv4}, // IPv4
+		{Spec: &flow.ItemEth{}},  // Ethernet
+		{Spec: &flow.ItemVlan{}}, // VLAN
+		{Spec: &flow.ItemIPv4{}}, // IPv4
 	}
 
 	actions := []flow.Action{
@@ -83,9 +83,9 @@ func mlxRssEthVlanIPv4(pid ethdev.Port, conf *ethdev.RssConf) (*flow.Flow, error
 	attr := &flow.Attr{Ingress: true}
 
 	pattern := []flow.Item{
-		{Spec: flow.ItemTypeEth},  // Ethernet
-		{Spec: flow.ItemTypeVlan}, // VLAN
-		{Spec: flow.ItemTypeIPv4}, // IPv4
+		{Spec: &flow.ItemEth{}},  // Ethernet
+		{Spec: &flow.ItemVlan{}}, // VLAN
+		{Spec: &flow.ItemIPv4{}}, // IPv4
 	}
 
 	var info ethdev.DevInfo

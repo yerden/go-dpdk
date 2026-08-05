@@ -8,8 +8,6 @@ package flow
 import "C"
 
 import (
-	"runtime"
-
 	"github.com/yerden/go-dpdk/common"
 	"github.com/yerden/go-dpdk/ethdev"
 )
@@ -23,40 +21,54 @@ const _ uintptr = -uintptr(ActionTypeEnd)
 // Flow is the opaque flow handle.
 type Flow C.struct_rte_flow
 
-// allocate c-style list of rte_flow_item's.
-func cPattern(pattern []Item) []C.struct_rte_flow_item {
-	pat := make([]C.struct_rte_flow_item, len(pattern)+1)
-
-	for i := range pattern {
-		typ := pattern[i].Spec.Type()
-		pat[i]._type = uint32(typ)
-		pattern[i].Spec.Reload()
-		pat[i].spec = pattern[i].Spec.Pointer()
-		if item := pattern[i].Mask; item != nil {
-			item.Reload()
-			pat[i].mask = item.Pointer()
-		}
-		if item := pattern[i].Last; item != nil {
-			item.Reload()
-			pat[i].last = item.Pointer()
-		}
-	}
-
-	return pat
+type cArgs struct {
+	pid  C.ushort
+	attr C.struct_rte_flow_attr
+	pat  *C.struct_rte_flow_item
+	act  *C.struct_rte_flow_action
+	e    *C.struct_rte_flow_error
 }
 
-// allocate c-style list of rte_flow_action's.
-func cActions(actions []Action) []C.struct_rte_flow_action {
-	act := make([]C.struct_rte_flow_action, len(actions)+1)
+func doFancy(port ethdev.Port, attr *Attr, pattern []Item, actions []Action, flowErr *Error, fn func(*cArgs)) {
+	alloc := common.NewAllocatorSession(&common.StdAlloc{})
+	defer alloc.Flush()
 
-	for i := range actions {
-		typ := actions[i].Type()
-		act[i]._type = uint32(typ)
-		actions[i].Reload()
-		act[i].conf = actions[i].Pointer()
+	// patterns
+	var pat []C.struct_rte_flow_item
+	for i := range pattern {
+		p := &pattern[i]
+		cPat := C.struct_rte_flow_item{}
+		cPat._type = uint32(p.Spec.ItemType())
+		cPat.spec, _ = pattern[i].Spec.Transform(alloc)
+		cPat.last, _ = pattern[i].Last.Transform(alloc)
+		cPat.mask, _ = pattern[i].Mask.Transform(alloc)
+		pat = append(pat, cPat)
 	}
 
-	return act
+	// patterns finalizer
+	pat = append(pat, C.struct_rte_flow_item{})
+
+	// actions
+	var act []C.struct_rte_flow_action
+	for _, p := range actions {
+		cAction := C.struct_rte_flow_action{}
+		cAction._type = uint32(p.ActionType())
+		cAction.conf, _ = p.Transform(alloc)
+		act = append(act, cAction)
+	}
+
+	// actions finalizer
+	act = append(act, C.struct_rte_flow_action{})
+
+	args := &cArgs{
+		pid:  C.ushort(port),
+		attr: attr.cvtAttr(),
+		pat:  &pat[0],
+		act:  &act[0],
+		e:    (*C.struct_rte_flow_error)(flowErr),
+	}
+
+	fn(args)
 }
 
 // Create a flow rule on a given port.
@@ -71,18 +83,15 @@ func cActions(actions []Action) []C.struct_rte_flow_action {
 // Returns a valid handle in case of success, NULL otherwise and
 // rte_errno is set to the positive version of one of the error codes
 // defined for rte_flow_validate().
-func Create(port ethdev.Port, attr *Attr, pattern []Item, actions []Action, flowErr *Error) (*Flow, error) {
-	pat := cPattern(pattern)
-	act := cActions(actions)
-	cAttr := attr.cvtAttr()
-	f := C.rte_flow_create(C.ushort(port), &cAttr, &pat[0], &act[0], (*C.struct_rte_flow_error)(flowErr))
-	runtime.KeepAlive(pattern)
-	runtime.KeepAlive(actions)
-	if f == nil {
-		return nil, common.RteErrno()
-	}
-
-	return (*Flow)(f), nil
+func Create(port ethdev.Port, attr *Attr, pattern []Item, actions []Action, flowErr *Error) (f *Flow, err error) {
+	doFancy(port, attr, pattern, actions, flowErr, func(args *cArgs) {
+		if p := C.rte_flow_create(args.pid, &args.attr, args.pat, args.act, args.e); p != nil {
+			f = (*Flow)(p)
+		} else {
+			err = common.RteErrno()
+		}
+	})
+	return
 }
 
 // Validate checks whether a flow rule can be created on a given port.
@@ -99,14 +108,12 @@ func Create(port ethdev.Port, attr *Attr, pattern []Item, actions []Action, flow
 // made in the meantime and no device parameter affecting flow rules
 // in any way are modified, due to possible collisions or resource
 // limitations (although in such cases EINVAL should not be returned).
-func Validate(port ethdev.Port, attr *Attr, pattern []Item, actions []Action, flowErr *Error) error {
-	pat := cPattern(pattern)
-	act := cActions(actions)
-	cAttr := attr.cvtAttr()
-	ret := C.rte_flow_validate(C.ushort(port), &cAttr, &pat[0], &act[0], (*C.struct_rte_flow_error)(flowErr))
-	runtime.KeepAlive(pattern)
-	runtime.KeepAlive(actions)
-	return common.IntToErr(ret)
+func Validate(port ethdev.Port, attr *Attr, pattern []Item, actions []Action, flowErr *Error) (err error) {
+	doFancy(port, attr, pattern, actions, flowErr, func(args *cArgs) {
+		rc := C.rte_flow_validate(args.pid, &args.attr, args.pat, args.act, args.e)
+		err = common.IntErr(int64(rc))
+	})
+	return
 }
 
 // Destroy a flow rule on a given port.

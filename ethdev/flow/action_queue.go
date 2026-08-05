@@ -7,7 +7,9 @@ package flow
 */
 import "C"
 import (
-	"runtime"
+	"unsafe"
+
+	"github.com/yerden/go-dpdk/common"
 )
 
 var _ Action = (*ActionQueue)(nil)
@@ -15,19 +17,18 @@ var _ Action = (*ActionQueue)(nil)
 // ActionQueue implements Action which assigns packets to a given
 // queue index.
 type ActionQueue struct {
-	cPointer
 	Index uint16
 }
 
-// Reload implements Action interface.
-func (action *ActionQueue) Reload() {
-	cptr := (*C.struct_rte_flow_action_queue)(action.createOrRet(C.sizeof_struct_rte_flow_action_queue))
-
-	cptr.index = C.uint16_t(action.Index)
-	runtime.SetFinalizer(action, (*ActionQueue).free)
+// Transform implements Action interface.
+func (action *ActionQueue) Transform(alloc common.Allocator) (unsafe.Pointer, func(unsafe.Pointer)) {
+	s := &C.struct_rte_flow_action_queue{
+		index: C.ushort(action.Index),
+	}
+	return common.TransformPOD(alloc, s)
 }
 
-// Type implements Action interface.
-func (action *ActionQueue) Type() ActionType {
+// ActionType implements Action interface.
+func (action *ActionQueue) ActionType() ActionType {
 	return ActionTypeQueue
 }
