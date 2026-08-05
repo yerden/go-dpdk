@@ -9,10 +9,6 @@ package ring
 #include <rte_memory.h>
 
 #include "ring.h"
-
-struct someptr {
-	void *p;
-};
 */
 import "C"
 
@@ -43,7 +39,7 @@ func (r *Ring) MpEnqueue(obj unsafe.Pointer) bool {
 // amount of space in the ring after the enqueue operation has
 // finished.
 func (r *Ring) MpEnqueueBulk(obj []unsafe.Pointer) (n, free uint32) {
-	return ret(C.mp_enqueue_bulk(args(r, obj)))
+	return ret(C.mp_enqueue_bulk_elem(argsSliceElem(r, obj)))
 }
 
 // SpEnqueueBulk enqueues given objects from slice into Ring.
@@ -51,7 +47,7 @@ func (r *Ring) MpEnqueueBulk(obj []unsafe.Pointer) (n, free uint32) {
 // amount of space in the ring after the enqueue operation has
 // finished.
 func (r *Ring) SpEnqueueBulk(obj []unsafe.Pointer) (n, free uint32) {
-	return ret(C.sp_enqueue_bulk(args(r, obj)))
+	return ret(C.sp_enqueue_bulk_elem(argsSliceElem(r, obj)))
 }
 
 // EnqueueBulk enqueues given objects from slice into Ring.
@@ -59,26 +55,26 @@ func (r *Ring) SpEnqueueBulk(obj []unsafe.Pointer) (n, free uint32) {
 // amount of space in the ring after the enqueue operation has
 // finished.
 func (r *Ring) EnqueueBulk(obj []unsafe.Pointer) (n, free uint32) {
-	return ret(C.enqueue_bulk(args(r, obj)))
+	return ret(C.enqueue_bulk_elem(argsSliceElem(r, obj)))
 }
 
 // MpEnqueueBurst enqueues given objects from slice into Ring.
 // Returns number of enqueued objects and amount of space in the ring
 // after the enqueue operation has finished.
 func (r *Ring) MpEnqueueBurst(obj []unsafe.Pointer) (n, free uint32) {
-	return ret(C.mp_enqueue_burst(args(r, obj)))
+	return ret(C.mp_enqueue_burst_elem(argsSliceElem(r, obj)))
 }
 
 // SpEnqueueBurst enqueues given objects from slice into Ring.
 // Returns number of enqueued objects and amount of space in the ring
 // after the enqueue operation has finished.
 func (r *Ring) SpEnqueueBurst(obj []unsafe.Pointer) (n, free uint32) {
-	return ret(C.sp_enqueue_burst(args(r, obj)))
+	return ret(C.sp_enqueue_burst_elem(argsSliceElem(r, obj)))
 }
 
 // EnqueueBurst enqueues given objects from slice into Ring. Returns
 // number of enqueued objects and amount of space in the ring after
 // the enqueue operation has finished.
 func (r *Ring) EnqueueBurst(obj []unsafe.Pointer) (n, free uint32) {
-	return ret(C.enqueue_burst(args(r, obj)))
+	return ret(C.enqueue_burst_elem(argsSliceElem(r, obj)))
 }
